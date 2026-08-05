@@ -81,6 +81,8 @@ pub struct LoadedSummary {
     #[serde(rename = "hookNames")]
     pub hook_names: Vec<String>,
     pub tools: Vec<ToolInfo>,
+    #[serde(rename = "pluginId", default)]
+    pub plugin_id: Option<String>,
 }
 
 /// A tool definition registered by a plugin, with its JSON schema.
@@ -162,6 +164,11 @@ impl LoadedPlugin {
         &self.summary
     }
 
+    /// The plugin id (the module's `id` export for npm plugins, or `null`).
+    pub fn plugin_id(&self) -> Option<&str> {
+        self.summary.plugin_id.as_deref()
+    }
+
     /// A list of the tool names this plugin registered.
     pub fn tool_names(&self) -> Vec<String> {
         self.summary
@@ -233,6 +240,7 @@ impl PluginBuilder {
             summary: LoadedSummary {
                 hook_names: Vec::new(),
                 tools: Vec::new(),
+                plugin_id: None,
             },
         })
     }

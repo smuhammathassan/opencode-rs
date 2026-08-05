@@ -256,6 +256,13 @@ pub enum ResolveError {
     Other(String),
 }
 
+/// The intermediate result of resolving a plan to an entrypoint.
+#[derive(Debug, Clone)]
+pub enum Result2 {
+    Resolved(Resolved),
+    Missing(Missing),
+}
+
 /// Resolve a plugin plan into a concrete entrypoint, installing npm plugins on
 /// demand. Mirrors `PluginLoader.resolve` in loader.ts.
 pub fn resolve(plan: &Plan, kind: PluginKind) -> Result<Result2, ResolveError> {
@@ -287,11 +294,13 @@ pub fn resolve(plan: &Plan, kind: PluginKind) -> Result<Result2, ResolveError> {
     Ok(Result2::Resolved(resolved))
 }
 
-/// The outcome of resolving a plan.
+/// The outcome of resolving and loading a plan. Mirrors the staged results of
+/// `PluginLoader.resolve` in loader.ts (with the import step folded in).
 #[derive(Debug, Clone)]
-pub enum Result2 {
-    Resolved(Resolved),
+pub enum ResolveOutcome {
+    Resolved(Loaded),
     Missing(Missing),
+    Failed { stage: &'static str, error: String },
 }
 
 /// Transpile the resolved entrypoint for in-process evaluation. Mirrors
@@ -311,47 +320,121 @@ pub fn load(resolved: &Resolved) -> Result<Loaded, TranspileError> {
     })
 }
 
-/// Load all configured plugins in parallel, dropping skipped/failed entries
-/// while preserving order. Mirrors `PluginLoader.loadExternal`.
+/// Resolve and transpile a single plugin plan. Mirrors `PluginLoader.resolve`
+/// plus the module import step.
+pub fn resolve_and_load(plan: &Plan, kind: PluginKind) -> ResolveOutcome {
+    let resolved = match resolve(plan, kind) {
+        Ok(Result2::Resolved(resolved)) => resolved,
+        Ok(Result2::Missing(missing)) => return ResolveOutcome::Missing(missing),
+        Err(error) => {
+            return ResolveOutcome::Failed {
+                stage: "install",
+                error: error.to_string(),
+            };
+        }
+    };
+    // npm plugins can declare which opencode versions they support; file
+    // plugins are treated as local development code and skip this gate.
+    if resolved.source == SOURCE_NPM {
+        if let Err(error) = crate::shared::check_plugin_compatibility(
+            &resolved.target,
+            crate::OPENCODE_VERSION,
+            resolved.pkg.as_ref(),
+        ) {
+            return ResolveOutcome::Failed {
+                stage: "compatibility",
+                error,
+            };
+        }
+    }
+    match load(&resolved) {
+        Ok(loaded) => ResolveOutcome::Resolved(loaded),
+        Err(error) => ResolveOutcome::Failed {
+            stage: "load",
+            error: error.to_string(),
+        },
+    }
+}
+
+/// Progress reporting hooks for [`load_external`]. Mirrors `PluginLoader.Report`
+/// in loader.ts.
+pub trait Report {
+    /// Called before each load attempt.
+    fn start(&mut self, _candidate: &crate::config::PluginOrigin) {}
+    /// Called when the package exists but lacks the requested entrypoint.
+    fn missing(&mut self, _candidate: &crate::config::PluginOrigin, _message: &str) {}
+    /// Called for operational failures (install, entry, compatibility, load).
+    fn error(&mut self, _candidate: &crate::config::PluginOrigin, _stage: &str, _error: &str) {}
+}
+
+/// A no-op reporter.
+pub struct NoopReport;
+
+impl Report for NoopReport {}
+
+/// The resolved plugin id for a loaded plugin. Mirrors `resolvePluginId` in
+/// shared.ts: file plugins must export an id, npm plugins fall back to the
+/// package name.
+pub fn resolve_plugin_id(loaded: &Loaded) -> Result<String, String> {
+    let source = loaded.resolved.source;
+    let id = loaded.resolved.pkg.as_ref().and_then(|pkg| pkg.name());
+    if source == SOURCE_FILE {
+        return id.ok_or_else(|| format!("Path plugin {} must export id", loaded.resolved.spec));
+    }
+    Ok(id.unwrap_or_else(|| loaded.resolved.spec.clone()))
+}
+
+/// Load all configured plugins, dropping skipped/failed entries while
+/// preserving order. Mirrors `PluginLoader.loadExternal`.
 pub fn load_external(
     items: &[crate::config::PluginOrigin],
     kind: PluginKind,
     resolver: &ModuleResolver,
 ) -> Vec<Loaded> {
+    load_external_reported(items, kind, resolver, &mut NoopReport)
+}
+
+/// Like [`load_external`] but reports progress/errors through `report`.
+pub fn load_external_reported(
+    items: &[crate::config::PluginOrigin],
+    kind: PluginKind,
+    resolver: &ModuleResolver,
+    report: &mut dyn Report,
+) -> Vec<Loaded> {
     let mut out = Vec::new();
     for origin in items {
+        let spec = crate::config::plugin_specifier(&origin.spec);
         let plan = Plan {
-            spec: crate::config::plugin_specifier(&origin.spec),
+            spec: spec.clone(),
             options: crate::config::plugin_options(&origin.spec),
-            deprecated: is_deprecated_plugin(&crate::config::plugin_specifier(&origin.spec)),
+            deprecated: is_deprecated_plugin(&spec),
         };
         if plan.deprecated {
             continue;
         }
-        let Ok(Result2::Resolved(resolved)) = resolve(&plan, kind) else {
-            continue;
-        };
-        match load(&resolved) {
-            Ok(loaded) => {
-                let entry = resolved.entry.as_deref().unwrap_or("");
-                let path = spec_to_path(entry);
-                if let Some(dir) = path.parent() {
-                    let entry_name = path
-                        .file_name()
-                        .map(|f| f.to_string_lossy().into_owned())
-                        .unwrap_or_default();
-                    let _ = entry_name;
-                    // Register the entry itself plus any static local imports.
-                    resolver.register(&path, loaded.code.clone());
-                    let base = dir.to_path_buf();
-                    preload_imports(&loaded.code, &base, resolver);
-                }
+        report.start(origin);
+        match resolve_and_load(&plan, kind) {
+            ResolveOutcome::Resolved(loaded) => {
+                register_with_resolver(&loaded, resolver);
                 out.push(loaded);
             }
-            Err(_) => continue,
+            ResolveOutcome::Missing(missing) => report.missing(origin, &missing.message),
+            ResolveOutcome::Failed { stage, error } => report.error(origin, stage, &error),
         }
     }
     out
+}
+
+/// Register a loaded module (and its static local imports) in the resolver so
+/// `__oc_require` hits the cache at runtime.
+pub fn register_with_resolver(loaded: &Loaded, resolver: &ModuleResolver) {
+    let entry = loaded.resolved.entry.as_deref().unwrap_or("");
+    let path = spec_to_path(entry);
+    resolver.register(&path, loaded.code.clone());
+    if let Some(dir) = path.parent() {
+        let base = dir.to_path_buf();
+        preload_imports(&loaded.code, &base, resolver);
+    }
 }
 
 /// Pre-register the transitive local imports of a transpiled module so
@@ -395,4 +478,128 @@ fn static_import_specs(code: &str) -> Vec<String> {
         }
     }
     specs
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_specifiers() {
+        assert_eq!(
+            parse_plugin_specifier("foo"),
+            ("foo".into(), "latest".into())
+        );
+        assert_eq!(
+            parse_plugin_specifier("foo@1.2.3"),
+            ("foo".into(), "1.2.3".into())
+        );
+        assert_eq!(
+            parse_plugin_specifier("foo@^1"),
+            ("foo".into(), "^1".into())
+        );
+        assert_eq!(
+            parse_plugin_specifier("@scope/name"),
+            ("@scope/name".into(), "latest".into())
+        );
+        assert_eq!(
+            parse_plugin_specifier("@scope/name@2"),
+            ("@scope/name".into(), "2".into())
+        );
+    }
+
+    #[test]
+    fn detects_path_specs() {
+        assert!(is_path_plugin_spec("./plugin.ts"));
+        assert!(is_path_plugin_spec("../plugin.ts"));
+        assert!(is_path_plugin_spec("file:///tmp/x.ts"));
+        assert!(is_path_plugin_spec("/abs/path.ts"));
+        assert!(!is_path_plugin_spec("my-plugin"));
+        assert!(!is_path_plugin_spec("my-plugin@1.0.0"));
+    }
+
+    #[test]
+    fn detects_deprecated() {
+        assert!(is_deprecated_plugin("opencode-openai-codex-auth"));
+        assert!(is_deprecated_plugin("opencode-copilot-auth"));
+        assert!(!is_deprecated_plugin("my-plugin"));
+    }
+
+    #[test]
+    fn sanitizes_packages() {
+        assert_eq!(sanitize_package("my-plugin"), "my-plugin");
+        assert_eq!(sanitize_package("@scope/name"), "@scope/name");
+    }
+
+    #[test]
+    fn extracts_import_specs() {
+        let code = r#"
+const a = __oc_require("./a.js").a;
+const b = __oc_require("node:fs/promises").b;
+"#;
+        let specs = static_import_specs(code);
+        assert_eq!(
+            specs,
+            vec!["./a.js".to_string(), "node:fs/promises".to_string()]
+        );
+    }
+
+    #[test]
+    fn resolves_file_plugin() {
+        let dir = std::env::temp_dir().join(format!("oc-plugin-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{"name": "test-plugin", "main": "index.js"}"#,
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("index.js"),
+            "export default { id: 'x', server: async () => ({}) }",
+        )
+        .unwrap();
+
+        let target = crate::shared::resolve_plugin_target(&dir.to_string_lossy()).unwrap();
+        let entry =
+            crate::shared::create_plugin_entry(&dir.to_string_lossy(), &target, KIND_SERVER)
+                .unwrap();
+        assert!(entry.entry.is_some());
+        assert!(entry.entry.unwrap().contains("index.js"));
+
+        let plan = Plan {
+            spec: dir.to_string_lossy().into_owned(),
+            options: None,
+            deprecated: false,
+        };
+        match resolve_and_load(&plan, KIND_SERVER) {
+            ResolveOutcome::Resolved(loaded) => {
+                assert!(loaded.code.contains("__oc_define(\"default\""));
+            }
+            other => panic!("expected resolved, got {other:?}"),
+        }
+
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn reports_failed_plugins() {
+        let origin = crate::config::PluginOrigin {
+            spec: crate::config::PluginSpec::Plain("/does/not/exist.ts".into()),
+            source: "opencode.json".into(),
+            scope: crate::config::Scope::Local,
+        };
+        struct R {
+            errors: Vec<String>,
+        }
+        impl Report for R {
+            fn error(&mut self, _c: &crate::config::PluginOrigin, _s: &str, e: &str) {
+                self.errors.push(e.to_string());
+            }
+        }
+        let mut report = R { errors: Vec::new() };
+        let resolver = ModuleResolver::new("/tmp");
+        let loaded = load_external_reported(&[origin], KIND_SERVER, &resolver, &mut report);
+        assert!(loaded.is_empty());
+        assert!(!report.errors.is_empty());
+    }
 }

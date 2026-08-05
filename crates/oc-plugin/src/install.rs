@@ -293,3 +293,97 @@ pub fn patch_plugin_config(input: &PatchInput) -> PatchResult {
         items,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_dir(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("oc-install-test-{}-{name}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+
+    fn input(dir: &std::path::Path, spec: &str, targets: Vec<Target>) -> PatchInput {
+        PatchInput {
+            spec: spec.into(),
+            targets,
+            force: false,
+            global: false,
+            vcs: None,
+            worktree: "/".into(),
+            directory: dir.to_string_lossy().into_owned(),
+            config: None,
+        }
+    }
+
+    #[test]
+    fn patches_plugin_config_add() {
+        let dir = temp_dir("add");
+        let opencode = dir.join(".opencode").join("opencode.json");
+        std::fs::create_dir_all(opencode.parent().unwrap()).unwrap();
+        std::fs::write(&opencode, r#"{ "theme": "dark" }"#).unwrap();
+
+        let input = input(
+            &dir,
+            "my-plugin",
+            vec![Target {
+                kind: KIND_SERVER,
+                opts: None,
+            }],
+        );
+        match patch_plugin_config(&input) {
+            PatchResult::Ok { dir, items } => {
+                assert_eq!(items.len(), 1);
+                assert_eq!(items[0].mode, PatchMode::Add);
+                assert_eq!(items[0].kind, KIND_SERVER);
+                assert!(dir.ends_with(".opencode"));
+            }
+            other => panic!("expected ok, got {other:?}"),
+        }
+        let text = std::fs::read_to_string(&opencode).unwrap();
+        eprintln!("patched text: {text}");
+        assert!(text.contains("\"plugin\": [\"my-plugin\"]"));
+    }
+
+    #[test]
+    fn patches_plugin_config_with_options() {
+        let dir = temp_dir("opts");
+        let opencode = dir.join(".opencode").join("opencode.json");
+        std::fs::create_dir_all(opencode.parent().unwrap()).unwrap();
+        std::fs::write(&opencode, r#"{ "plugin": ["other"] }"#).unwrap();
+
+        let input = input(
+            &dir,
+            "my-plugin",
+            vec![Target {
+                kind: KIND_SERVER,
+                opts: Some(serde_json::json!({ "key": "value" })),
+            }],
+        );
+        let result = patch_plugin_config(&input);
+        assert!(matches!(result, PatchResult::Ok { .. }));
+        let text = std::fs::read_to_string(&opencode).unwrap();
+        assert!(text.contains("my-plugin"));
+        assert!(text.contains("\"key\":\"value\"") || text.contains("\"key\": \"value\""));
+    }
+
+    #[test]
+    fn manifest_detects_targets() {
+        let dir = temp_dir("manifest");
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{ "name": "p", "exports": { "./server": "./index.js" }, "oc-themes": ["theme.json"] }"#,
+        )
+        .unwrap();
+        match read_plugin_manifest(&dir.to_string_lossy()) {
+            ManifestResult::Ok { targets } => {
+                assert!(targets.iter().any(|t| t.kind == KIND_SERVER));
+                assert!(targets.iter().any(|t| t.kind == KIND_TUI));
+            }
+            other => panic!("expected ok, got {other:?}"),
+        }
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}

@@ -738,7 +738,9 @@ async function __oc_load_plugin(payload) {
   if (hooks !== undefined && hooks !== null) {
     __oc_register_hooks(hooks);
   }
-  return __oc_hooks_summary();
+  const summary = __oc_hooks_summary();
+  summary.pluginId = picked.id !== undefined ? picked.id : null;
+  return summary;
 }
 
 // Async entrypoint: call a hook with (input, output), returning the output.

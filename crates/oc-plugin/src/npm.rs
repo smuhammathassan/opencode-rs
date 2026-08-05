@@ -136,54 +136,140 @@ fn pkg_name_dir(pkg: &str) -> PathBuf {
     PathBuf::from(pkg)
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_registry_url() {
+        assert_eq!(registry_url("foo"), "https://registry.npmjs.org/foo");
+        assert_eq!(
+            registry_url("@scope/name"),
+            "https://registry.npmjs.org/%40scope/name"
+        );
+    }
+
+    #[test]
+    fn picks_versions() {
+        let metadata = serde_json::json!({
+            "dist-tags": { "latest": "2.0.0" },
+            "versions": {
+                "1.0.0": { "dist": { "tarball": "https://x/1.tgz" } },
+                "2.0.0": { "dist": { "tarball": "https://x/2.tgz" } }
+            }
+        });
+        assert_eq!(pick_version(&metadata, "latest").as_deref(), Some("2.0.0"));
+        assert_eq!(pick_version(&metadata, "").as_deref(), Some("2.0.0"));
+        assert_eq!(pick_version(&metadata, "1.0.0").as_deref(), Some("1.0.0"));
+        assert_eq!(
+            version_tarball(&metadata, "1.0.0").unwrap().1,
+            "https://x/1.tgz"
+        );
+    }
+
+    #[test]
+    fn unpacks_tarball() {
+        // Build a gzipped tarball with a `package/` prefix, as npm publishes.
+        let mut tar_buf = Vec::new();
+        {
+            let encoder =
+                flate2::write::GzEncoder::new(&mut tar_buf, flate2::Compression::default());
+            let mut builder = tar::Builder::new(encoder);
+            let mut file = tar::Header::new_ustar();
+            file.set_path("package/package.json").unwrap();
+            file.set_size(2);
+            file.set_mode(0o644);
+            file.set_cksum();
+            builder.append(&file, "{}".as_bytes()).unwrap();
+            let mut dir = tar::Header::new_ustar();
+            dir.set_path("package/src").unwrap();
+            dir.set_entry_type(tar::EntryType::Directory);
+            dir.set_size(0);
+            dir.set_mode(0o755);
+            dir.set_cksum();
+            builder.append(&dir, std::io::empty()).unwrap();
+            let mut file2 = tar::Header::new_ustar();
+            file2.set_path("package/src/index.js").unwrap();
+            file2.set_size(3);
+            file2.set_mode(0o644);
+            file2.set_cksum();
+            builder.append(&file2, "abc".as_bytes()).unwrap();
+            builder.finish().unwrap();
+            let encoder = builder.into_inner().unwrap();
+            encoder.finish().unwrap();
+        }
+
+        let target = std::env::temp_dir().join(format!("oc-npm-unpack-{}", std::process::id()));
+        unpack_tarball(&tar_buf, &target, "test").unwrap();
+        assert!(target.join("package.json").exists());
+        assert_eq!(
+            std::fs::read_to_string(target.join("src/index.js")).unwrap(),
+            "abc"
+        );
+        std::fs::remove_dir_all(&target).ok();
+    }
+}
+
 /// Unpack a gzipped npm tarball into `target`, stripping the `package/` prefix
 /// npm tarballs carry.
 fn unpack_tarball(bytes: &[u8], target: &Path, pkg: &str) -> Result<(), NpmError> {
-    if target.exists() {
-        let _ = std::fs::remove_dir_all(target);
+    let staging = target
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join(format!(".staging-{}", std::process::id()));
+
+    if staging.exists() {
+        let _ = std::fs::remove_dir_all(&staging);
     }
-    std::fs::create_dir_all(target).map_err(|e| NpmError::Unpack {
+    std::fs::create_dir_all(&staging).map_err(|e| NpmError::Unpack {
         pkg: pkg.to_string(),
         message: e.to_string(),
     })?;
 
     let gz = flate2::read::GzDecoder::new(bytes);
     let mut archive = tar::Archive::new(gz);
-    let count = archive
-        .entries()
-        .map_err(|e| NpmError::Unpack {
-            pkg: pkg.to_string(),
-            message: e.to_string(),
-        })?
-        .filter_map(|entry| entry.ok())
-        .map(|mut entry| {
-            let path = entry.path().map(PathBuf::from).ok()?;
-            let rel = if path.starts_with("package") {
-                path.strip_prefix("package").ok()?.to_path_buf()
-            } else {
-                path
-            };
-            if rel.as_os_str().is_empty() {
-                return None;
-            }
-            // Ensure the parent exists (avoids unpack_in following symlinks
-            // outside the target).
-            if let Some(parent) = rel.parent() {
-                let dest = target.join(parent);
-                let _ = std::fs::create_dir_all(&dest);
-            }
-            entry.unpack_in(target).ok()?;
-            Some(())
-        })
-        .collect::<Option<Vec<_>>>()
-        .map(|items| items.len())
-        .unwrap_or(0);
+    archive.unpack(&staging).map_err(|e| NpmError::Unpack {
+        pkg: pkg.to_string(),
+        message: e.to_string(),
+    })?;
 
-    if count == 0 {
-        return Err(NpmError::Unpack {
-            pkg: pkg.to_string(),
-            message: "tarball contained no files".into(),
-        });
+    // npm tarballs wrap everything under `package/`; move that directory (or
+    // the whole staging dir) into the target.
+    let src = if staging.join("package").exists() {
+        staging.join("package")
+    } else {
+        staging.clone()
+    };
+    if target.exists() {
+        let _ = std::fs::remove_dir_all(target);
     }
+    if let Some(parent) = target.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    match std::fs::rename(&src, target) {
+        Ok(_) => {}
+        Err(_) => {
+            // Cross-device fallback: copy the contents.
+            move_dir_contents(&src, target);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&staging);
     Ok(())
+}
+
+/// Move the contents of `src` into `dest` (both directories).
+fn move_dir_contents(src: &Path, dest: &Path) {
+    if let Ok(entries) = std::fs::read_dir(src) {
+        for entry in entries.flatten() {
+            let from = entry.path();
+            let to = dest.join(entry.file_name());
+            match std::fs::rename(&from, &to) {
+                Ok(_) => {}
+                Err(_) => {
+                    let _ = std::fs::remove_dir_all(&to);
+                    let _ = std::fs::rename(&from, &to);
+                }
+            }
+        }
+    }
 }

@@ -21,9 +21,9 @@ pub struct Theme {
     pub size: Option<u64>,
 }
 
-/// A single plugin's metadata entry. Field names match meta.ts exactly.
+/// A single plugin's metadata entry. Field names match meta.ts exactly
+/// (snake_case in the JSON store).
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Entry {
     pub id: String,
     pub source: String,
@@ -75,6 +75,11 @@ fn file_target(spec: &str, target: &str) -> Option<PathBuf> {
     }
     if let Some(rest) = target.strip_prefix("file://") {
         return Some(PathBuf::from(rest));
+    }
+    // Plain absolute paths (e.g. a test or a direct path spec).
+    let path = Path::new(spec);
+    if path.is_absolute() {
+        return Some(path.to_path_buf());
     }
     None
 }
@@ -198,7 +203,17 @@ fn read(file: &Path) -> Store {
 fn with_lock<R>(key: &str, f: impl FnOnce() -> R) -> R {
     // A lightweight advisory lock via a lock file. The reference uses Flock;
     // TODO(integration): replace with the shared oc-util flock when it lands.
-    let lock_path = std::env::temp_dir().join(format!("opencode-{key}.lock"));
+    let sanitized: String = key
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '.' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    let lock_path = std::env::temp_dir().join(format!("opencode-{sanitized}.lock"));
     let _handle = FileLock::acquire(&lock_path);
     f()
 }
@@ -299,4 +314,100 @@ pub fn set_theme(state_dir: &Path, id: &str, name: &str, theme: Theme) {
 /// List the full metadata store.
 pub fn list(state_dir: &Path) -> Store {
     read(&store_path(state_dir))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn temp_state(name: &str) -> std::path::PathBuf {
+        let dir = std::env::temp_dir().join(format!("oc-meta-test-{}-{name}", std::process::id()));
+        let _ = std::fs::create_dir_all(&dir);
+        dir
+    }
+
+    #[test]
+    fn touch_tracks_state_lifecycle() {
+        let state = temp_state("touch");
+        let spec = "/tmp/plugin.ts";
+        let (state1, entry1) = touch(&state, spec, "/tmp/plugin.ts", "my-plugin").unwrap();
+        assert_eq!(state1, STATE_FIRST);
+        assert_eq!(entry1.load_count, 1);
+        assert_eq!(entry1.spec, spec);
+
+        let (state2, entry2) = touch(&state, spec, "/tmp/plugin.ts", "my-plugin").unwrap();
+        assert_eq!(state2, STATE_SAME);
+        assert_eq!(entry2.load_count, 2);
+        assert!(entry2.first_time == entry1.first_time);
+
+        let (state3, entry3) = touch(&state, spec, "/tmp/plugin-modified.ts", "my-plugin").unwrap();
+        assert_eq!(state3, STATE_UPDATED);
+        assert!(entry3.time_changed >= entry1.time_changed);
+        let _ = entry3;
+    }
+
+    #[test]
+    fn store_serializes_exact_shape() {
+        let state = temp_state("shape");
+        touch(
+            &state,
+            "my-plugin",
+            "/cache/packages/my-plugin",
+            "my-plugin",
+        )
+        .unwrap();
+        let text = std::fs::read_to_string(store_path(&state)).unwrap();
+        let value: serde_json::Value = serde_json::from_str(&text).unwrap();
+        let entry = &value["my-plugin"];
+        // Field names mirror meta.ts exactly (`version` is optional when the
+        // installed package.json cannot be read).
+        for field in [
+            "id",
+            "source",
+            "spec",
+            "target",
+            "requested",
+            "first_time",
+            "last_time",
+            "time_changed",
+            "load_count",
+            "fingerprint",
+        ] {
+            assert!(entry.get(field).is_some(), "missing field {field}");
+        }
+        assert_eq!(entry["source"], "npm");
+        assert_eq!(entry["requested"], "latest");
+    }
+
+    #[test]
+    fn file_fingerprint_uses_modified() {
+        let state = temp_state("file");
+        let file = std::env::temp_dir().join(format!("oc-meta-file-{}.ts", std::process::id()));
+        std::fs::write(&file, "export default {}").unwrap();
+        let spec = file.to_string_lossy().into_owned();
+        let (_, entry) = touch(&state, &spec, &spec, "file-plugin").unwrap();
+        assert_eq!(entry.source, "file");
+        assert!(entry.modified.is_some());
+        std::fs::remove_file(&file).ok();
+    }
+
+    #[test]
+    fn set_theme_persists() {
+        let state = temp_state("theme");
+        touch(&state, "my-plugin", "/tmp/target", "my-plugin").unwrap();
+        set_theme(
+            &state,
+            "my-plugin",
+            "dark",
+            Theme {
+                src: "/a.json".into(),
+                dest: "/b.json".into(),
+                mtime: Some(1),
+                size: Some(2),
+            },
+        );
+        let store = list(&state);
+        let themes = store["my-plugin"].themes.as_ref().unwrap();
+        assert_eq!(themes["dark"].dest, "/b.json");
+    }
 }

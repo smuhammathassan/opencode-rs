@@ -276,3 +276,74 @@ pub fn read_plugin_id(id: &Value, spec: &str) -> Result<Option<String>, String> 
         _ => Err(format!("Plugin {spec} has invalid id type")),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn pkg_dir(name: &str) -> std::path::PathBuf {
+        let dir =
+            std::env::temp_dir().join(format!("oc-shared-test-{}-{name}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn reads_package_and_entrypoint() {
+        let dir = pkg_dir("pkg");
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{
+  "name": "my-plugin",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "exports": { "./server": { "import": "./dist/server.js" } }
+}"#,
+        )
+        .unwrap();
+        let pkg = read_plugin_package(&dir.to_string_lossy()).unwrap();
+        assert_eq!(pkg.name().as_deref(), Some("my-plugin"));
+        assert_eq!(pkg.json["version"], "1.0.0");
+
+        let entry = package_entrypoint("my-plugin", "server", &pkg).unwrap();
+        assert!(entry.ends_with("dist/server.js"));
+
+        let main = package_entrypoint("my-plugin", "tui", &pkg);
+        assert!(main.is_none());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn compatibility_gate() {
+        let dir = pkg_dir("compat");
+        std::fs::write(
+            dir.join("package.json"),
+            r#"{ "name": "p", "engines": { "opencode": ">=1.18.0" } }"#,
+        )
+        .unwrap();
+        let pkg = read_plugin_package(&dir.to_string_lossy()).unwrap();
+        assert!(check_plugin_compatibility(&dir.to_string_lossy(), "1.18.13", Some(&pkg)).is_ok());
+        assert!(check_plugin_compatibility(&dir.to_string_lossy(), "1.0.0", Some(&pkg)).is_err());
+        std::fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn reads_plugin_id() {
+        assert_eq!(read_plugin_id(&Value::Null, "x").unwrap(), None);
+        assert_eq!(
+            read_plugin_id(&Value::String("abc".into()), "x").unwrap(),
+            Some("abc".into())
+        );
+        assert!(read_plugin_id(&Value::String("  ".into()), "x").is_err());
+        assert!(read_plugin_id(&Value::Bool(true), "x").is_err());
+    }
+
+    #[test]
+    fn resolves_path_plugin_target() {
+        let dir = pkg_dir("target");
+        std::fs::write(dir.join("package.json"), r#"{"name":"p"}"#).unwrap();
+        let target = resolve_path_plugin_target(&dir.to_string_lossy()).unwrap();
+        assert!(target.starts_with("file://"));
+        std::fs::remove_dir_all(&dir).ok();
+    }
+}
