@@ -13,6 +13,7 @@ pub mod message;
 pub mod message_v2;
 pub mod overflow;
 pub mod permission;
+pub mod prompt;
 pub mod provider;
 pub mod retry;
 pub mod schema;
