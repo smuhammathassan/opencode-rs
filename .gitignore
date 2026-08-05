@@ -1,6 +1,6 @@
 /target
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock is tracked: this is a binary/application workspace (SUPPLY-002)
 # reference is vendored spec, tracked
 # local worktrees
 .worktrees/
