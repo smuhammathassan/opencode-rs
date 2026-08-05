@@ -335,12 +335,14 @@ pub enum AssistantReasoningType {
 }
 
 /// `Session.Message.Assistant.Content` — tagged union on `type`.
+/// The large `Tool` payload is boxed (serde-transparent) to keep the enum size
+/// small (clippy `large_enum_variant`).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum AssistantContent {
     Text(AssistantText),
     Reasoning(AssistantReasoning),
-    Tool(AssistantTool),
+    Tool(Box<AssistantTool>),
 }
 
 /// `Session.Message.Assistant.snapshot`.
@@ -414,6 +416,8 @@ pub enum CompactionType {
 }
 
 /// `Session.Message` — tagged union on `type`.
+/// The large `Assistant` payload is boxed (serde-transparent) to keep the enum
+/// size small (clippy `large_enum_variant`).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Message {
@@ -423,7 +427,7 @@ pub enum Message {
     Synthetic(Synthetic),
     System(System),
     Shell(Shell),
-    Assistant(Assistant),
+    Assistant(Box<Assistant>),
     Compaction(Compaction),
 }
 

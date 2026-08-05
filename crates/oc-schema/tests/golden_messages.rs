@@ -227,7 +227,7 @@ fn assistant_content_variants() {
         r#"{"type":"reasoning","id":"r1","text":"think"}"#
     );
 
-    let tool = AssistantContent::Tool(AssistantTool {
+    let tool = AssistantContent::Tool(Box::new(AssistantTool {
         r#type: sm::AssistantToolType::Value,
         id: "t1".to_string(),
         name: "bash".to_string(),
@@ -247,7 +247,7 @@ fn assistant_content_variants() {
             completed: Some(1002),
             pruned: None,
         },
-    });
+    }));
     assert_eq!(
         to_string(&tool),
         r#"{"type":"tool","id":"t1","name":"bash","state":{"status":"completed","input":{},"content":[],"structured":{}},"time":{"created":1000,"ran":1001,"completed":1002}}"#
@@ -265,7 +265,7 @@ fn message_assistant() {
             write: oc_schema::Finite(0.0),
         },
     };
-    let assistant = Message::Assistant(Assistant {
+    let assistant = Message::Assistant(Box::new(Assistant {
         id: "msg_1".to_string(),
         metadata: None,
         time: sm::TimeCompleted {
@@ -285,7 +285,7 @@ fn message_assistant() {
         cost: Some(oc_schema::Finite(0.00042)),
         tokens: Some(tokens),
         error: None,
-    });
+    }));
     assert_eq!(
         to_string(&assistant),
         r#"{"id":"msg_1","time":{"created":1000,"completed":2000},"type":"assistant","agent":"coder","model":{"id":"claude","providerID":"anthropic"},"content":[{"type":"text","id":"t1","text":"hi"}],"finish":"done","cost":0.00042,"tokens":{"input":100,"output":50,"reasoning":5,"cache":{"read":0,"write":0}}}"#

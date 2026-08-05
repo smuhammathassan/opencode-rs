@@ -80,8 +80,8 @@ fn should_proxy(hostname: &str, port: u16, vars: &HashMap<String, String>) -> bo
         if !proxy_hostname.starts_with('.') && !proxy_hostname.starts_with('*') {
             hostname != proxy_hostname
         } else {
-            let suffix = if proxy_hostname.starts_with('*') {
-                &proxy_hostname[1..]
+            let suffix = if let Some(stripped) = proxy_hostname.strip_prefix('*') {
+                stripped
             } else {
                 proxy_hostname
             };

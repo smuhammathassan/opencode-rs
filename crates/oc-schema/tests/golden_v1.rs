@@ -6,7 +6,7 @@ use oc_schema::session_v1::{
     self, AgentPart, Assistant, CompactionPart, FilePart, FilePartSource, Format, Info,
     OutputFormatJsonSchema, OutputLengthError, Part, PartDelta, RetryPart, SnapshotPart,
     StepFinishPart, StepStartPart, SubtaskPart, TextPart, ToolPart, ToolState, ToolStateCompleted,
-    ToolStateError, ToolStatePending, ToolStateRunning, User, WithParts,
+    ToolStateError, ToolStatePending, User, WithParts,
 };
 use oc_schema::v1::permission as v1permission;
 use oc_schema::v1::question as v1question;
@@ -299,7 +299,7 @@ fn v1_tool_part_and_states() {
 
 #[test]
 fn v1_user_message() {
-    let user = Info::User(User {
+    let user = Info::User(Box::new(User {
         id: "msg_1".to_string(),
         session_id: "ses_1".to_string(),
         role: session_v1::UserRole::Value,
@@ -316,7 +316,7 @@ fn v1_user_message() {
         },
         system: None,
         tools: None,
-    });
+    }));
     assert_eq!(
         to_string(&user),
         r#"{"id":"msg_1","sessionID":"ses_1","role":"user","time":{"created":1000},"agent":"a","model":{"providerID":"anthropic","modelID":"claude"}}"#
@@ -325,7 +325,7 @@ fn v1_user_message() {
 
 #[test]
 fn v1_assistant_message() {
-    let assistant = Info::Assistant(Assistant {
+    let assistant = Info::Assistant(Box::new(Assistant {
         id: "msg_1".to_string(),
         session_id: "ses_1".to_string(),
         role: session_v1::AssistantRole::Value,
@@ -358,7 +358,7 @@ fn v1_assistant_message() {
         structured: None,
         variant: Some("v1".to_string()),
         finish: None,
-    });
+    }));
     assert_eq!(
         to_string(&assistant),
         r#"{"id":"msg_1","sessionID":"ses_1","role":"assistant","time":{"created":1000,"completed":2000},"parentID":"msg_0","modelID":"claude","providerID":"anthropic","mode":"build","agent":"a","path":{"cwd":"/w","root":"/r"},"summary":true,"cost":0,"tokens":{"total":30,"input":10,"output":20,"reasoning":0,"cache":{"read":0,"write":0}},"variant":"v1"}"#
@@ -381,7 +381,7 @@ fn v1_error_union() {
 #[test]
 fn v1_with_parts() {
     let with = WithParts {
-        info: Info::User(User {
+        info: Info::User(Box::new(User {
             id: "msg_1".to_string(),
             session_id: "ses_1".to_string(),
             role: session_v1::UserRole::Value,
@@ -398,7 +398,7 @@ fn v1_with_parts() {
             },
             system: None,
             tools: None,
-        }),
+        })),
         parts: vec![Part::Text(TextPart {
             base: base(),
             r#type: session_v1::TextPartType::Value,

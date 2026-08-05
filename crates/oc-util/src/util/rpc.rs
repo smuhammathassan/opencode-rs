@@ -272,7 +272,7 @@ mod tests {
             received.push(response.to_string())
         });
         assert!(received.is_empty());
-        let _ = fut;
+        drop(fut);
     }
 
     #[tokio::test]

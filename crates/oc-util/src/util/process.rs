@@ -13,19 +13,15 @@ use tokio::process::Child;
 
 use crate::util::signal::Signal;
 
+#[derive(Default)]
 pub enum Env {
     /// `env: undefined` — inherit the parent environment.
+    #[default]
     Inherit,
     /// `env: null` — an empty environment.
     Empty,
     /// `env: {...}` — the parent environment merged with the overrides.
     Override(HashMap<String, String>),
-}
-
-impl Default for Env {
-    fn default() -> Self {
-        Env::Inherit
-    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -36,16 +32,12 @@ pub enum Stdio {
     Inherit,
 }
 
+#[derive(Default)]
 pub enum Shell {
+    #[default]
     Disabled,
     System,
     Program(String),
-}
-
-impl Default for Shell {
-    fn default() -> Self {
-        Shell::Disabled
-    }
 }
 
 #[derive(Default)]
@@ -550,7 +542,7 @@ mod tests {
     #[tokio::test]
     async fn shell_system_runs_through_sh() {
         let out = run(
-            &vec!["echo shell".to_string()],
+            &["echo shell".to_string()],
             &RunOptions {
                 shell: Shell::System,
                 ..Default::default()
@@ -564,9 +556,11 @@ mod tests {
     #[tokio::test]
     async fn abort_kills_process() {
         let signal = Signal::new();
-        let mut options = Options::default();
-        options.abort = Some(signal.clone());
-        options.timeout = Some(500);
+        let options = Options {
+            abort: Some(signal.clone()),
+            timeout: Some(500),
+            ..Default::default()
+        };
         let mut child = spawn(&sh_args("sleep 30"), &options).unwrap();
         signal.trigger();
         let code = wait(&mut child).await.unwrap();

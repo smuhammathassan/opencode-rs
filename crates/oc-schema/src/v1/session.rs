@@ -908,11 +908,13 @@ pub enum AssistantRole {
 }
 
 /// `Message` (`SessionV1.Info`) — tagged union on `role`.
+/// The large payloads are boxed (serde-transparent) to keep the enum size
+/// small (clippy `large_enum_variant`).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Info {
-    User(User),
-    Assistant(Assistant),
+    User(Box<User>),
+    Assistant(Box<Assistant>),
 }
 
 /// `SessionV1.WithParts`.

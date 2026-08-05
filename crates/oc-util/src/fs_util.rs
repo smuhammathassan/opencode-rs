@@ -341,7 +341,7 @@ mod tests {
     #[tokio::test]
     async fn read_file_string_safe_returns_none_when_missing() {
         assert_eq!(read_file_string_safe("/definitely/missing").await, None);
-        assert_eq!(exists_safe("/definitely/missing").await, false);
+        assert!(!exists_safe("/definitely/missing").await);
     }
 
     #[tokio::test]

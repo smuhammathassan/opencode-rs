@@ -416,7 +416,7 @@ mod tests {
 
     #[test]
     fn data_for_std_error() {
-        let error = std::io::Error::new(std::io::ErrorKind::Other, "boom");
+        let error = std::io::Error::other("boom");
         let data = error_data(&AnyError::Std(&error));
         assert_eq!(data["message"], json!("boom"));
         assert!(data["formatted"].as_str().is_some());

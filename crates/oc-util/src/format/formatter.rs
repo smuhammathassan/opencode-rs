@@ -27,6 +27,11 @@ pub type EnabledFn = Arc<
         + Sync,
 >;
 
+/// A bare async formatter check (`Promise<string[] | false>` in the
+/// reference), before it is wrapped into an [`EnabledFn`].
+type EnabledFnPointer =
+    fn(Context) -> futures::future::BoxFuture<'static, Result<Option<Vec<String>>, anyhow::Error>>;
+
 pub struct Info {
     pub name: &'static str,
     pub environment: Option<HashMap<String, String>>,
@@ -48,11 +53,7 @@ async fn find_up_file(target: &str, context: &Context) -> Vec<String> {
     .await
 }
 
-fn enabled(
-    f: fn(
-        Context,
-    ) -> futures::future::BoxFuture<'static, Result<Option<Vec<String>>, anyhow::Error>>,
-) -> EnabledFn {
+fn enabled(f: EnabledFnPointer) -> EnabledFn {
     Arc::new(f)
 }
 

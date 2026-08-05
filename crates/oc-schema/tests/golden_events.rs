@@ -2,7 +2,6 @@
 //! Expected strings are derived manually from the reference zod schemas in
 //! reference/packages/schema/src/.
 
-use oc_schema::event;
 use serde_json::Value;
 
 fn to_string<T: serde::Serialize>(value: &T) -> String {
