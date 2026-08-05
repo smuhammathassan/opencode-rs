@@ -397,6 +397,17 @@ impl Registry {
         Ok(())
     }
 
+    /// Register pre-validated command entries, e.g. from [`load_from_dir`].
+    pub fn add_config_entries<I>(&mut self, entries: I)
+    where
+        I: IntoIterator<Item = (String, CommandConfig)>,
+    {
+        for (name, config) in entries {
+            self.commands
+                .insert(name.clone(), Info::from_config(&name, &config));
+        }
+    }
+
     /// Register skills as commands (source "skill").
     pub fn add_skills(&mut self, skills: &[skill::Info]) {
         for skill in skills {
