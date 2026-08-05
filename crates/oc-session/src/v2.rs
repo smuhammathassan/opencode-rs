@@ -329,7 +329,7 @@ pub enum AssistantContent {
     Tool(AssistantTool),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistantSnapshot {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -433,4 +433,358 @@ impl Message {
             Message::Compaction(m) => &m.base.id,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Event {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<JsonMap>,
+    #[serde(rename = "type")]
+    pub type_: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub durable: Option<Durable>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<JsonMap>,
+    pub data: EventData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Durable {
+    pub aggregate_id: String,
+    pub seq: i64,
+    pub version: i64,
+}
+
+/// From reference/packages/schema/src/session-event.ts — the durable event
+/// payload union.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "kebab-case")]
+pub enum EventData {
+    #[serde(rename = "session.next.agent.switched")]
+    AgentSwitched {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        agent: String,
+    },
+    #[serde(rename = "session.next.model.switched")]
+    ModelSwitched {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        model: ModelRef,
+    },
+    #[serde(rename = "session.next.moved")]
+    Moved {
+        timestamp: u64,
+        session_id: String,
+        location: JsonMap,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        subdirectory: Option<String>,
+    },
+    #[serde(rename = "session.next.prompted")]
+    Prompted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        prompt: Prompt,
+        delivery: String,
+    },
+    #[serde(rename = "session.next.prompt.admitted")]
+    PromptAdmitted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        prompt: Prompt,
+        delivery: String,
+    },
+    #[serde(rename = "session.next.context.updated")]
+    ContextUpdated {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        text: String,
+    },
+    #[serde(rename = "session.next.synthetic")]
+    Synthetic {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        text: String,
+    },
+    #[serde(rename = "session.next.shell.started")]
+    ShellStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        command: String,
+    },
+    #[serde(rename = "session.next.shell.ended")]
+    ShellEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        output: String,
+    },
+    #[serde(rename = "session.next.step.started")]
+    StepStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        agent: String,
+        model: ModelRef,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        snapshot: Option<String>,
+    },
+    #[serde(rename = "session.next.step.ended")]
+    StepEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        finish: String,
+        cost: f64,
+        tokens: AssistantTokens,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        snapshot: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        files: Option<Vec<String>>,
+    },
+    #[serde(rename = "session.next.step.failed")]
+    StepFailed {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        error: UnknownError,
+    },
+    #[serde(rename = "session.next.text.started")]
+    TextStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "textID")]
+        text_id: String,
+    },
+    #[serde(rename = "session.next.text.delta")]
+    TextDelta {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "textID")]
+        text_id: String,
+        delta: String,
+    },
+    #[serde(rename = "session.next.text.ended")]
+    TextEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "textID")]
+        text_id: String,
+        text: String,
+    },
+    #[serde(rename = "session.next.reasoning.started")]
+    ReasoningStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "reasoningID")]
+        reasoning_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        provider_metadata: Option<JsonMap>,
+    },
+    #[serde(rename = "session.next.reasoning.delta")]
+    ReasoningDelta {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "reasoningID")]
+        reasoning_id: String,
+        delta: String,
+    },
+    #[serde(rename = "session.next.reasoning.ended")]
+    ReasoningEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "reasoningID")]
+        reasoning_id: String,
+        text: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        provider_metadata: Option<JsonMap>,
+    },
+    #[serde(rename = "session.next.tool.input.started")]
+    ToolInputStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        name: String,
+    },
+    #[serde(rename = "session.next.tool.input.delta")]
+    ToolInputDelta {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        delta: String,
+    },
+    #[serde(rename = "session.next.tool.input.ended")]
+    ToolInputEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        text: String,
+    },
+    #[serde(rename = "session.next.tool.called")]
+    ToolCalled {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        tool: String,
+        input: JsonMap,
+        provider: ToolCalledProvider,
+    },
+    #[serde(rename = "session.next.tool.progress")]
+    ToolProgress {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        structured: JsonMap,
+        content: Vec<ToolContent>,
+    },
+    #[serde(rename = "session.next.tool.success")]
+    ToolSuccess {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        structured: JsonMap,
+        content: Vec<ToolContent>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        output_paths: Option<Vec<String>>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<serde_json::Value>,
+        provider: ToolCalledProvider,
+    },
+    #[serde(rename = "session.next.tool.failed")]
+    ToolFailed {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "assistantMessageID")]
+        assistant_message_id: String,
+        #[serde(rename = "callID")]
+        call_id: String,
+        error: UnknownError,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<serde_json::Value>,
+        provider: ToolCalledProvider,
+    },
+    #[serde(rename = "session.next.retried")]
+    Retried {
+        timestamp: u64,
+        session_id: String,
+        attempt: f64,
+        error: RetryError,
+    },
+    #[serde(rename = "session.next.compaction.started")]
+    CompactionStarted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        reason: String,
+    },
+    #[serde(rename = "session.next.compaction.delta")]
+    CompactionDelta {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        text: String,
+    },
+    #[serde(rename = "session.next.compaction.ended")]
+    CompactionEnded {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+        reason: String,
+        text: String,
+        recent: String,
+    },
+    #[serde(rename = "session.next.revert.staged")]
+    RevertStaged {
+        timestamp: u64,
+        session_id: String,
+        revert: JsonMap,
+    },
+    #[serde(rename = "session.next.revert.cleared")]
+    RevertCleared { timestamp: u64, session_id: String },
+    #[serde(rename = "session.next.revert.committed")]
+    RevertCommitted {
+        timestamp: u64,
+        session_id: String,
+        #[serde(rename = "messageID")]
+        message_id: String,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ToolCalledProvider {
+    pub executed: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<JsonMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RetryError {
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status_code: Option<f64>,
+    pub is_retryable: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_headers: Option<JsonMap>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_body: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<JsonMap>,
 }
