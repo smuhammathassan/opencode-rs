@@ -48,10 +48,6 @@ fn mock_model_object() -> Value {
     })
 }
 
-fn mock_model() -> Model {
-    model(mock_model_object())
-}
-
 fn options_map(pairs: &[(&str, Value)]) -> Map<String, Value> {
     pairs
         .iter()

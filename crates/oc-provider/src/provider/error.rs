@@ -280,3 +280,197 @@ pub fn parse_api_call_error(input: &ApiCallErrorInput) -> ParsedApiCallError {
         metadata,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn input(
+        provider_id: &str,
+        message: &str,
+        status_code: Option<u16>,
+        response_body: Option<&str>,
+    ) -> ApiCallErrorInput {
+        ApiCallErrorInput {
+            provider_id: provider_id.to_string(),
+            message: message.to_string(),
+            status_code,
+            is_retryable: false,
+            response_body: response_body.map(str::to_string),
+            response_headers: None,
+            url: Some("https://api.example.com/v1".to_string()),
+        }
+    }
+
+    #[test]
+    fn parse_stream_error_context_overflow() {
+        let err = parse_stream_error(&json!({
+            "type": "error",
+            "error": { "code": "context_length_exceeded", "message": "This model's maximum context length is 128000 tokens." },
+        }))
+        .unwrap();
+        assert_eq!(err, ParsedStreamError::ContextOverflow {
+            message: "Input exceeds context window of this model".to_string(),
+            response_body: "{\"error\":{\"code\":\"context_length_exceeded\",\"message\":\"This model's maximum context length is 128000 tokens.\"},\"type\":\"error\"}".to_string(),
+        });
+    }
+
+    #[test]
+    fn parse_stream_error_nested_message() {
+        // message field containing a serialized error object
+        let err = parse_stream_error(&json!({
+            "message": "{\"type\":\"error\",\"error\":{\"code\":\"insufficient_quota\"}}"
+        }))
+        .unwrap();
+        assert_eq!(
+            err,
+            ParsedStreamError::ApiError {
+                message: "Quota exceeded. Check your plan and billing details.".to_string(),
+                is_retryable: false,
+                response_body: "{\"error\":{\"code\":\"insufficient_quota\"},\"type\":\"error\"}"
+                    .to_string(),
+            }
+        );
+    }
+
+    #[test]
+    fn parse_stream_error_unknown_code() {
+        assert!(
+            parse_stream_error(&json!({ "type": "error", "error": { "code": "weird" } })).is_none()
+        );
+        assert!(parse_stream_error(&json!({ "type": "not_error" })).is_none());
+        assert!(parse_stream_error(&json!("plain string")).is_none());
+    }
+
+    #[test]
+    fn parse_api_call_error_context_overflow_by_code() {
+        let err = parse_api_call_error(&input(
+            "openai",
+            "Error: something",
+            Some(400),
+            Some("{\"error\":{\"code\":\"context_length_exceeded\"}}"),
+        ));
+        match err {
+            ParsedApiCallError::ContextOverflow {
+                message,
+                response_body,
+            } => {
+                assert_eq!(message, "Error: something");
+                assert!(response_body.is_some());
+            }
+            _ => panic!("expected context overflow"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_html_401_gateway() {
+        let err = parse_api_call_error(&input(
+            "anthropic",
+            "Unauthorized",
+            Some(401),
+            Some("<!DOCTYPE html>\n<html><body>gateway</body></html>"),
+        ));
+        match err {
+            ParsedApiCallError::ApiError {
+                message,
+                is_retryable,
+                ..
+            } => {
+                assert!(
+                    message.contains(
+                        "try running `opencode auth login <your provider URL>` to re-authenticate"
+                    ),
+                    "message was: {}",
+                    message
+                );
+                assert!(!is_retryable);
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_html_403_forbidden() {
+        let err = parse_api_call_error(&input(
+            "anthropic",
+            "Forbidden",
+            Some(403),
+            Some("<html>blocked</html>"),
+        ));
+        match err {
+            ParsedApiCallError::ApiError { message, .. } => {
+                assert!(message.contains("check your account and provider settings"));
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_extracts_message_field() {
+        let err = parse_api_call_error(&input(
+            "anthropic",
+            "Bad Request",
+            Some(400),
+            Some("{\"message\":\"invalid model\"}"),
+        ));
+        match err {
+            ParsedApiCallError::ApiError { message, .. } => {
+                assert_eq!(message, "Bad Request: invalid model");
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_openai_404_retryable() {
+        let err = parse_api_call_error(&input("openai", "Not Found", Some(404), None));
+        match err {
+            ParsedApiCallError::ApiError {
+                is_retryable,
+                metadata,
+                ..
+            } => {
+                assert!(is_retryable, "openai 404 is treated as retryable");
+                assert_eq!(
+                    metadata.as_ref().unwrap()["url"],
+                    "https://api.example.com/v1"
+                );
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_status_text_returns_message() {
+        let err = parse_api_call_error(&input(
+            "anthropic",
+            "Bad Request",
+            Some(400),
+            Some("{\"other\":true}"),
+        ));
+        match err {
+            ParsedApiCallError::ApiError { message, .. } => {
+                assert_eq!(message, r#"Bad Request: {"other":true}"#);
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_empty_message_uses_status_text() {
+        let err = parse_api_call_error(&input("anthropic", "", Some(429), None));
+        match err {
+            ParsedApiCallError::ApiError { message, .. } => {
+                assert_eq!(message, "Too Many Requests")
+            }
+            _ => panic!("expected api error"),
+        }
+    }
+
+    #[test]
+    fn parse_api_call_error_413_context_overflow() {
+        let err = parse_api_call_error(&input("openai", "Payload Too Large", Some(413), None));
+        assert!(matches!(err, ParsedApiCallError::ContextOverflow { .. }));
+    }
+}
