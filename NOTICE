@@ -1,0 +1,62 @@
+opencode-rs NOTICE
+==================
+
+This project is a Rust port of opencode (https://github.com/sst/opencode),
+Copyright (c) 2025 opencode, licensed under the MIT License. The full license
+text is in the LICENSE file at the repository root.
+
+opencode-rs redistributes the following content verbatim or in derived form
+from the upstream opencode project (v1.18.13). Per the MIT License, the above
+copyright notice and permission notice are reproduced here for these assets.
+This repository's own contributions are Copyright (c) 2026 opencode-rs
+contributors, also under the MIT License (see LICENSE).
+
+Embedded reference-derived assets
+---------------------------------
+
+1. Session system prompts
+   - Port location: crates/oc-session/assets/prompt/*.txt
+   - Reference source: reference/packages/opencode/src/session/prompt/*.txt
+   - Status: verbatim (diff-verified identical to the vendored reference).
+   - License: MIT (upstream), see LICENSE.
+
+2. Tool prompts
+   - Port location: crates/oc-tool/src/prompts/*.txt
+   - Reference source: reference/packages/opencode/src/tool/*.txt
+   - Status: verbatim (diff-verified identical to the vendored reference).
+   - License: MIT (upstream), see LICENSE.
+
+3. Plugin runtime polyfill
+   - Port location: crates/oc-plugin/src/polyfill/runtime.js
+   - Reference source: derived from the `@opencode-ai/plugin` runtime API
+     surface (reference/packages/plugin/src and reference/packages/opencode/src/plugin).
+   - Status: derived work reimplementing the plugin runtime for the in-process
+     QuickJS host.
+   - License: MIT (upstream), see LICENSE.
+
+4. Model catalog
+   - Port location: crates/oc-provider/data/models.json
+   - Reference source: https://models.opencode.ai/api.json (models.dev),
+     snapshotted at build/release time by the upstream project; the port embeds
+     a snapshot regenerated from the same URL. Not a copy of the vendored
+     reference tree. Data provenance and refresh policy are tracked in
+     SUPPLY-007 of rust-port-audit/16-dependencies-supply-chain.md.
+   - License: see upstream models.dev terms; MIT-compatible permissive.
+
+Vendored reference
+------------------
+
+The `reference/` directory is a vendored checkout of the opencode monorepo at
+tag v1.18.13 (https://github.com/sst/opencode), MIT License,
+Copyright (c) 2025 opencode. It is included unmodified as read-only spec
+material; it is not part of the distributed binary. See reference/LICENSE.
+
+Third-party crates
+------------------
+
+All crates.io dependencies are permissively licensed (MIT, Apache-2.0, ISC,
+BSD, Unicode-3.0, Zlib, MPL-2.0, CDLA-Permissive). No GPL/AGPL code is used.
+The full dependency list and checksums are in Cargo.lock. Notably:
+- libquickjs-sys (MIT) bundles QuickJS, Copyright (c) 2017-2019 Fabrice Bellard.
+- libsqlite3-sys (MIT) bundles SQLite, a public-domain software library.
+- ring (Apache-2.0 AND ISC) provides the rustls crypto provider.
