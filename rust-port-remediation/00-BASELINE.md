@@ -36,6 +36,19 @@
 - Waves 1–5: implementation in controlled dependency order with security-first merge gating (see `02-DEPENDENCY-WAVES.md`).
 - All remediation evidence under `rust-port-remediation/**`; `rust-port-audit/**` unchanged.
 
+## Wave 0 checkpoint
+
+- Wave 0 planning pass complete; committed at `ba32ba7` + `15ba3bd` on `fix/audit-remediation`.
+- Immutable checkpoint tag: **`remediation-wave0-complete`** → `15ba3bd719c488b51c691db74ad2c73a4901065f` (pushed to origin).
+- Working tree clean at tag creation; `rust-port-audit/**` tree hash at checkpoint: `89ebb88dbb7224dc5fb7897a179ca71843db1d67`.
+- Wave 0 planning evidence not rewritten/squashed.
+
+## Wave 1 baseline (start)
+
+- Wave 1 starting commit: `15ba3bd719c488b51c691db74ad2c73a4901065f` (= tag `remediation-wave0-complete`).
+- Wave 1 steps are sequential: 1a(19) → 1b(01) → 1c(04) → 1d(02) → 1e(15) → 1f(18); see `02-DEPENDENCY-WAVES.md` and `WAVE-1-STATUS.md`.
+- The `rust-port-audit/**` tree hash must remain `89ebb88dbb7224dc5fb7897a179ca71843db1d67` throughout Wave 1.
+
 ## Baseline quality checks (recorded, not yet run at Wave 0)
 
 - `cargo test --workspace`: 1519 passed (baseline)
