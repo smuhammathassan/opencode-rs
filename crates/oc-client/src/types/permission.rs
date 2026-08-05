@@ -1,6 +1,7 @@
 //! Permission types.
 //! From reference/packages/schema/src/permission.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::schema::JsonValue;
 use std::collections::HashMap;
 

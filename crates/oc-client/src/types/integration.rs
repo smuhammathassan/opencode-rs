@@ -1,6 +1,7 @@
 //! Integration types.
 //! From reference/packages/schema/src/integration.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::connection::ConnectionInfo;
 use crate::types::location::LocationQueryRef;
 use crate::types::schema::JsonValue;

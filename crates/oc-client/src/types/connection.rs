@@ -1,6 +1,7 @@
 //! Connection types.
 //! From reference/packages/schema/src/connection.ts.
 
+// TODO(integration): promote to oc-schema.
 /// `Connection.Info` — tagged on `type`.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]

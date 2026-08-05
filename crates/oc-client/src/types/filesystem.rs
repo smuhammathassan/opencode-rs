@@ -1,6 +1,7 @@
 //! Filesystem types.
 //! From reference/packages/schema/src/filesystem.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
 use crate::types::schema::RelativePath;
 

@@ -1,6 +1,7 @@
 //! Project copy types.
 //! From reference/packages/schema/src/project-copy.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
 use crate::types::schema::AbsolutePath;
 

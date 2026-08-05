@@ -1,6 +1,7 @@
 //! Credential types.
 //! From reference/packages/schema/src/credential.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
 use crate::types::schema::JsonValue;
 use std::collections::HashMap;

@@ -1,6 +1,7 @@
 //! Model types.
 //! From reference/packages/schema/src/model.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::schema::JsonValue;
 use crate::types::session_message::TokenCache;
 use std::collections::HashMap;

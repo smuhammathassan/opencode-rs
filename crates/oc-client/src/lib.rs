@@ -21,8 +21,10 @@
 
 pub mod client;
 pub mod contract;
+pub mod effect;
 pub mod error;
 pub mod generated;
+pub mod middleware;
 pub mod sse;
 pub mod transport;
 pub mod types;

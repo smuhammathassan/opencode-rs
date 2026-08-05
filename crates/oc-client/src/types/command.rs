@@ -1,6 +1,7 @@
 //! Command types.
 //! From reference/packages/schema/src/command.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::model::ModelRef;
 
 /// `Command.Info`.

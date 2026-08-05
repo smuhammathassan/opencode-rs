@@ -1,6 +1,7 @@
 //! Session message types.
 //! From reference/packages/schema/src/session-message.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::model::ModelRef;
 use crate::types::prompt::{PromptAgentAttachment, PromptFileAttachment};
 use crate::types::schema::{DateTimeMillis, JsonValue, Order};

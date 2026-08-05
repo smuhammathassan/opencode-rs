@@ -1,6 +1,7 @@
 //! Primitive schema types.
 //! From reference/packages/schema/src/schema.ts.
 
+// TODO(integration): promote to oc-schema.
 /// JSON values. Mirrors `JsonValue` in `reference/packages/client/src/generated/types.ts`.
 pub type JsonValue = serde_json::Value;
 

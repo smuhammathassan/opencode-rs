@@ -1,6 +1,7 @@
 //! PTY types.
 //! From reference/packages/schema/src/pty.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
 use std::collections::HashMap;
 

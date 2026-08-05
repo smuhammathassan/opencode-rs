@@ -1,6 +1,7 @@
 //! Saved permission types.
 //! From reference/packages/schema/src/permission-saved.ts.
 
+// TODO(integration): promote to oc-schema.
 /// `PermissionSaved.Info`.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

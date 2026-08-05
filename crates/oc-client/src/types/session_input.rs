@@ -1,6 +1,7 @@
 //! Session input types.
 //! From reference/packages/schema/src/session-input.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::prompt::Prompt;
 use crate::types::schema::{DateTimeMillis, Delivery};
 

@@ -1,6 +1,7 @@
 //! Question types.
 //! From reference/packages/schema/src/question.ts.
 
+// TODO(integration): promote to oc-schema.
 /// `Question.Option`.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

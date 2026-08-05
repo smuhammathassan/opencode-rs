@@ -1,6 +1,7 @@
 //! Project types.
 //! From reference/packages/schema/src/project.ts.
 
+// TODO(integration): promote to oc-schema.
 /// `Project.Info`.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

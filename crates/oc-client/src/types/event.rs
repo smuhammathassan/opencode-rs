@@ -8,6 +8,7 @@
 //! event manifest plus the injected `server.connected` event) and is streamed by
 //! `GET /api/event`.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationRef;
 use crate::types::model::ModelRef;
 use crate::types::permission::{PermissionReply, PermissionSource};

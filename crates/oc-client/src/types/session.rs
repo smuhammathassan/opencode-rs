@@ -1,6 +1,7 @@
 //! Session types.
 //! From reference/packages/schema/src/session.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::model::ModelRef;
 use crate::types::revert::RevertState;
 use crate::types::schema::{DateTimeMillis, Order, RelativePath};

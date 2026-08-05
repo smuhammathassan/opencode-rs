@@ -1,6 +1,7 @@
 //! Agent types.
 //! From reference/packages/schema/src/agent.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::model::ModelRef;
 use crate::types::permission::PermissionRule;
 use crate::types::provider::ProviderRequest;

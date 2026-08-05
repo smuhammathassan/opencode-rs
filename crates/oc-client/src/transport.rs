@@ -120,8 +120,7 @@ impl Transport {
         let Some(policy) = options.and_then(|options| options.retry) else {
             return attempt().await;
         };
-        let mut errors = std::vec::Vec::new();
-        for attempt_index in 0..policy.max_attempts {
+        for attempt_index in 0..policy.max_attempts.max(1) {
             match attempt().await {
                 Ok(value) => return Ok(value),
                 Err(err) => {
@@ -133,13 +132,10 @@ impl Transport {
                         .base_delay
                         .saturating_mul(2u32.saturating_pow(attempt_index));
                     tokio::time::sleep(delay).await;
-                    errors.push(err);
                 }
             }
         }
-        Err(errors
-            .pop()
-            .unwrap_or_else(|| Error::Client(ClientError::UnexpectedStatus(0))))
+        Err(Error::Client(ClientError::UnexpectedStatus(0)))
     }
 
     async fn execute_inner<T: DeserializeOwned>(

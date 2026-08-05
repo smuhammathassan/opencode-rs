@@ -1,6 +1,7 @@
 //! Revert types.
 //! From reference/packages/schema/src/revert.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::schema::RelativePath;
 
 /// `File.Diff`.

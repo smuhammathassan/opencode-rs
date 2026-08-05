@@ -1,6 +1,7 @@
 //! Provider types.
 //! From reference/packages/schema/src/provider.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
 use crate::types::schema::JsonValue;
 use std::collections::HashMap;

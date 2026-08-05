@@ -1,6 +1,7 @@
 //! Prompt types.
 //! From reference/packages/schema/src/prompt.ts and reference/packages/schema/src/prompt-input.ts.
 
+// TODO(integration): promote to oc-schema.
 /// `Prompt.Source`.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]

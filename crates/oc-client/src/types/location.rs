@@ -1,6 +1,7 @@
 //! Location types.
 //! From reference/packages/schema/src/location.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::schema::AbsolutePath;
 
 /// `Location.Ref` — a location reference.

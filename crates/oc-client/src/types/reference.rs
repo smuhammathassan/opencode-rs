@@ -1,6 +1,7 @@
 //! Reference types.
 //! From reference/packages/schema/src/reference.ts.
 
+// TODO(integration): promote to oc-schema.
 use crate::types::schema::AbsolutePath;
 
 /// `Reference.Source` — tagged on `type`.
