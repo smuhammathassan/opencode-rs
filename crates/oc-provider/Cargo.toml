@@ -12,6 +12,9 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+regex = { workspace = true }
+indexmap = { workspace = true }
+directories = { workspace = true }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
