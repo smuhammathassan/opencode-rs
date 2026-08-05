@@ -26,6 +26,7 @@ pub mod retry;
 pub mod revert;
 pub mod run_state;
 pub mod schema;
+pub mod service;
 pub mod session;
 pub mod status;
 pub mod store;

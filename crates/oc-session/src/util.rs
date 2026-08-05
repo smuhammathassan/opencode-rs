@@ -196,6 +196,40 @@ fn days_from_civil(y: i64, m: i64, d: u32) -> u64 {
     (era * 146_097 + doe - 719_468) as u64
 }
 
+/// From reference `packages/core/src/util/slug.ts` — `adjective-noun` slugs.
+pub mod slug {
+    const ADJECTIVES: [&str; 29] = [
+        "brave", "calm", "clever", "cosmic", "crisp", "curious", "eager", "gentle", "glowing",
+        "happy", "hidden", "jolly", "kind", "lucky", "mighty", "misty", "neon", "nimble",
+        "playful", "proud", "quick", "quiet", "shiny", "silent", "stellar", "sunny", "swift",
+        "tidy", "witty",
+    ];
+    const NOUNS: [&str; 31] = [
+        "cabin", "cactus", "canyon", "circuit", "comet", "eagle", "engine", "falcon", "forest",
+        "garden", "harbor", "island", "knight", "lagoon", "meadow", "moon", "mountain", "nebula",
+        "orchid", "otter", "panda", "pixel", "planet", "river", "rocket", "sailor", "squid",
+        "star", "tiger", "wizard", "wolf",
+    ];
+
+    pub fn create() -> String {
+        let idx = rand_index(ADJECTIVES.len());
+        let noun_idx = rand_index(NOUNS.len());
+        format!("{}-{}", ADJECTIVES[idx], NOUNS[noun_idx])
+    }
+
+    fn rand_index(len: usize) -> usize {
+        let mut seed = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos() as u64)
+            .unwrap_or(0)
+            ^ (std::process::id() as u64).wrapping_mul(0x9E3779B97F4A7C15);
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed as usize) % len
+    }
+}
+
 /// From reference `packages/opencode/src/util/token.ts` — crude token estimate
 /// used by compaction. The reference counts chars/4 per string.
 pub mod token {
