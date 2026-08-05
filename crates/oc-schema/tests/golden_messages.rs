@@ -494,3 +494,28 @@ fn session_id_creation_shape() {
     assert_eq!(id.len(), 30);
     assert!(id.starts_with("ses_"));
 }
+
+#[test]
+fn flattened_tool_events_roundtrip() {
+    let json = r#"{"id":"evt_1","type":"session.next.tool.success","data":{"timestamp":1,"sessionID":"ses_1","assistantMessageID":"msg_1","callID":"c1","structured":{},"content":[],"outputPaths":["/out"],"provider":{"executed":true}}}"#;
+    let event: Event = serde_json::from_str(json).unwrap();
+    assert_eq!(to_string(&event), json);
+
+    let json = r#"{"id":"evt_1","type":"session.next.tool.input.delta","data":{"timestamp":1,"sessionID":"ses_1","assistantMessageID":"msg_1","callID":"c1","delta":"x"}}"#;
+    let event: Event = serde_json::from_str(json).unwrap();
+    assert_eq!(to_string(&event), json);
+}
+
+#[test]
+fn session_info_roundtrip() {
+    let json = r#"{"id":"ses_1","projectID":"global","cost":0,"tokens":{"input":1,"output":2,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1,"updated":2},"title":"t","location":{"directory":"/d"}}"#;
+    let info: oc_schema::session::Info = serde_json::from_str(json).unwrap();
+    assert_eq!(to_string(&info), json);
+}
+
+#[test]
+fn model_info_roundtrip() {
+    let json = r#"{"id":"m","providerID":"p","name":"m","api":{"id":"m","type":"native","settings":{}},"capabilities":{"tools":false,"input":[],"output":[]},"request":{"headers":{},"body":{}},"variants":[],"time":{"released":0},"cost":[],"status":"active","enabled":true,"limit":{"context":0,"output":0}}"#;
+    let info: oc_schema::model::Info = serde_json::from_str(json).unwrap();
+    assert_eq!(to_string(&info), json);
+}
