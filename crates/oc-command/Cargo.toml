@@ -12,7 +12,19 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+regex = { workspace = true }
+indexmap = { workspace = true }
+tokio = { workspace = true }
+reqwest = { workspace = true }
+uuid = { workspace = true }
+getrandom = "0.2"
+globset = "0.4"
+walkdir = "2"
+serde_yml = "0.0.12"
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-core = { version = "0.1", path = "../oc-core" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-session = { version = "0.1", path = "../oc-session" }
+
+[dev-dependencies]
+tempfile = "3"
