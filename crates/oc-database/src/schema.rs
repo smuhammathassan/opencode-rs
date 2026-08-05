@@ -325,21 +325,3 @@ pub fn now_ms() -> i64 {
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
 }
-
-/// Helper for the golden test: run the schema statements and return the
-/// `sqlite_master` dump for a fresh in-memory database.
-#[doc(hidden)]
-pub fn dump_master(db: &crate::sqlite::Sqlite) -> crate::error::Result<Vec<(String, String)>> {
-    let rows = db.all(
-        "SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY type, name",
-        &[],
-    )?;
-    let mut out = Vec::new();
-    for row in rows {
-        out.push((
-            row.get_by_name::<String>("name")?,
-            row.get_by_name::<String>("sql")?,
-        ));
-    }
-    Ok(out)
-}

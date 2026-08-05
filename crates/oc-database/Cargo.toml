@@ -16,5 +16,4 @@ oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 tokio = { workspace = true }
 rusqlite = { version = "0.32", features = ["bundled", "chrono", "serde_json", "serialize", "load_extension"] }
-chrono = { workspace = true }
 directories = { workspace = true }

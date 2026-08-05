@@ -264,9 +264,6 @@ impl Sqlite {
         if config.create && !config.readonly {
             flags |= OpenFlags::SQLITE_OPEN_CREATE;
         }
-        if config.allow_extension {
-            flags |= OpenFlags::SQLITE_OPEN_NOFOLLOW;
-        }
         let conn = Connection::open_with_flags(&config.filename, flags)?;
         if let Some(timeout) = config.timeout_ms {
             conn.busy_timeout(Duration::from_millis(timeout as u64))?;
