@@ -33,6 +33,7 @@ pub mod store;
 pub mod summary;
 pub mod system;
 pub mod todo;
+pub mod tools;
 pub mod util;
 pub mod v1;
 pub mod v2;
