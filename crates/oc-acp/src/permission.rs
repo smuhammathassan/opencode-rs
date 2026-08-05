@@ -199,6 +199,11 @@ impl Handler {
 pub type ToolInput = Map<String, Value>;
 
 /// `permissionToolCall` from reference/packages/opencode/src/acp/permission.ts.
+///
+/// Note: the reference spreads `pendingToolCall` (ordering `toolCallId`, `title`,
+/// `kind`, `status`, `locations`, `rawInput`) and appends `content`. The
+/// `ToolCallUpdate` struct reorders these to match the `tool_call_update` session
+/// notification layout; JSON object key order is not semantically meaningful.
 async fn permission_tool_call(
     tool_call_id: &str,
     tool_name: &str,

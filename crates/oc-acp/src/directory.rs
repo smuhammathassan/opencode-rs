@@ -189,13 +189,17 @@ impl Service {
         let result = self.loader.load(directory).await;
         let mut slot = shared.lock().await;
         if slot.is_none() {
-            *slot = Some(result.clone());
+            if result.is_ok() {
+                *slot = Some(result.clone());
+            } else {
+                drop(slot);
+                self.snapshots.lock().await.remove(directory);
+            }
+            result
+        } else {
+            // Another task populated the cache while we were loading.
+            slot.clone().unwrap_or(result)
         }
-        drop(slot);
-        if result.is_err() {
-            self.snapshots.lock().await.remove(directory);
-        }
-        result
     }
 
     /// `refresh` from reference/packages/opencode/src/acp/directory.ts.

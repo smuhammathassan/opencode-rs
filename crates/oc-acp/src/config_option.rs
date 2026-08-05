@@ -299,9 +299,7 @@ fn build_model_select_options(
                 continue;
             };
             options.push(base);
-            let mut variant_names: Vec<&String> = variants.keys().collect();
-            variant_names.sort();
-            for variant in variant_names {
+            for variant in variants.keys() {
                 if variant == DEFAULT_VARIANT_VALUE {
                     continue;
                 }
@@ -327,11 +325,7 @@ fn variants_for_model(providers: &[ConfigOptionProvider], model: &ModelRef) -> V
         .find(|provider| provider.id == model.provider_id)
         .and_then(|provider| provider.models.get(&model.model_id))
         .and_then(|model| model.variants.as_ref())
-        .map(|variants| {
-            let mut keys: Vec<String> = variants.keys().cloned().collect();
-            keys.sort();
-            keys
-        })
+        .map(|variants| variants.keys().cloned().collect())
         .unwrap_or_default()
 }
 
