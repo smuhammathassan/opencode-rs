@@ -4,7 +4,7 @@
 //! that the thin ratatui drawing layer converts into `ratatui::Line`s. This
 //! keeps the layout logic headless and testable.
 
-use ratatui::style::Style;
+use ratatui::style::{Color, Style};
 
 /// A single styled span: (text, style).
 pub type StyledSpan = (String, Style);
@@ -40,6 +40,29 @@ pub fn pad_to(line: StyledLine, len: usize) -> StyledLine {
     let mut out = line;
     out.push((" ".repeat(len - current), Style::default()));
     out
+}
+
+/// Wrap plain text to `width` display cells.
+pub fn wrap_plain(text: &str, width: usize) -> Vec<StyledLine> {
+    crate::util::markdown::render(
+        text,
+        &crate::util::markdown::MarkdownOptions {
+            width: width.max(8),
+            conceal: true,
+            fg: Color::White,
+            heading: Color::White,
+            code: Color::White,
+            muted: Color::White,
+        },
+    )
+    .into_iter()
+    .map(|l| {
+        l.spans
+            .into_iter()
+            .map(|s| (s.text, Style::default()))
+            .collect()
+    })
+    .collect()
 }
 
 /// Convert to a ratatui `Line` (owned).

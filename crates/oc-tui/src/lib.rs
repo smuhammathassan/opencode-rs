@@ -7,6 +7,7 @@ pub mod components;
 pub mod config;
 pub mod keybind;
 pub mod keymap;
+pub mod local;
 pub mod logo;
 pub mod prompt;
 pub mod sync;

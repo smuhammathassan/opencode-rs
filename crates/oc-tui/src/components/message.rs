@@ -9,7 +9,7 @@ use std::collections::HashSet;
 
 use ratatui::style::{Color, Modifier, Style};
 
-use crate::components::text::{styled, StyledLine};
+use crate::components::text::{styled, wrap_plain, StyledLine};
 use crate::sync::SyncState;
 use crate::theme::{selected_foreground, Theme};
 use crate::types::{Message, Part, ToolPart, ToolState};
@@ -1410,30 +1410,6 @@ fn render_generic(
         }
         render_inline(render, part, "⚙", "Writing command...", text, error, out);
     }
-}
-
-/// Wrap plain text to `width` display cells.
-fn wrap_plain(text: &str, width: usize) -> Vec<StyledLine> {
-    let rendered = markdown::render(
-        text,
-        &markdown::MarkdownOptions {
-            width: width.max(8),
-            conceal: true,
-            fg: Color::White,
-            heading: Color::White,
-            code: Color::White,
-            muted: Color::White,
-        },
-    );
-    rendered
-        .into_iter()
-        .map(|l| {
-            l.spans
-                .into_iter()
-                .map(|s| (s.text, Style::default()))
-                .collect()
-        })
-        .collect()
 }
 
 fn plain_line(text: &str, fg: Color) -> StyledLine {
