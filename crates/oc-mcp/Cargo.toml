@@ -16,3 +16,10 @@ oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
 tokio = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+uuid = { workspace = true }
+directories = { workspace = true }
+indexmap = { workspace = true }
+
+[dev-dependencies]
