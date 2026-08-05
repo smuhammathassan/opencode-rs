@@ -16,3 +16,10 @@ oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-core = { version = "0.1", path = "../oc-core" }
 oc-util = { version = "0.1", path = "../oc-util" }
 tokio = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
+percent-encoding = "2"
+
+[dev-dependencies]
+axum = "0.8"
+tokio = { workspace = true }
