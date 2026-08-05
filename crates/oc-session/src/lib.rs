@@ -5,6 +5,22 @@
 //! lives in oc-session-runner). Session/message/part data models serialize to
 //! JSON identical to the reference zod output; the system prompt templates are
 //! embedded verbatim from `assets/prompt/*.txt`.
+//!
+//! ## Long tail (partial / TODO)
+//!
+//! - `core/session/execution/` + `run-coordinator.ts` — V2 session execution
+//!   orchestration, owned by oc-session-runner. Not ported.
+//! - `core/session/context-epoch.ts` — depends on the `SystemContext` algebra
+//!   (core/system-context); the store hooks (`SessionDb.context_epoch_baseline`)
+//!   are in place but the epoch algebra itself is TODO(integration).
+//! - `core/session/input.ts` admit/promote projections — the `Admitted` model
+//!   and equivalence checks are ported; the durable-write paths need the
+//!   oc-database event store.
+//! - `opencode/session/processor.rs` — the full event state machine is ported
+//!   against [`processor::ProcessorDeps`]; retry scheduling (Effect schedule)
+//!   is left to the runner.
+//! - `opencode/session/tools.rs` — only the pure MCP-resource formatting is
+//!   ported; registry/tool construction is oc-tool's job.
 
 pub mod compaction;
 pub mod compaction_core;
