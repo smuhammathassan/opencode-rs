@@ -12,3 +12,10 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true }
+regex = { workspace = true }
+url = { workspace = true }
+chrono = { workspace = true }
+reqwest = { workspace = true }
+indexmap = { workspace = true }
+libc = "0.2"
