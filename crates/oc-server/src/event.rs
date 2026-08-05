@@ -26,8 +26,8 @@ pub struct Event {
 
 /// Durable replay metadata. From reference/packages/schema/src/event.ts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct Durable {
+    #[serde(rename = "aggregateID")]
     pub aggregate_id: String,
     pub seq: i64,
     pub version: i64,

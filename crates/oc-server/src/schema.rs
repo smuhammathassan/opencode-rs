@@ -3,14 +3,17 @@
 //! TODO(integration): promote to oc-schema once that crate grows these types.
 //! Serialized shapes mirror the zod schemas under reference/packages/schema/src/.
 //! Optional fields are omitted when `None` exactly like the reference `optional(...)` helper.
+//!
+//! Note the reference mixes camelCase (`admittedSeq`, `timeCreated`) with acronym
+//! suffixes (`projectID`, `providerID`, `sessionID`); field renames below replicate that.
 
 use serde::{Deserialize, Serialize};
 
 /// Model reference. From reference/packages/schema/src/model.ts (`Model.Ref`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct ModelRef {
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
@@ -18,26 +21,23 @@ pub struct ModelRef {
 
 /// Location reference. From reference/packages/schema/src/location.ts (`Location.Ref`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct LocationRef {
     pub directory: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none")]
     pub workspace_id: Option<String>,
 }
 
 /// Location info. From reference/packages/schema/src/location.ts (`Location.Info`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct LocationInfo {
     pub directory: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none")]
     pub workspace_id: Option<String>,
     pub project: ProjectRef,
 }
 
 /// Project reference inside `Location.Info`.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct ProjectRef {
     pub id: String,
     pub directory: String,
@@ -53,7 +53,6 @@ pub struct LocationResponse<T> {
 
 /// Token counts. From reference/packages/schema/src/session.ts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct Tokens {
     pub input: f64,
     pub output: f64,
@@ -62,7 +61,6 @@ pub struct Tokens {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct CacheTokens {
     pub read: f64,
     pub write: f64,
@@ -71,7 +69,6 @@ pub struct CacheTokens {
 /// Timestamps are epoch milliseconds. From reference/packages/schema/src/schema.ts
 /// (`DateTimeUtcFromMillis`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct SessionTime {
     pub created: i64,
     pub updated: i64,
@@ -81,11 +78,11 @@ pub struct SessionTime {
 
 /// Session info. From reference/packages/schema/src/session.ts (`Session.Info`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct SessionInfo {
     pub id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "parentID", skip_serializing_if = "Option::is_none")]
     pub parent_id: Option<String>,
+    #[serde(rename = "projectID")]
     pub project_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
@@ -139,13 +136,6 @@ pub struct SessionMessagesResponse {
     pub cursor: SessionCursor,
 }
 
-/// Message list response where `data` carries one message. From
-/// reference/packages/protocol/src/groups/session.ts (`session.message`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct MessageData {
-    pub data: serde_json::Value,
-}
-
 /// Context messages list. From reference/packages/protocol/src/groups/session.ts
 /// (`session.context`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -156,15 +146,17 @@ pub struct ContextData {
 /// Admitted session input. From reference/packages/schema/src/session-input.ts
 /// (`SessionInput.Admitted`).
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct Admitted {
+    #[serde(rename = "admittedSeq")]
     pub admitted_seq: i64,
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub prompt: serde_json::Value,
     pub delivery: String,
+    #[serde(rename = "timeCreated")]
     pub time_created: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "promotedSeq", skip_serializing_if = "Option::is_none")]
     pub promoted_seq: Option<i64>,
 }
 
@@ -188,7 +180,6 @@ pub struct PermissionCreateData {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct PermissionEffect {
     pub id: String,
     pub effect: String,
@@ -202,10 +193,11 @@ pub struct PermissionSavedData {
 
 /// PTY connect token. From reference/packages/schema/src/pty-ticket.ts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(rename_all = "camelCase")]
 pub struct ConnectToken {
     pub token: String,
+    #[serde(rename = "ptyID")]
     pub pty_id: String,
+    #[serde(rename = "expiresAt")]
     pub expires_at: i64,
 }
 
@@ -253,5 +245,121 @@ pub mod message {
             "type": "model-switched",
             "model": model,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn session_info_serializes_reference_names() {
+        let info = SessionInfo {
+            id: "ses_1".into(),
+            parent_id: None,
+            project_id: "prj_1".into(),
+            agent: Some("build".into()),
+            model: Some(ModelRef {
+                id: "claude".into(),
+                provider_id: "anthropic".into(),
+                variant: None,
+            }),
+            cost: 1.5,
+            tokens: Tokens {
+                input: 10.0,
+                output: 20.0,
+                reasoning: 30.0,
+                cache: CacheTokens {
+                    read: 40.0,
+                    write: 50.0,
+                },
+            },
+            time: SessionTime {
+                created: 1,
+                updated: 2,
+                archived: None,
+            },
+            title: "t".into(),
+            location: LocationRef {
+                directory: "/tmp".into(),
+                workspace_id: Some("ws_1".into()),
+            },
+            subpath: None,
+            revert: None,
+        };
+        let value = serde_json::to_value(&info).unwrap();
+        assert!(
+            value.get("projectID").is_some(),
+            "projectID missing: {value}"
+        );
+        assert!(
+            value["model"].get("providerID").is_some(),
+            "model.providerID missing: {value}"
+        );
+        assert!(
+            value["location"].get("workspaceID").is_some(),
+            "location.workspaceID missing: {value}"
+        );
+        assert!(value.get("parentID").is_none());
+        let expected = serde_json::json!({
+            "id": "ses_1",
+            "projectID": "prj_1",
+            "agent": "build",
+            "model": { "id": "claude", "providerID": "anthropic" },
+            "cost": 1.5,
+            "tokens": { "input": 10.0, "output": 20.0, "reasoning": 30.0, "cache": { "read": 40.0, "write": 50.0 } },
+            "time": { "created": 1, "updated": 2 },
+            "title": "t",
+            "location": { "directory": "/tmp", "workspaceID": "ws_1" },
+        });
+        assert_eq!(value, expected);
+    }
+
+    #[test]
+    fn admitted_serializes_reference_names() {
+        let admitted = Admitted {
+            admitted_seq: 1,
+            id: "msg_1".into(),
+            session_id: "ses_1".into(),
+            prompt: serde_json::json!({ "text": "hi" }),
+            delivery: "steer".into(),
+            time_created: 3,
+            promoted_seq: None,
+        };
+        let value = serde_json::to_value(&admitted).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "admittedSeq": 1,
+                "id": "msg_1",
+                "sessionID": "ses_1",
+                "prompt": { "text": "hi" },
+                "delivery": "steer",
+                "timeCreated": 3,
+            })
+        );
+    }
+
+    #[test]
+    fn location_response_shape() {
+        let response = LocationResponse {
+            location: LocationInfo {
+                directory: "/tmp".into(),
+                workspace_id: None,
+                project: ProjectRef {
+                    id: "prj_1".into(),
+                    directory: "/tmp".into(),
+                },
+            },
+            data: vec![1, 2, 3],
+        };
+        let value = serde_json::to_value(&response).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "location": { "directory": "/tmp", "project": { "id": "prj_1", "directory": "/tmp" } },
+                "data": [1, 2, 3],
+            })
+        );
     }
 }

@@ -3,12 +3,13 @@
 //! `authorization` mirrors `reference/packages/server/src/middleware/authorization.ts`;
 //! `schema_error` mirrors `middleware/schema-error.ts`.
 
-use axum::extract::Request;
+use axum::extract::{Request, State};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 
 use crate::auth::{credentials_from_request, AUTH_TOKEN_QUERY, WWW_AUTHENTICATE};
 use crate::errors::ApiError;
+use crate::state::AppState;
 
 /// True when the request is a ticketed PTY connect upgrade, which skips credential
 /// checks. From reference/packages/protocol/src/groups/pty.ts (`hasPtyConnectTicketURL`).
@@ -25,16 +26,14 @@ fn has_pty_connect_ticket_url(path: &str, query: Option<&str>) -> bool {
 }
 
 /// Basic-auth gate. Mirrors `authorizationLayer` from
-/// reference/packages/server/src/middleware/authorization.ts.
-pub async fn authorization(request: Request, next: Next) -> Response {
-    let config = request
-        .extensions()
-        .get::<axum::extract::State<crate::state::AppState>>()
-        .map(|state| state.auth.clone());
-
-    let Some(config) = config else {
-        return next.run(request).await;
-    };
+/// reference/packages/server/src/middleware/authorization.ts. Requires the router state
+/// via `axum::middleware::from_fn_with_state`.
+pub async fn authorization(
+    State(state): State<AppState>,
+    request: Request,
+    next: Next,
+) -> Response {
+    let config = state.auth.clone();
 
     if !config.required() {
         return next.run(request).await;

@@ -40,7 +40,10 @@ pub fn build(state: AppState) -> Router {
         });
 
     router
-        .layer(middleware::from_fn(crate::middleware::authorization))
+        .layer(middleware::from_fn_with_state(
+            state.clone(),
+            crate::middleware::authorization,
+        ))
         .layer(cors_layer)
         .with_state(state)
 }
@@ -63,7 +66,7 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
     app
         // control.ts
         .route(
-            "/auth/{providerID}",
+            "/auth/:providerID",
             put(h::control_auth_set).delete(h::control_auth_remove),
         )
         .route("/log", post(h::control_log))
@@ -90,17 +93,17 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
             get(crate::handlers::pty::pty_list).post(crate::handlers::pty::pty_create),
         )
         .route(
-            "/pty/{ptyID}",
+            "/pty/:ptyID",
             get(crate::handlers::pty::pty_get)
                 .put(crate::handlers::pty::pty_update)
                 .delete(crate::handlers::pty::pty_remove),
         )
         .route(
-            "/pty/{ptyID}/connect-token",
+            "/pty/:ptyID/connect-token",
             post(crate::handlers::pty::pty_connect_token),
         )
         .route(
-            "/pty/{ptyID}/connect",
+            "/pty/:ptyID/connect",
             get(crate::handlers::pty::pty_connect),
         )
         // config.ts
@@ -134,7 +137,7 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
         )
         .route("/experimental/session", get(h::experimental_session_list))
         .route(
-            "/experimental/session/{sessionID}/background",
+            "/experimental/session/:sessionID/background",
             post(h::experimental_session_background),
         )
         .route("/experimental/resource", get(h::experimental_resource))
@@ -161,90 +164,90 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
         // mcp.ts
         .route("/mcp", get(h::mcp_status).post(h::mcp_add))
         .route(
-            "/mcp/{name}/auth",
+            "/mcp/:name/auth",
             post(h::mcp_auth_start).delete(h::mcp_auth_remove),
         )
-        .route("/mcp/{name}/auth/callback", post(h::mcp_auth_callback))
+        .route("/mcp/:name/auth/callback", post(h::mcp_auth_callback))
         .route(
-            "/mcp/{name}/auth/authenticate",
+            "/mcp/:name/auth/authenticate",
             post(h::mcp_auth_authenticate),
         )
-        .route("/mcp/{name}/connect", post(h::mcp_connect))
-        .route("/mcp/{name}/disconnect", post(h::mcp_disconnect))
+        .route("/mcp/:name/connect", post(h::mcp_connect))
+        .route("/mcp/:name/disconnect", post(h::mcp_disconnect))
         // project.ts
         .route("/project", get(h::project_list))
         .route("/project/current", get(h::project_current))
         .route("/project/git/init", post(h::project_git_init))
-        .route("/project/{projectID}", patch(h::project_update))
+        .route("/project/:projectID", patch(h::project_update))
         .route(
-            "/project/{projectID}/directories",
+            "/project/:projectID/directories",
             get(h::project_directories),
         )
         // project-copy.ts
         .route(
-            "/experimental/project/{projectID}/copy/generate-name",
+            "/experimental/project/:projectID/copy/generate-name",
             post(h::project_copy_generate_name),
         )
         // permission.ts
         .route("/permission", get(h::permission_list))
-        .route("/permission/{requestID}/reply", post(h::permission_reply))
+        .route("/permission/:requestID/reply", post(h::permission_reply))
         // provider.ts
         .route("/provider", get(h::provider_list))
         .route("/provider/auth", get(h::provider_auth))
         .route(
-            "/provider/{providerID}/oauth/authorize",
+            "/provider/:providerID/oauth/authorize",
             post(h::provider_oauth_authorize),
         )
         .route(
-            "/provider/{providerID}/oauth/callback",
+            "/provider/:providerID/oauth/callback",
             post(h::provider_oauth_callback),
         )
         // question.ts
         .route("/question", get(h::question_list))
-        .route("/question/{requestID}/reply", post(h::question_reply))
-        .route("/question/{requestID}/reject", post(h::question_reject))
+        .route("/question/:requestID/reply", post(h::question_reply))
+        .route("/question/:requestID/reject", post(h::question_reject))
         // session.ts
         .route("/session", get(h::session_list).post(h::session_create))
         .route("/session/status", get(h::session_status))
         .route(
-            "/session/{sessionID}",
+            "/session/:sessionID",
             get(h::session_get)
                 .patch(h::session_update)
                 .delete(h::session_delete),
         )
-        .route("/session/{sessionID}/children", get(h::session_children))
-        .route("/session/{sessionID}/todo", get(h::session_todo))
-        .route("/session/{sessionID}/diff", get(h::session_diff))
+        .route("/session/:sessionID/children", get(h::session_children))
+        .route("/session/:sessionID/todo", get(h::session_todo))
+        .route("/session/:sessionID/diff", get(h::session_diff))
         .route(
-            "/session/{sessionID}/message",
+            "/session/:sessionID/message",
             get(h::session_messages).post(h::session_prompt),
         )
         .route(
-            "/session/{sessionID}/message/{messageID}",
+            "/session/:sessionID/message/:messageID",
             get(h::session_message).delete(h::session_delete_message),
         )
         .route(
-            "/session/{sessionID}/message/{messageID}/part/{partID}",
+            "/session/:sessionID/message/:messageID/part/:partID",
             delete(h::session_delete_part).patch(h::session_update_part),
         )
-        .route("/session/{sessionID}/fork", post(h::session_fork))
-        .route("/session/{sessionID}/abort", post(h::session_abort))
+        .route("/session/:sessionID/fork", post(h::session_fork))
+        .route("/session/:sessionID/abort", post(h::session_abort))
         .route(
-            "/session/{sessionID}/share",
+            "/session/:sessionID/share",
             post(h::session_share).delete(h::session_unshare),
         )
-        .route("/session/{sessionID}/init", post(h::session_init))
-        .route("/session/{sessionID}/summarize", post(h::session_summarize))
+        .route("/session/:sessionID/init", post(h::session_init))
+        .route("/session/:sessionID/summarize", post(h::session_summarize))
         .route(
-            "/session/{sessionID}/prompt_async",
+            "/session/:sessionID/prompt_async",
             post(h::session_prompt_async),
         )
-        .route("/session/{sessionID}/command", post(h::session_command))
-        .route("/session/{sessionID}/shell", post(h::session_shell))
-        .route("/session/{sessionID}/revert", post(h::session_revert))
-        .route("/session/{sessionID}/unrevert", post(h::session_unrevert))
+        .route("/session/:sessionID/command", post(h::session_command))
+        .route("/session/:sessionID/shell", post(h::session_shell))
+        .route("/session/:sessionID/revert", post(h::session_revert))
+        .route("/session/:sessionID/unrevert", post(h::session_unrevert))
         .route(
-            "/session/{sessionID}/permissions/{permissionID}",
+            "/session/:sessionID/permissions/:permissionID",
             post(h::session_permission_respond),
         )
         // sync.ts
@@ -280,7 +283,7 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
             post(h::workspace_sync_list),
         )
         .route("/experimental/workspace/status", get(h::workspace_status))
-        .route("/experimental/workspace/{id}", delete(h::workspace_remove))
+        .route("/experimental/workspace/:id", delete(h::workspace_remove))
         .route("/experimental/workspace/warp", post(h::workspace_warp))
 }
 
@@ -301,94 +304,94 @@ fn wire_v2(app: Router<AppState>) -> Router<AppState> {
             get(h::session::session_list).post(h::session::session_create),
         )
         .route("/api/session/active", get(h::session::session_active))
-        .route("/api/session/{sessionID}", get(h::session::session_get))
+        .route("/api/session/:sessionID", get(h::session::session_get))
         .route(
-            "/api/session/{sessionID}/agent",
+            "/api/session/:sessionID/agent",
             post(h::session::session_switch_agent),
         )
         .route(
-            "/api/session/{sessionID}/model",
+            "/api/session/:sessionID/model",
             post(h::session::session_switch_model),
         )
         .route(
-            "/api/session/{sessionID}/prompt",
+            "/api/session/:sessionID/prompt",
             post(h::session::session_prompt),
         )
         .route(
-            "/api/session/{sessionID}/compact",
+            "/api/session/:sessionID/compact",
             post(h::session::session_compact),
         )
         .route(
-            "/api/session/{sessionID}/wait",
+            "/api/session/:sessionID/wait",
             post(h::session::session_wait),
         )
         .route(
-            "/api/session/{sessionID}/revert/stage",
+            "/api/session/:sessionID/revert/stage",
             post(h::session::session_revert_stage),
         )
         .route(
-            "/api/session/{sessionID}/revert/clear",
+            "/api/session/:sessionID/revert/clear",
             post(h::session::session_revert_clear),
         )
         .route(
-            "/api/session/{sessionID}/revert/commit",
+            "/api/session/:sessionID/revert/commit",
             post(h::session::session_revert_commit),
         )
         .route(
-            "/api/session/{sessionID}/context",
+            "/api/session/:sessionID/context",
             get(h::session::session_context),
         )
         .route(
-            "/api/session/{sessionID}/history",
+            "/api/session/:sessionID/history",
             get(h::session::session_history),
         )
         .route(
-            "/api/session/{sessionID}/event",
+            "/api/session/:sessionID/event",
             get(h::session::session_events),
         )
         .route(
-            "/api/session/{sessionID}/interrupt",
+            "/api/session/:sessionID/interrupt",
             post(h::session::session_interrupt),
         )
         .route(
-            "/api/session/{sessionID}/message",
+            "/api/session/:sessionID/message",
             get(h::message::session_messages),
         )
         .route(
-            "/api/session/{sessionID}/message/{messageID}",
+            "/api/session/:sessionID/message/:messageID",
             get(h::session::session_message),
         )
         // model.ts
         .route("/api/model", get(h::model::model_list))
         // provider.ts
         .route("/api/provider", get(h::provider::provider_list))
-        .route("/api/provider/{providerID}", get(h::provider::provider_get))
+        .route("/api/provider/:providerID", get(h::provider::provider_get))
         // integration.ts
         .route("/api/integration", get(h::integration::integration_list))
         .route(
-            "/api/integration/{integrationID}",
+            "/api/integration/:integrationID",
             get(h::integration::integration_get),
         )
         .route(
-            "/api/integration/{integrationID}/connect/key",
+            "/api/integration/:integrationID/connect/key",
             post(h::integration::integration_connect_key),
         )
         .route(
-            "/api/integration/{integrationID}/connect/oauth",
+            "/api/integration/:integrationID/connect/oauth",
             post(h::integration::integration_connect_oauth),
         )
         .route(
-            "/api/integration/attempt/{attemptID}",
+            "/api/integration/attempt/:attemptID",
             get(h::integration::integration_attempt_status)
                 .delete(h::integration::integration_attempt_cancel),
         )
         .route(
-            "/api/integration/attempt/{attemptID}/complete",
+            "/api/integration/attempt/:attemptID/complete",
             post(h::integration::integration_attempt_complete),
         )
         // credential.ts
         .route(
-            "/api/credential/{credentialID}",
+            "/api/credential/:credentialID",
             patch(h::credential::credential_update).delete(h::credential::credential_remove),
         )
         // permission.ts
@@ -401,24 +404,24 @@ fn wire_v2(app: Router<AppState>) -> Router<AppState> {
             get(h::permission::permission_saved_list),
         )
         .route(
-            "/api/permission/saved/{id}",
+            "/api/permission/saved/:id",
             delete(h::permission::permission_saved_remove),
         )
         .route(
-            "/api/session/{sessionID}/permission",
+            "/api/session/:sessionID/permission",
             post(h::permission::session_permission_create)
                 .get(h::permission::session_permission_list),
         )
         .route(
-            "/api/session/{sessionID}/permission/{requestID}",
+            "/api/session/:sessionID/permission/:requestID",
             get(h::permission::session_permission_get),
         )
         .route(
-            "/api/session/{sessionID}/permission/{requestID}/reply",
+            "/api/session/:sessionID/permission/:requestID/reply",
             post(h::permission::session_permission_reply),
         )
         // fs.ts
-        .route("/api/fs/read/{*path}", get(h::fs::fs_read))
+        .route("/api/fs/read/*rest", get(h::fs::fs_read))
         .route("/api/fs/list", get(h::fs::fs_list))
         .route("/api/fs/find", get(h::fs::fs_find))
         // command.ts
@@ -430,42 +433,42 @@ fn wire_v2(app: Router<AppState>) -> Router<AppState> {
         // pty.ts
         .route("/api/pty", get(h::pty::pty_list).post(h::pty::pty_create))
         .route(
-            "/api/pty/{ptyID}",
+            "/api/pty/:ptyID",
             get(h::pty::pty_get)
                 .put(h::pty::pty_update)
                 .delete(h::pty::pty_remove),
         )
         .route(
-            "/api/pty/{ptyID}/connect-token",
+            "/api/pty/:ptyID/connect-token",
             post(h::pty::pty_connect_token),
         )
-        .route("/api/pty/{ptyID}/connect", get(h::pty::pty_connect))
+        .route("/api/pty/:ptyID/connect", get(h::pty::pty_connect))
         // question.ts
         .route(
             "/api/question/request",
             get(h::question::question_request_list),
         )
         .route(
-            "/api/session/{sessionID}/question",
+            "/api/session/:sessionID/question",
             get(h::question::session_question_list),
         )
         .route(
-            "/api/session/{sessionID}/question/{requestID}/reply",
+            "/api/session/:sessionID/question/:requestID/reply",
             post(h::question::session_question_reply),
         )
         .route(
-            "/api/session/{sessionID}/question/{requestID}/reject",
+            "/api/session/:sessionID/question/:requestID/reject",
             post(h::question::session_question_reject),
         )
         // reference.ts
         .route("/api/reference", get(h::reference::reference_list))
         // project-copy.ts
         .route(
-            "/experimental/project/{projectID}/copy",
+            "/experimental/project/:projectID/copy",
             post(h::project_copy::project_copy_create).delete(h::project_copy::project_copy_remove),
         )
         .route(
-            "/experimental/project/{projectID}/copy/refresh",
+            "/experimental/project/:projectID/copy/refresh",
             post(h::project_copy::project_copy_refresh),
         )
 }

@@ -38,7 +38,7 @@ where
         .keep_alive(
             KeepAlive::new()
                 .interval(Duration::from_secs(15))
-                .text(": heartbeat\n\n"),
+                .text("heartbeat"),
         )
         .into_response();
     for (key, value) in SSE_HEADERS {
@@ -101,4 +101,46 @@ pub fn session_event_stream(state: AppState) -> Response {
 pub fn sse_frame(event: &Event) -> String {
     let data = serde_json::to_string(event).unwrap_or_default();
     format!("event: message\ndata: {data}\n\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::event::event_id;
+
+    #[test]
+    fn frame_uses_event_and_data_lines() {
+        let event = Event {
+            id: event_id(),
+            metadata: None,
+            r#type: "session.next.text.ended".into(),
+            durable: None,
+            location: None,
+            data: serde_json::json!({ "text": "hi" }),
+        };
+        let frame = sse_frame(&event);
+        assert!(frame.starts_with("event: message\n"), "frame: {frame:?}");
+        let json = frame
+            .strip_prefix("event: message\ndata: ")
+            .and_then(|rest| rest.strip_suffix("\n\n"))
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(payload["type"], "session.next.text.ended");
+        assert_eq!(payload["data"]["text"], "hi");
+    }
+
+    #[test]
+    fn connected_event_frame_matches_reference() {
+        let event = server_connected();
+        assert_eq!(event.r#type, "server.connected");
+        let frame = sse_frame(&event);
+        let json = frame
+            .strip_prefix("event: message\ndata: ")
+            .and_then(|rest| rest.strip_suffix("\n\n"))
+            .unwrap();
+        let payload: serde_json::Value = serde_json::from_str(json).unwrap();
+        assert_eq!(payload["type"], "server.connected");
+        assert_eq!(payload["data"], serde_json::json!({}));
+        assert!(payload["id"].as_str().unwrap().starts_with("evt_"));
+    }
 }
