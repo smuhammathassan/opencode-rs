@@ -1013,3 +1013,39 @@ async fn permission_saved_list_filters_by_project() {
         "/api/permission/saved?projectID=global",
     );
 }
+
+#[tokio::test]
+async fn retry_policy_retries_5xx_responses() {
+    let attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let attempts_shared = attempts.clone();
+    let server = MockServer::spawn(Arc::new(move |_: &common::RecordedRequest| {
+        let attempt = attempts_shared.fetch_add(1, Ordering::SeqCst);
+        if attempt == 0 {
+            common::error_response(
+                503,
+                "ServiceUnavailableError",
+                &[("message", &json!("warming up"))],
+            )
+        } else {
+            common::json_response(200, &json!({ "healthy": true }))
+        }
+    }))
+    .await;
+    let client = make_client(&server);
+
+    let options = oc_client::RequestOptions {
+        retry: Some(oc_client::RetryPolicy {
+            max_attempts: 2,
+            base_delay: std::time::Duration::from_millis(5),
+        }),
+        ..Default::default()
+    };
+    let health = client
+        .health
+        .get(Some(&options))
+        .await
+        .expect("health.get after retry");
+    assert!(health.healthy);
+    assert_eq!(attempts.load(Ordering::SeqCst), 2);
+    assert_eq!(server.recorded().len(), 2);
+}
