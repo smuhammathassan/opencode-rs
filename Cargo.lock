@@ -1702,6 +1702,7 @@ dependencies = [
  "oc-llm",
  "oc-plugin",
  "oc-provider",
+ "oc-schema",
  "oc-session",
  "oc-tool",
  "regex",
