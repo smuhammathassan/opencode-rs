@@ -241,10 +241,9 @@ mod tests {
 
     fn assistant_message(content: Vec<v2::AssistantContent>) -> Message {
         Message::Assistant(v2::Assistant {
-            base: v2::MessageBase {
+            base: v2::MessageBaseId {
                 id: "msg_2".into(),
                 metadata: None,
-                time: v2::MessageTime { created: 2 },
             },
             type_: "assistant".into(),
             agent: "primary".into(),

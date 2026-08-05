@@ -72,6 +72,14 @@ pub struct MessageBase {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct MessageBaseId {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub metadata: Option<JsonMap>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ModelRef {
     pub id: String,
     #[serde(rename = "providerID")]
@@ -139,7 +147,7 @@ pub struct System {
 #[serde(rename_all = "camelCase")]
 pub struct Shell {
     #[serde(flatten)]
-    pub base: MessageBase,
+    pub base: MessageBaseId,
     #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     #[serde(rename = "callID")]
@@ -360,7 +368,7 @@ pub struct AssistantTime {
 #[serde(rename_all = "camelCase")]
 pub struct Assistant {
     #[serde(flatten)]
-    pub base: MessageBase,
+    pub base: MessageBaseId,
     #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub agent: String,
