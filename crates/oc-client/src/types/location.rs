@@ -8,7 +8,8 @@ use crate::types::schema::AbsolutePath;
 #[serde(rename_all = "camelCase")]
 pub struct LocationRef {
     pub directory: AbsolutePath,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "workspaceID")]
     pub workspace_id: Option<String>,
 }
 
@@ -17,7 +18,8 @@ pub struct LocationRef {
 #[serde(rename_all = "camelCase")]
 pub struct LocationInfo {
     pub directory: AbsolutePath,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "workspaceID")]
     pub workspace_id: Option<String>,
     pub project: ProjectRef,
 }
@@ -34,9 +36,9 @@ pub struct ProjectRef {
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LocationQueryRef {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub directory: Option<AbsolutePath>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace: Option<String>,
 }
 

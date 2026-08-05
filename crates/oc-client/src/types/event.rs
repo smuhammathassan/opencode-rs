@@ -22,6 +22,7 @@ use std::collections::HashMap;
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DurableInfo {
+    #[serde(rename = "aggregateID")]
     pub aggregate_id: String,
     pub seq: i64,
     pub version: i64,
@@ -73,7 +74,9 @@ macro_rules! decode_payload {
 #[serde(rename_all = "camelCase")]
 pub struct AgentSwitchedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub agent: String,
 }
@@ -82,7 +85,9 @@ pub struct AgentSwitchedData {
 #[serde(rename_all = "camelCase")]
 pub struct ModelSwitchedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub model: ModelRef,
 }
@@ -91,6 +96,7 @@ pub struct ModelSwitchedData {
 #[serde(rename_all = "camelCase")]
 pub struct MovedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub location: LocationRef,
     #[serde(default)]
@@ -101,7 +107,9 @@ pub struct MovedData {
 #[serde(rename_all = "camelCase")]
 pub struct PromptEventData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub prompt: crate::types::prompt::Prompt,
     pub delivery: Delivery,
@@ -111,7 +119,9 @@ pub struct PromptEventData {
 #[serde(rename_all = "camelCase")]
 pub struct ContextUpdatedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub text: String,
 }
@@ -120,7 +130,9 @@ pub struct ContextUpdatedData {
 #[serde(rename_all = "camelCase")]
 pub struct SyntheticData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub text: String,
 }
@@ -129,8 +141,11 @@ pub struct SyntheticData {
 #[serde(rename_all = "camelCase")]
 pub struct ShellStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub command: String,
 }
@@ -139,7 +154,9 @@ pub struct ShellStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct ShellEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub output: String,
 }
@@ -148,7 +165,9 @@ pub struct ShellEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct StepStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
     pub agent: String,
     pub model: ModelRef,
@@ -160,7 +179,9 @@ pub struct StepStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct StepEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
     pub finish: String,
     pub cost: f64,
@@ -175,7 +196,9 @@ pub struct StepEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct StepFailedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
     pub error: SessionUnknownError,
 }
@@ -184,8 +207,11 @@ pub struct StepFailedData {
 #[serde(rename_all = "camelCase")]
 pub struct TextStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "textID")]
     pub text_id: String,
 }
 
@@ -193,8 +219,11 @@ pub struct TextStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct TextEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "textID")]
     pub text_id: String,
     pub text: String,
 }
@@ -203,8 +232,11 @@ pub struct TextEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct TextDeltaData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "textID")]
     pub text_id: String,
     pub delta: String,
 }
@@ -213,8 +245,11 @@ pub struct TextDeltaData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolInputStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub name: String,
 }
@@ -223,8 +258,11 @@ pub struct ToolInputStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolInputEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub text: String,
 }
@@ -233,8 +271,11 @@ pub struct ToolInputEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolInputDeltaData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub delta: String,
 }
@@ -251,8 +292,11 @@ pub struct ToolProvider {
 #[serde(rename_all = "camelCase")]
 pub struct ToolCalledData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub tool: String,
     pub input: HashMap<String, JsonValue>,
@@ -263,8 +307,11 @@ pub struct ToolCalledData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolProgressData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub structured: HashMap<String, JsonValue>,
     pub content: Vec<ToolContent>,
@@ -274,8 +321,11 @@ pub struct ToolProgressData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolSuccessData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub structured: HashMap<String, JsonValue>,
     pub content: Vec<ToolContent>,
@@ -290,8 +340,11 @@ pub struct ToolSuccessData {
 #[serde(rename_all = "camelCase")]
 pub struct ToolFailedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
     pub error: SessionUnknownError,
     #[serde(default)]
@@ -303,8 +356,11 @@ pub struct ToolFailedData {
 #[serde(rename_all = "camelCase")]
 pub struct ReasoningStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "reasoningID")]
     pub reasoning_id: String,
     #[serde(default)]
     pub provider_metadata: Option<HashMap<String, HashMap<String, JsonValue>>>,
@@ -314,8 +370,11 @@ pub struct ReasoningStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct ReasoningEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "reasoningID")]
     pub reasoning_id: String,
     pub text: String,
     #[serde(default)]
@@ -326,8 +385,11 @@ pub struct ReasoningEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct ReasoningDeltaData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "assistantMessageID")]
     pub assistant_message_id: String,
+    #[serde(rename = "reasoningID")]
     pub reasoning_id: String,
     pub delta: String,
 }
@@ -352,6 +414,7 @@ pub struct RetryError {
 #[serde(rename_all = "camelCase")]
 pub struct RetriedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub attempt: f64,
     pub error: RetryError,
@@ -361,7 +424,9 @@ pub struct RetriedData {
 #[serde(rename_all = "camelCase")]
 pub struct CompactionStartedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub reason: CompactionReason,
 }
@@ -370,7 +435,9 @@ pub struct CompactionStartedData {
 #[serde(rename_all = "camelCase")]
 pub struct CompactionDeltaData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub text: String,
 }
@@ -379,7 +446,9 @@ pub struct CompactionDeltaData {
 #[serde(rename_all = "camelCase")]
 pub struct CompactionEndedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
     pub reason: CompactionReason,
     pub text: String,
@@ -390,6 +459,7 @@ pub struct CompactionEndedData {
 #[serde(rename_all = "camelCase")]
 pub struct RevertStagedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub revert: RevertState,
 }
@@ -398,6 +468,7 @@ pub struct RevertStagedData {
 #[serde(rename_all = "camelCase")]
 pub struct RevertClearedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
 }
 
@@ -405,7 +476,9 @@ pub struct RevertClearedData {
 #[serde(rename_all = "camelCase")]
 pub struct RevertCommittedData {
     pub timestamp: DateTimeMillis,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "messageID")]
     pub message_id: String,
 }
 
@@ -786,6 +859,7 @@ pub struct FileWatcherData {
 #[serde(rename_all = "camelCase")]
 pub struct PermissionAskedData {
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub action: String,
     pub resources: Vec<String>,
@@ -801,7 +875,9 @@ pub struct PermissionAskedData {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionRepliedData {
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "requestID")]
     pub request_id: String,
     pub reply: PermissionReply,
 }
@@ -811,6 +887,7 @@ pub struct PermissionRepliedData {
 #[serde(rename_all = "camelCase")]
 pub struct QuestionAskedData {
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub questions: Vec<QuestionInfo>,
     #[serde(default)]
@@ -821,7 +898,9 @@ pub struct QuestionAskedData {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuestionRepliedData {
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "requestID")]
     pub request_id: String,
     pub answers: Vec<Vec<String>>,
 }
@@ -830,7 +909,9 @@ pub struct QuestionRepliedData {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuestionRejectedData {
+    #[serde(rename = "sessionID")]
     pub session_id: String,
+    #[serde(rename = "requestID")]
     pub request_id: String,
 }
 
@@ -847,6 +928,7 @@ pub struct TodoInfo {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TodoUpdatedData {
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub todos: Vec<TodoInfo>,
 }
@@ -1301,6 +1383,7 @@ pub struct PluginAddedData {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ProjectDirectoriesData {
+    #[serde(rename = "projectID")]
     pub project_id: String,
 }
 

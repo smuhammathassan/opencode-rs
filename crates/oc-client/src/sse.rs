@@ -117,8 +117,8 @@ pub(crate) fn sse_stream<T: DeserializeOwned + 'static>(
     transport: Transport,
     desc: RequestDescriptor,
     options: Option<RequestOptions>,
-) -> impl Stream<Item = Result<T, Error>> {
-    futures::stream::unfold(
+) -> std::pin::Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'static>> {
+    Box::pin(futures::stream::unfold(
         SsePhase::Pending {
             transport,
             desc,
@@ -153,5 +153,5 @@ pub(crate) fn sse_stream<T: DeserializeOwned + 'static>(
                 }
             }
         },
-    )
+    ))
 }

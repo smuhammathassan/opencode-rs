@@ -37,9 +37,9 @@ pub enum IntegrationPrompt {
     Text {
         key: String,
         message: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         placeholder: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         when: Option<IntegrationWhen>,
     },
     #[serde(rename = "select")]
@@ -47,7 +47,7 @@ pub enum IntegrationPrompt {
         key: String,
         message: String,
         options: Vec<IntegrationOption>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         when: Option<IntegrationWhen>,
     },
 }
@@ -57,7 +57,7 @@ pub enum IntegrationPrompt {
 pub struct IntegrationOption {
     pub label: String,
     pub value: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub hint: Option<String>,
 }
 
@@ -69,12 +69,12 @@ pub enum IntegrationMethod {
     Oauth {
         id: String,
         label: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         prompts: Option<Vec<IntegrationPrompt>>,
     },
     #[serde(rename = "key")]
     Key {
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         label: Option<String>,
     },
     #[serde(rename = "env")]
@@ -98,6 +98,7 @@ pub struct IntegrationInfo {
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct IntegrationAttempt {
+    #[serde(rename = "attemptID")]
     pub attempt_id: String,
     pub url: String,
     pub instructions: String,

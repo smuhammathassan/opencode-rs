@@ -28,7 +28,9 @@ pub enum PermissionReply {
 pub struct PermissionSource {
     #[serde(rename = "type")]
     pub kind: PermissionSourceType,
+    #[serde(rename = "messageID")]
     pub message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
 }
 
@@ -43,6 +45,7 @@ pub enum PermissionSourceType {
 #[serde(rename_all = "camelCase")]
 pub struct PermissionRequest {
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub action: String,
     pub resources: Vec<String>,
@@ -59,17 +62,17 @@ pub struct PermissionRequest {
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionCreatePayload {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
     pub action: String,
     pub resources: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub save: Option<Vec<String>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<HashMap<String, JsonValue>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<PermissionSource>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
 }
 

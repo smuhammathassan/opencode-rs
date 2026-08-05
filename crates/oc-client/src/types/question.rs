@@ -26,7 +26,9 @@ pub struct QuestionInfo {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QuestionTool {
+    #[serde(rename = "messageID")]
     pub message_id: String,
+    #[serde(rename = "callID")]
     pub call_id: String,
 }
 
@@ -35,6 +37,7 @@ pub struct QuestionTool {
 #[serde(rename_all = "camelCase")]
 pub struct QuestionRequest {
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub questions: Vec<QuestionInfo>,
     #[serde(default)]

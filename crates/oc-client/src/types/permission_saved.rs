@@ -6,6 +6,7 @@
 #[serde(rename_all = "camelCase")]
 pub struct PermissionSavedInfo {
     pub id: String,
+    #[serde(rename = "projectID")]
     pub project_id: String,
     pub action: String,
     pub resource: String,

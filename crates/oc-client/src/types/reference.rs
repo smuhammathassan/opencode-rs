@@ -10,19 +10,19 @@ pub enum ReferenceSource {
     #[serde(rename = "local")]
     Local {
         path: AbsolutePath,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         description: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         hidden: Option<bool>,
     },
     #[serde(rename = "git")]
     Git {
         repository: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         branch: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         description: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         hidden: Option<bool>,
     },
 }

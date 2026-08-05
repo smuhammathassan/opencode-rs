@@ -10,8 +10,9 @@ use std::collections::HashMap;
 #[serde(rename_all = "camelCase")]
 pub struct ModelRef {
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
 }
 
@@ -23,15 +24,15 @@ pub enum ModelApi {
     Aisdk {
         id: String,
         package: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         settings: Option<HashMap<String, JsonValue>>,
     },
     #[serde(rename = "native")]
     Native {
         id: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
         settings: HashMap<String, JsonValue>,
     },
@@ -50,7 +51,7 @@ pub struct ModelCapabilities {
 pub struct ModelRequest {
     pub headers: HashMap<String, String>,
     pub body: HashMap<String, JsonValue>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
 }
 
@@ -73,7 +74,7 @@ pub struct ModelTier {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ModelCost {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tier: Option<ModelTier>,
     pub input: f64,
     pub output: f64,
@@ -93,7 +94,7 @@ pub enum ModelStatus {
 #[serde(rename_all = "camelCase")]
 pub struct ModelLimit {
     pub context: i64,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub input: Option<i64>,
     pub output: i64,
 }
@@ -103,6 +104,7 @@ pub struct ModelLimit {
 #[serde(rename_all = "camelCase")]
 pub struct ModelInfo {
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(default)]
     pub family: Option<String>,

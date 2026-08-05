@@ -11,7 +11,9 @@ use crate::types::schema::{DateTimeMillis, Order, RelativePath};
 pub struct SessionInfo {
     pub id: String,
     #[serde(default)]
+    #[serde(rename = "parentID")]
     pub parent_id: Option<String>,
+    #[serde(rename = "projectID")]
     pub project_id: String,
     #[serde(default)]
     pub agent: Option<String>,
@@ -58,6 +60,7 @@ pub struct SessionTime {
 pub struct SessionLocation {
     pub directory: String,
     #[serde(default)]
+    #[serde(rename = "workspaceID")]
     pub workspace_id: Option<String>,
 }
 
@@ -193,13 +196,13 @@ pub struct SessionsHistory {
 #[derive(Debug, Clone, Default, PartialEq, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionsCreateInput {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agent: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelRef>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub location: Option<SessionCreateLocation>,
 }
 
@@ -208,6 +211,7 @@ pub struct SessionsCreateInput {
 #[serde(rename_all = "camelCase")]
 pub struct SessionCreateLocation {
     pub directory: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "workspaceID")]
     pub workspace_id: Option<String>,
 }

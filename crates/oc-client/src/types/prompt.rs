@@ -16,11 +16,11 @@ pub struct PromptSource {
 pub struct PromptFileAttachment {
     pub uri: String,
     pub mime: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<PromptSource>,
 }
 
@@ -29,11 +29,11 @@ pub struct PromptFileAttachment {
 #[serde(rename_all = "camelCase")]
 pub struct PromptInputFileAttachment {
     pub uri: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub name: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<PromptSource>,
 }
 
@@ -42,7 +42,7 @@ pub struct PromptInputFileAttachment {
 #[serde(rename_all = "camelCase")]
 pub struct PromptAgentAttachment {
     pub name: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub source: Option<PromptSource>,
 }
 
@@ -51,9 +51,9 @@ pub struct PromptAgentAttachment {
 #[serde(rename_all = "camelCase")]
 pub struct Prompt {
     pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<PromptFileAttachment>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agents: Option<Vec<PromptAgentAttachment>>,
 }
 
@@ -62,8 +62,8 @@ pub struct Prompt {
 #[serde(rename_all = "camelCase")]
 pub struct PromptInput {
     pub text: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<PromptInputFileAttachment>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub agents: Option<Vec<PromptAgentAttachment>>,
 }

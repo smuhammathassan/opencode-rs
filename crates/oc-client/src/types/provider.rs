@@ -20,14 +20,14 @@ pub enum ProviderApi {
     #[serde(rename = "aisdk")]
     Aisdk {
         package: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         settings: Option<HashMap<String, JsonValue>>,
     },
     #[serde(rename = "native")]
     Native {
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         url: Option<String>,
         settings: HashMap<String, JsonValue>,
     },
@@ -39,6 +39,7 @@ pub enum ProviderApi {
 pub struct ProviderInfo {
     pub id: String,
     #[serde(default)]
+    #[serde(rename = "integrationID")]
     pub integration_id: Option<String>,
     pub name: String,
     #[serde(default)]

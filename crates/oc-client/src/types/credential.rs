@@ -15,13 +15,13 @@ pub enum CredentialValue {
         refresh: String,
         access: String,
         expires: u64,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         metadata: Option<HashMap<String, JsonValue>>,
     },
     #[serde(rename = "key")]
     Key {
         key: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         metadata: Option<HashMap<String, JsonValue>>,
     },
 }

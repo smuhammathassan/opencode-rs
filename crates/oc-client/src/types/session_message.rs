@@ -48,7 +48,7 @@ pub enum ToolContent {
     File {
         uri: String,
         mime: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         name: Option<String>,
     },
 }
@@ -68,13 +68,17 @@ pub enum ToolState {
     #[serde(rename = "completed")]
     Completed {
         input: HashMap<String, JsonValue>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         attachments: Option<Vec<PromptFileAttachment>>,
         content: Vec<ToolContent>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            rename = "outputPaths"
+        )]
         output_paths: Option<Vec<String>>,
         structured: HashMap<String, JsonValue>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         result: Option<JsonValue>,
     },
     #[serde(rename = "error")]
@@ -83,7 +87,7 @@ pub enum ToolState {
         content: Vec<ToolContent>,
         structured: HashMap<String, JsonValue>,
         error: SessionUnknownError,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         result: Option<JsonValue>,
     },
 }
@@ -112,9 +116,9 @@ pub enum AssistantToolType {
 #[serde(rename_all = "camelCase")]
 pub struct AssistantToolProvider {
     pub executed: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<HashMap<String, HashMap<String, JsonValue>>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub result_metadata: Option<HashMap<String, HashMap<String, JsonValue>>>,
 }
 
@@ -122,11 +126,11 @@ pub struct AssistantToolProvider {
 #[serde(rename_all = "camelCase")]
 pub struct AssistantToolTime {
     pub created: DateTimeMillis,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ran: Option<DateTimeMillis>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<DateTimeMillis>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub pruned: Option<DateTimeMillis>,
 }
 
@@ -140,9 +144,13 @@ pub enum AssistantContent {
     Reasoning {
         id: String,
         text: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            rename = "providerMetadata"
+        )]
         provider_metadata: Option<HashMap<String, HashMap<String, JsonValue>>>,
-        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(default, skip_serializing_if = "Option::is_none")]
         time: Option<MessageTimeCompleted>,
     },
     #[serde(rename = "tool")]
@@ -154,7 +162,7 @@ pub enum AssistantContent {
 #[serde(rename_all = "camelCase")]
 pub struct MessageTimeCompleted {
     pub created: DateTimeMillis,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed: Option<DateTimeMillis>,
 }
 
@@ -276,11 +284,11 @@ pub enum SessionMessage {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistantSnapshot {
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub start: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub end: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<String>>,
 }
 

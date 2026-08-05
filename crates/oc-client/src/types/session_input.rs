@@ -10,6 +10,7 @@ use crate::types::schema::{DateTimeMillis, Delivery};
 pub struct SessionInputAdmitted {
     pub admitted_seq: u64,
     pub id: String,
+    #[serde(rename = "sessionID")]
     pub session_id: String,
     pub prompt: Prompt,
     pub delivery: Delivery,

@@ -695,7 +695,8 @@ impl SessionGroup {
         &self,
         input: &SessionsEventsInput,
         options: Option<RequestOptions>,
-    ) -> impl Stream<Item = Result<SessionDurableEvent, Error>> {
+    ) -> std::pin::Pin<Box<dyn Stream<Item = Result<SessionDurableEvent, Error>> + Send + 'static>>
+    {
         let mut query = Vec::new();
         q(&mut query, "after", input.after.map(JsonValue::from));
         sse_stream(
@@ -1573,7 +1574,9 @@ impl EventGroup {
     pub fn subscribe(
         &self,
         options: Option<RequestOptions>,
-    ) -> impl Stream<Item = Result<crate::types::event::OpenCodeEvent, Error>> {
+    ) -> std::pin::Pin<
+        Box<dyn Stream<Item = Result<crate::types::event::OpenCodeEvent, Error>> + Send + 'static>,
+    > {
         sse_stream(
             self.transport.clone(),
             RequestDescriptor {
