@@ -1,0 +1,13 @@
+opencode-rs differential benchmark — 2026-08-05T08:32:26Z
+machine: x86_64, 8 cores, 15Gi RAM
+stock: 180381824 bytes | opencode-rs: 8054560 bytes
+--------------------------------------------------------------------------------
+cold-start --version         /root/.opencode/bin/opencode avg    981 ms   peak RSS    185 MB
+cold-start --version         /root/opencode-rs/target/release/opencode avg      7 ms   peak RSS      4 MB
+--help                       /root/.opencode/bin/opencode avg   1003 ms   peak RSS    197 MB
+--help                       /root/opencode-rs/target/release/opencode avg      9 ms   peak RSS      4 MB
+run --help                   /root/.opencode/bin/opencode avg   1128 ms   peak RSS    193 MB
+run --help                   /root/opencode-rs/target/release/opencode avg     10 ms   peak RSS      4 MB
+models --help                /root/.opencode/bin/opencode avg   1044 ms   peak RSS    186 MB
+models --help                /root/opencode-rs/target/release/opencode avg      8 ms   peak RSS      4 MB
+--------------------------------------------------------------------------------
