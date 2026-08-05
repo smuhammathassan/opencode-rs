@@ -158,7 +158,10 @@ impl SessionHistory for MockHistory {
 struct MockAgents;
 
 impl Agents for MockAgents {
-    fn select(&self, _id: &str) -> Pin<Box<dyn Future<Output = AgentSelection> + Send + '_>> {
+    fn select(
+        &self,
+        _id: Option<&str>,
+    ) -> Pin<Box<dyn Future<Output = AgentSelection> + Send + '_>> {
         Box::pin(async {
             AgentSelection {
                 id: "build".into(),

@@ -307,11 +307,7 @@ impl SessionRunnerService {
             return Err(TurnFailure::Interrupted);
         }
 
-        let agent = self
-            .deps
-            .agents
-            .select(session.agent.as_deref().unwrap_or("build"))
-            .await;
+        let agent = self.deps.agents.select(session.agent.as_deref()).await;
 
         let system_context = self.load_system_context(&agent.id).await;
         let initialized = self
@@ -774,7 +770,9 @@ fn turn_error(error: PublishError) -> TurnFailure {
 pub fn is_ses_hex_id(session_id: &str) -> bool {
     session_id.len() == 68
         && session_id.starts_with("ses_")
-        && session_id[4..].chars().all(|c| c.is_ascii_hexdigit())
+        && session_id[4..]
+            .chars()
+            .all(|c| c.is_ascii_lowercase() && c.is_ascii_hexdigit())
 }
 
 /// The prompt cache key: `ses_`-prefixed 64-hex ids lose the prefix.

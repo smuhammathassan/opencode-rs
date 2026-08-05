@@ -205,10 +205,11 @@ pub struct AgentInfo {
     pub permissions: Vec<String>,
 }
 
-/// `AgentV2` — selects an agent by id.
+/// `AgentV2` — selects an agent by id (or the default when absent).
 /// /// From reference/packages/core/src/agent.ts
 pub trait Agents: Send + Sync {
-    fn select(&self, id: &str) -> Pin<Box<dyn Future<Output = AgentSelection> + Send + '_>>;
+    fn select(&self, id: Option<&str>)
+        -> Pin<Box<dyn Future<Output = AgentSelection> + Send + '_>>;
 }
 
 /// Runtime Location identity.

@@ -301,3 +301,100 @@ pub struct Prompt {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agents: Option<Vec<super::message::AgentAttachment>>,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn step_started_json_matches_reference_shape() {
+        let event = SessionEvent::StepStarted {
+            timestamp: "2026-01-01T00:00:00.000Z".into(),
+            session_id: "ses_abc".into(),
+            assistant_message_id: "msg_1".into(),
+            agent: "build".into(),
+            model: ModelRef {
+                id: "gpt-4o".into(),
+                provider_id: "openai".into(),
+                variant: Some("fast".into()),
+            },
+            snapshot: Some("snap".into()),
+        };
+        let value = serde_json::to_value(event).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "type": "session.next.step.started",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "sessionID": "ses_abc",
+                "assistantMessageID": "msg_1",
+                "agent": "build",
+                "model": { "id": "gpt-4o", "providerID": "openai", "variant": "fast" },
+                "snapshot": "snap",
+            })
+        );
+    }
+
+    #[test]
+    fn tool_success_json_matches_reference_shape() {
+        let event = SessionEvent::ToolSuccess {
+            timestamp: "2026-01-01T00:00:00.000Z".into(),
+            session_id: "ses_abc".into(),
+            assistant_message_id: "msg_1".into(),
+            call_id: "call_1".into(),
+            structured: serde_json::json!({ "path": "a" })
+                .as_object()
+                .unwrap()
+                .clone(),
+            content: vec![ToolContent::text("file body")],
+            output_paths: Some(vec!["out/1".into()]),
+            result: Some(ToolResultValue::Text {
+                value: serde_json::json!("file body"),
+            }),
+            provider: Provider::new(false, None),
+        };
+        let value = serde_json::to_value(event).unwrap();
+        assert_eq!(
+            value,
+            serde_json::json!({
+                "type": "session.next.tool.success",
+                "timestamp": "2026-01-01T00:00:00.000Z",
+                "sessionID": "ses_abc",
+                "assistantMessageID": "msg_1",
+                "callID": "call_1",
+                "structured": { "path": "a" },
+                "content": [{ "type": "text", "text": "file body" }],
+                "outputPaths": ["out/1"],
+                "result": { "type": "text", "value": "file body" },
+                "provider": { "executed": false },
+            })
+        );
+    }
+
+    #[test]
+    fn absent_optional_fields_are_omitted() {
+        let event = SessionEvent::StepEnded {
+            timestamp: "2026-01-01T00:00:00.000Z".into(),
+            session_id: "ses_abc".into(),
+            assistant_message_id: "msg_1".into(),
+            finish: "stop".into(),
+            cost: 0.0,
+            tokens: Tokens {
+                input: 1.0,
+                output: 2.0,
+                reasoning: 0.0,
+                cache: CacheTokens {
+                    read: 0.0,
+                    write: 0.0,
+                },
+            },
+            snapshot: None,
+            files: None,
+        };
+        let value = serde_json::to_value(event).unwrap();
+        let object = value.as_object().unwrap();
+        assert!(!object.contains_key("snapshot"));
+        assert!(!object.contains_key("files"));
+        assert_eq!(object["tokens"]["cache"]["read"], serde_json::json!(0.0));
+    }
+}
