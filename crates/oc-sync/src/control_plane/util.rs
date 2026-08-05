@@ -21,16 +21,25 @@ pub enum WaitEventError {
 }
 
 /// `waitEvent` from reference/packages/opencode/src/control-plane/util.ts: wait
-/// (up to `timeout`) for a global event matching `predicate`.
+/// (up to `timeout`) for a global event matching `predicate`. An optional
+/// `CancellationToken` mirrors the reference `AbortSignal`.
 pub async fn wait_event(
     bus: &GlobalBus,
     timeout: Duration,
+    signal: Option<tokio_util::sync::CancellationToken>,
     predicate: impl Fn(&GlobalEvent) -> bool,
 ) -> Result<(), WaitEventError> {
+    if signal.as_ref().is_some_and(|token| token.is_cancelled()) {
+        return Err(WaitEventError::Aborted);
+    }
     let mut rx = bus.subscribe();
     tokio::time::timeout(timeout, async {
         loop {
-            match rx.recv().await {
+            let recv = tokio::select! {
+                event = rx.recv() => event,
+                _ = cancelled_guard(&signal) => return Err(WaitEventError::Aborted),
+            };
+            match recv {
                 Ok(event) => {
                     let matched = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                         predicate(&event)
@@ -50,6 +59,13 @@ pub async fn wait_event(
     })
     .await
     .map_err(|_| WaitEventError::TimedOut)?
+}
+
+async fn cancelled_guard(token: &Option<tokio_util::sync::CancellationToken>) {
+    match token {
+        Some(token) => token.cancelled().await,
+        None => std::future::pending::<()>().await,
+    }
 }
 
 /// `route(url, path)` from reference/packages/opencode/src/control-plane/workspace.ts:
@@ -102,7 +118,7 @@ mod tests {
                 payload: serde_json::json!({ "type": "workspace.status", "properties": { "workspaceID": "wrk_1", "status": "connected" } }),
             });
         });
-        let result = wait_event(&bus, Duration::from_secs(1), |event| {
+        let result = wait_event(&bus, Duration::from_secs(1), None, |event| {
             event.workspace.as_deref() == Some("wrk_1")
                 && event.payload.get("type").and_then(|t| t.as_str()) == Some("workspace.status")
         })
@@ -114,7 +130,16 @@ mod tests {
     #[tokio::test]
     async fn wait_event_times_out() {
         let bus = GlobalBus::new();
-        let result = wait_event(&bus, Duration::from_millis(20), |_| false).await;
+        let result = wait_event(&bus, Duration::from_millis(20), None, |_| false).await;
         assert_eq!(result, Err(WaitEventError::TimedOut));
+    }
+
+    #[tokio::test]
+    async fn wait_event_aborts_on_cancellation() {
+        let bus = GlobalBus::new();
+        let token = tokio_util::sync::CancellationToken::new();
+        token.cancel();
+        let result = wait_event(&bus, Duration::from_secs(1), Some(token), |_| true).await;
+        assert_eq!(result, Err(WaitEventError::Aborted));
     }
 }

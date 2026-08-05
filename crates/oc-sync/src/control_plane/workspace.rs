@@ -378,7 +378,7 @@ impl Workspace {
                 }
                 false
             };
-            let _ = wait_event(&bus, TIMEOUT, predicate).await;
+            let _ = wait_event(&bus, TIMEOUT, None, predicate).await;
         };
         let sync = self.start_sync(info.clone());
         let _ = tokio::join!(wait, sync);
@@ -694,11 +694,13 @@ impl Workspace {
                 != Some(ConnectionStatus::Error)
     }
 
-    /// `waitForSync` from the reference.
+    /// `waitForSync` from the reference. `signal` mirrors the reference's
+    /// `AbortSignal`.
     pub async fn wait_for_sync(
         &self,
         workspace_id: &str,
         state: HashMap<String, u64>,
+        signal: Option<tokio_util::sync::CancellationToken>,
         timeout: Option<Duration>,
     ) -> Result<(), WaitForSyncError> {
         if self.synced(&state) {
@@ -710,7 +712,7 @@ impl Workspace {
                 event.workspace.as_deref() == Some(workspace_id)
                     || event.payload.get("type").and_then(|t| t.as_str()) == Some("sync")
             };
-            match wait_event(self.bus(), timeout, predicate).await {
+            match wait_event(self.bus(), timeout, signal.clone(), predicate).await {
                 Ok(()) => {
                     if self.synced(&state) {
                         return Ok(());

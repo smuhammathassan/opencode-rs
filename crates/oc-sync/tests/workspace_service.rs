@@ -279,7 +279,7 @@ async fn wait_for_sync_succeeds_when_already_synced() {
         )
         .unwrap();
     let state = HashMap::from([("ses_1".to_string(), 0u64)]);
-    let result = workspace.wait_for_sync("wrk_1", state, None).await;
+    let result = workspace.wait_for_sync("wrk_1", state, None, None).await;
     assert!(result.is_ok());
 }
 
@@ -288,7 +288,7 @@ async fn wait_for_sync_times_out_on_missing_cursor() {
     let (workspace, _, _, _, _, _project_id) = setup(true);
     let state = HashMap::from([("ses_1".to_string(), 5u64)]);
     let result = workspace
-        .wait_for_sync("wrk_1", state, Some(Duration::from_millis(20)))
+        .wait_for_sync("wrk_1", state, None, Some(Duration::from_millis(20)))
         .await;
     assert!(result.is_err());
 }

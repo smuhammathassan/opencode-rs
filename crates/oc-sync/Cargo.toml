@@ -18,7 +18,7 @@ chrono = { workspace = true }
 url = { workspace = true }
 reqwest = { workspace = true }
 async-trait = "0.1"
-tokio-util = { version = "0.7", features = ["io"] }
+tokio-util = { version = "0.7", features = ["io", "rt"] }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
