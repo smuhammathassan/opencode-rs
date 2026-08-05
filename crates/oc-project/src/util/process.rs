@@ -79,6 +79,26 @@ pub async fn run(program: &str, args: &[&str], options: SpawnOptions) -> std::io
     })
 }
 
+/// `which` from reference/packages/core/src/util/which: returns true when the
+/// binary is resolvable on PATH.
+pub fn which(binary: &str) -> bool {
+    let path = std::env::var_os("PATH").unwrap_or_default();
+    let is_executable = |candidate: &std::path::Path| {
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            candidate.is_file() && candidate.metadata().map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+        }
+        #[cfg(not(unix))]
+        {
+            candidate.is_file()
+        }
+    };
+    std::env::split_paths(&path)
+        .map(|dir| dir.join(binary))
+        .any(|candidate| is_executable(&candidate))
+}
+
 async fn read_capped<R: AsyncRead + Unpin>(mut reader: R, cap: Option<usize>) -> (Vec<u8>, bool) {
     match cap {
         None => {

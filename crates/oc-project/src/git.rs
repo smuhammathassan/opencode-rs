@@ -418,4 +418,34 @@ impl Git {
     pub async fn apply_patch(&self, cwd: &str, patch: &str) -> Result {
         self.run(&["apply", "-"], &Options { cwd: cwd.to_string(), stdin: Some(patch.to_string()), ..Default::default() }).await
     }
+
+    /// `Git.remote.get` from reference/packages/core/src/git.ts.
+    pub async fn remote_get_url(&self, cwd: &str, name: &str) -> Option<String> {
+        let result = self.run(&["remote", "get-url", name], &Options { cwd: cwd.to_string(), ..Default::default() }).await;
+        if result.exit_code != 0 {
+            return None;
+        }
+        let text = result.text().trim().to_string();
+        if text.is_empty() {
+            None
+        } else {
+            Some(text)
+        }
+    }
+
+    /// `Git.history.rootCommits` from reference/packages/core/src/git.ts.
+    pub async fn root_commits(&self, cwd: &str) -> Vec<String> {
+        let result = self.run(&["rev-list", "--max-parents=0", "HEAD"], &Options { cwd: cwd.to_string(), ..Default::default() }).await;
+        if result.exit_code != 0 {
+            return Vec::new();
+        }
+        let mut commits: Vec<String> = result
+            .text()
+            .split('\n')
+            .map(|item| item.trim().to_string())
+            .filter(|item| !item.is_empty())
+            .collect();
+        commits.sort();
+        commits
+    }
 }

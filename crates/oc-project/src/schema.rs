@@ -118,6 +118,14 @@ impl ProjectNotFoundError {
     }
 }
 
+impl std::fmt::Display for ProjectNotFoundError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}: {}", self.tag, self.projectID)
+    }
+}
+
+impl std::error::Error for ProjectNotFoundError {}
+
 // ---------------------------------------------------------------------------
 // Vcs (reference/packages/opencode/src/project/vcs.ts)
 // ---------------------------------------------------------------------------
@@ -185,8 +193,8 @@ pub enum PatchApplyReason {
 }
 
 impl PatchApplyError {
-    pub fn new(message: String, reason: PatchApplyReason) -> Self {
-        PatchApplyError { tag: "VcsPatchApplyError".to_string(), message, reason }
+    pub fn new(message: impl Into<String>, reason: PatchApplyReason) -> Self {
+        PatchApplyError { tag: "VcsPatchApplyError".to_string(), message: message.into(), reason }
     }
 }
 
@@ -365,6 +373,7 @@ pub const WORKTREE_READY: &str = "worktree.ready";
 pub const WORKTREE_FAILED: &str = "worktree.failed";
 pub const VCS_BRANCH_UPDATED: &str = "vcs.branch.updated";
 pub const COMMAND_EXECUTED: &str = "command.executed";
+pub const WATCHER_UPDATED: &str = "file.watcher.updated";
 
 #[cfg(test)]
 mod tests {

@@ -1,4 +1,6 @@
 pub mod bus;
+pub mod config;
+pub mod diff;
 pub mod fs;
 pub mod global;
 pub mod hash;
