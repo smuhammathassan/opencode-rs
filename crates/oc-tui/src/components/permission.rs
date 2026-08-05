@@ -1,9 +1,9 @@
 //! Permission prompt rendering.
 //! From reference/packages/tui/src/routes/session/permission.tsx
 
-use ratatui::style::{Color, Modifier, Style};
+use ratatui::style::{Modifier, Style};
 
-use crate::components::text::{pad_to, wrap_plain, StyledLine};
+use crate::components::text::{wrap_plain, StyledLine};
 use crate::theme::{selected_foreground, Theme};
 use crate::types::PermissionRequest;
 use crate::util::path_format::format_path;

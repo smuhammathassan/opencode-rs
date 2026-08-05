@@ -38,6 +38,8 @@ pub trait SdkClient: Send + Sync {
     fn session_command(&self, input: CommandInput) -> BoxFuture<Result<()>>;
     fn session_shell(&self, input: ShellInput) -> BoxFuture<Result<()>>;
     fn session_abort(&self, session_id: &str) -> BoxFuture<Result<()>>;
+    fn session_compact(&self, session_id: &str) -> BoxFuture<Result<()>>;
+    fn session_delete(&self, session_id: &str) -> BoxFuture<Result<()>>;
     fn session_revert(&self, session_id: &str, message_id: &str) -> BoxFuture<Result<()>>;
     fn session_unrevert(&self, session_id: &str) -> BoxFuture<Result<()>>;
     fn session_fork(&self, session_id: &str) -> BoxFuture<Result<Option<Session>>>;
@@ -351,6 +353,34 @@ impl SdkClient for HttpSdkClient {
                     &serde_json::Value::Null,
                 )
                 .await?;
+            Ok(())
+        })
+    }
+    fn session_compact(&self, session_id: &str) -> BoxFuture<Result<()>> {
+        let this = self.clone_ref();
+        let session_id = session_id.to_string();
+        Box::pin(async move {
+            let _: serde_json::Value = this
+                .post_json(
+                    &format!("/session/{session_id}/compact"),
+                    &serde_json::Value::Null,
+                )
+                .await?;
+            Ok(())
+        })
+    }
+
+    fn session_delete(&self, session_id: &str) -> BoxFuture<Result<()>> {
+        let this = self.clone_ref();
+        let session_id = session_id.to_string();
+        Box::pin(async move {
+            let response = this
+                .request(reqwest::Method::DELETE, &format!("/session/{session_id}"))
+                .send()
+                .await?;
+            if !response.status().is_success() {
+                bail!("delete session returned {}", response.status());
+            }
             Ok(())
         })
     }
@@ -703,6 +733,12 @@ impl SdkClient for MockSdkClient {
         Box::pin(async { Ok(()) })
     }
     fn session_abort(&self, _session_id: &str) -> BoxFuture<Result<()>> {
+        Box::pin(async { Ok(()) })
+    }
+    fn session_compact(&self, _session_id: &str) -> BoxFuture<Result<()>> {
+        Box::pin(async { Ok(()) })
+    }
+    fn session_delete(&self, _session_id: &str) -> BoxFuture<Result<()>> {
         Box::pin(async { Ok(()) })
     }
     fn session_revert(&self, _session_id: &str, _message_id: &str) -> BoxFuture<Result<()>> {

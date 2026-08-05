@@ -11,6 +11,49 @@ use crate::components::text::{pad_to, StyledLine};
 use crate::prompt::autocomplete::fuzzy_score;
 use crate::theme::{selected_foreground, Theme};
 
+/// The kind of dialog currently open.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DialogKind {
+    ModelList,
+    AgentList,
+    SessionList,
+    ProviderList,
+    CommandPalette,
+    StashList,
+    Help,
+    Rename,
+    Confirm {
+        title: String,
+        message: String,
+    },
+    Alert {
+        title: String,
+        message: String,
+    },
+    InfoItems {
+        title: String,
+        items: Vec<DialogItem>,
+    },
+}
+
+/// Dialog interaction state (selection + filter).
+#[derive(Debug, Clone)]
+pub struct DialogState {
+    pub kind: DialogKind,
+    pub selected: usize,
+    pub filter: String,
+}
+
+impl DialogState {
+    pub fn new(kind: DialogKind) -> Self {
+        DialogState {
+            kind,
+            selected: 0,
+            filter: String::new(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DialogItem {
     pub title: String,
@@ -139,7 +182,7 @@ pub fn render_list(
     for _ in lines.len()..max_visible + 1 {
         lines.push(pad_to(StyledLine::new(), width));
     }
-    let mut footer: StyledLine = vec![
+    let footer: StyledLine = vec![
         ("└ ".to_string(), Style::default().fg(theme.border_active)),
         (
             format!("{} items", filtered.len()),

@@ -30,7 +30,7 @@ pub fn layout(
     let mut current_len = 0usize;
     let mut cursor_pos = None;
 
-    let mut push_line = |current: &mut StyledLine, lines: &mut Vec<StyledLine>| {
+    let push_line = |current: &mut StyledLine, lines: &mut Vec<StyledLine>| {
         if current.is_empty() {
             lines.push(Vec::new());
         } else {
@@ -118,10 +118,7 @@ pub fn prompt_lines(
             let _ = span_count;
         } else {
             for (text, style) in line {
-                let mut s = *style;
-                if s.bg != Some(Color::Reset) {
-                    // Keep the textarea background element.
-                }
+                let s = *style;
                 spans.push((text.clone(), s));
             }
         }

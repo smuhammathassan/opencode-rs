@@ -2,6 +2,7 @@
 //!
 //! Mirrors `reference/packages/tui/` + `reference/packages/session-ui/`.
 
+pub mod app;
 pub mod client;
 pub mod components;
 pub mod config;
@@ -14,6 +15,8 @@ pub mod sync;
 pub mod theme;
 pub mod types;
 pub mod util;
+
+pub use app::{run_async, App, TuiInput};
 
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")

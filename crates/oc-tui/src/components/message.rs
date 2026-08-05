@@ -689,7 +689,7 @@ fn render_glob(
 fn render_grep(
     render: &SessionRender,
     part: &ToolPart,
-    metadata: Option<&serde_json::Map<String, serde_json::Value>>,
+    _metadata: Option<&serde_json::Map<String, serde_json::Value>>,
     input: Option<&serde_json::Map<String, serde_json::Value>>,
     _output: Option<&str>,
     error: Option<&str>,
@@ -697,7 +697,7 @@ fn render_grep(
 ) {
     let pattern = string_value(value(input, "pattern")).unwrap_or_default();
     let path = string_value(value(input, "path"));
-    let matches = number_value(value(metadata, "matches"));
+    let matches = number_value(value(_metadata, "matches"));
     let mut text = format!("Grep \"{pattern}\"");
     if let Some(path) = path {
         text.push_str(&format!(" in {}", format_path(&path, render.cwd, "")));
@@ -735,7 +735,7 @@ fn render_websearch(
 fn render_shell(
     render: &SessionRender,
     part: &ToolPart,
-    metadata: Option<&serde_json::Map<String, serde_json::Value>>,
+    _metadata: Option<&serde_json::Map<String, serde_json::Value>>,
     input: Option<&serde_json::Map<String, serde_json::Value>>,
     output: Option<&str>,
     error: Option<&str>,
@@ -832,7 +832,7 @@ fn render_read(
     metadata: Option<&serde_json::Map<String, serde_json::Value>>,
     input: Option<&serde_json::Map<String, serde_json::Value>>,
     _output: Option<&str>,
-    error: Option<&str>,
+    _error: Option<&str>,
     out: &mut Vec<MessageLine>,
 ) {
     let theme = render.t();
@@ -1083,7 +1083,7 @@ fn render_task(
     let _ = error;
 }
 
-fn current_title(render: &SessionRender, _tool: &str) -> String {
+fn current_title(_render: &SessionRender, _tool: &str) -> String {
     // The reference shows the running tool's `state.title` when available.
     String::new()
 }
