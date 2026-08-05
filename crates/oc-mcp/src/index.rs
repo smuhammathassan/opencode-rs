@@ -320,6 +320,7 @@ impl Mcp {
             "prompts",
             None::<&catalog::KeyFn<crate::types::Prompt>>,
             |client, timeout| catalog::prompts(client, timeout),
+            None,
         )
         .await
     }
@@ -329,11 +330,11 @@ impl Mcp {
         &self,
         client_name: Option<&str>,
     ) -> Result<IndexMap<String, serde_json::Value>> {
-        let _ = client_name;
         self.collect_from_connected(
             "resources",
             Some(&|resource: &crate::types::Resource| resource.uri.clone()),
             |client, timeout| catalog::resources(client, timeout),
+            client_name,
         )
         .await
     }
@@ -343,11 +344,11 @@ impl Mcp {
         &self,
         client_name: Option<&str>,
     ) -> Result<IndexMap<String, serde_json::Value>> {
-        let _ = client_name;
         self.collect_from_connected(
             "resource templates",
             Some(&|template: &crate::types::ResourceTemplate| template.uri_template.clone()),
             |client, timeout| catalog::resource_templates(client, timeout),
+            client_name,
         )
         .await
     }
@@ -1041,6 +1042,7 @@ impl Mcp {
         label: &str,
         key: Option<&catalog::KeyFn<T>>,
         list: LF,
+        target_client_name: Option<&str>,
     ) -> Result<IndexMap<String, serde_json::Value>>
     where
         T: crate::catalog::Named + Serialize + Send + Sync,
@@ -1051,13 +1053,18 @@ impl Mcp {
             let state = self.state.read().await;
             let mut items = Vec::new();
             for (name, client) in &state.clients {
-                if !state
+                let is_connected = state
                     .status
                     .get(name)
                     .map(|status| status.is_connected())
-                    .unwrap_or(false)
-                {
+                    .unwrap_or(false);
+                if !is_connected {
                     continue;
+                }
+                if let Some(target) = target_client_name {
+                    if name != target {
+                        continue;
+                    }
                 }
                 let timeout = request_timeout(state.config.get(name), self.default_timeout);
                 items.push((name.clone(), client.clone(), timeout));

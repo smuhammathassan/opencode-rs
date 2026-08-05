@@ -177,21 +177,3 @@ impl Transport for StdioTransport {
         }
     }
 }
-
-/// Helper to run a command for tests.
-#[cfg(test)]
-pub(crate) fn echo_server() -> StdioTransport {
-    let script = r#"
-import sys
-for line in sys.stdin:
-    sys.stdout.write(line)
-    sys.stdout.flush()
-"#;
-    let exe = std::env::var("PYTHON").unwrap_or_else(|_| "python3".into());
-    StdioTransport::new(
-        exe,
-        vec!["-u".into(), "-c".into(), script.into()],
-        std::env::temp_dir(),
-        vec![],
-    )
-}
