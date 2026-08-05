@@ -1,0 +1,7 @@
+/target
+**/*.rs.bk
+Cargo.lock
+# reference is vendored spec, tracked
+# local worktrees
+.worktrees/
+*.local

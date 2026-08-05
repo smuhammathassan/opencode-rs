@@ -1,0 +1,33 @@
+[package]
+name = "oc-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+oc-schema = { version = "0.1", path = "../oc-schema" }
+oc-util = { version = "0.1", path = "../oc-util" }
+oc-config = { version = "0.1", path = "../oc-config" }
+oc-database = { version = "0.1", path = "../oc-database" }
+oc-core = { version = "0.1", path = "../oc-core" }
+oc-provider = { version = "0.1", path = "../oc-provider" }
+oc-llm = { version = "0.1", path = "../oc-llm" }
+oc-plugin = { version = "0.1", path = "../oc-plugin" }
+oc-mcp = { version = "0.1", path = "../oc-mcp" }
+oc-tool = { version = "0.1", path = "../oc-tool" }
+oc-session = { version = "0.1", path = "../oc-session" }
+oc-session-runner = { version = "0.1", path = "../oc-session-runner" }
+oc-acp = { version = "0.1", path = "../oc-acp" }
+oc-server = { version = "0.1", path = "../oc-server" }
+oc-client = { version = "0.1", path = "../oc-client" }
+oc-command = { version = "0.1", path = "../oc-command" }
+oc-project = { version = "0.1", path = "../oc-project" }
+oc-sync = { version = "0.1", path = "../oc-sync" }
+tokio = { workspace = true }

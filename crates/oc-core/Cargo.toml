@@ -1,0 +1,18 @@
+[package]
+name = "oc-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+oc-schema = { version = "0.1", path = "../oc-schema" }
+oc-util = { version = "0.1", path = "../oc-util" }
+oc-config = { version = "0.1", path = "../oc-config" }
+oc-database = { version = "0.1", path = "../oc-database" }

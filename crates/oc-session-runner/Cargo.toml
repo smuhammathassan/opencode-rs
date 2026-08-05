@@ -1,0 +1,20 @@
+[package]
+name = "oc-session-runner"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+oc-session = { version = "0.1", path = "../oc-session" }
+oc-llm = { version = "0.1", path = "../oc-llm" }
+oc-tool = { version = "0.1", path = "../oc-tool" }
+oc-plugin = { version = "0.1", path = "../oc-plugin" }
+oc-provider = { version = "0.1", path = "../oc-provider" }
+tokio = { workspace = true }

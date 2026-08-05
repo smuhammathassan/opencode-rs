@@ -1,0 +1,20 @@
+[package]
+name = "oc-sync"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+tracing = { workspace = true }
+futures = { workspace = true }
+oc-schema = { version = "0.1", path = "../oc-schema" }
+oc-util = { version = "0.1", path = "../oc-util" }
+oc-core = { version = "0.1", path = "../oc-core" }
+oc-database = { version = "0.1", path = "../oc-database" }
+oc-provider = { version = "0.1", path = "../oc-provider" }
+tokio = { workspace = true }
