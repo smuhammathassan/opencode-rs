@@ -1,0 +1,1163 @@
+// oc-plugin in-process JS runtime.
+//
+// This file is evaluated once per QuickJS context. It provides:
+//  - the module registry + __oc_require/__oc_define for transpiled ESM
+//  - the @opencode-ai/plugin API polyfill (v1.18.13 surface)
+//  - import shims for opencode/plugin, opencode/plugin/tool, opencode/plugin/shell,
+//    opencode/plugin/tui, node:* modules, zod and fetch
+//  - the bridge protocol between JS and the Rust host (__oc_bridge_sync)
+//  - the plugin load / hook trigger / tool execution entrypoints the host calls
+//
+// All cross-boundary data is JSON strings.
+
+"use strict";
+
+// ---------------------------------------------------------------------------
+// Bridge to the Rust host
+// ---------------------------------------------------------------------------
+
+function __oc_bridge_sync(method, payload) {
+  // __oc_host_bridge is installed by Rust as a callback.
+  const result = __oc_host_bridge(method, JSON.stringify(payload === undefined ? null : payload));
+  const parsed = JSON.parse(result);
+  if (parsed && typeof parsed === "object" && parsed.__error) {
+    throw new Error(parsed.__error);
+  }
+  return parsed;
+}
+
+// Synchronous entrypoint used by the host: call a global JS function with a
+// JSON payload and return JSON.stringify(result).
+function __oc_call_json(name, payload) {
+  const fn = globalThis[name];
+  if (typeof fn !== "function") throw new Error("__oc_call_json: no function " + name);
+  const result = fn(JSON.parse(payload));
+  return JSON.stringify(result === undefined ? null : result);
+}
+
+function __oc_read_global(name) {
+  const value = globalThis[name];
+  return value === undefined ? "null" : JSON.stringify(value);
+}
+
+function __oc_set_global(name, valueJson) {
+  globalThis[name] = JSON.parse(valueJson);
+}
+
+// Async entrypoint: run an async JS function with a JSON payload; the host
+// pumps the job queue until this global holds a result.
+async function __oc_async_call(name, payload) {
+  const fn = globalThis[name];
+  try {
+    const result = await fn(JSON.parse(payload));
+    __oc_pending = JSON.stringify({ ok: true, value: result === undefined ? null : result });
+  } catch (err) {
+    __oc_pending = JSON.stringify({ ok: false, error: { message: errorMessage(err) } });
+  }
+  return true;
+}
+
+function errorMessage(err) {
+  if (err && typeof err === "object" && typeof err.message === "string") return err.message;
+  return String(err);
+}
+
+// ---------------------------------------------------------------------------
+// Module registry for transpiled ESM
+// ---------------------------------------------------------------------------
+
+const __oc_modules = Object.create(null);
+let __oc_current_exports = null;
+let __oc_main_exports = null;
+
+function __oc_define(name, value) {
+  const target = __oc_current_exports || __oc_modules;
+  target[name] = value;
+}
+
+function __oc_export_all(mod) {
+  const target = __oc_current_exports || __oc_modules;
+  for (const key of Object.keys(mod)) {
+    if (key === "default") continue;
+    target[key] = mod[key];
+  }
+}
+
+function __oc_resolve_spec(spec) {
+  if (Object.prototype.hasOwnProperty.call(__oc_modules, spec)) return __oc_modules[spec];
+  return undefined;
+}
+
+const __oc_file_cache = new Map();
+
+function __oc_require(spec) {
+  if (spec === "opencode/plugin" || spec === "@opencode-ai/plugin") return __oc_modules["opencode/plugin"];
+  if (spec === "opencode/plugin/tool" || spec === "@opencode-ai/plugin/tool") return __oc_modules["opencode/plugin/tool"];
+  if (spec === "opencode/plugin/shell" || spec === "@opencode-ai/plugin/shell") return __oc_modules["opencode/plugin/shell"];
+  if (spec === "opencode/plugin/tui" || spec === "@opencode-ai/plugin/tui") return __oc_modules["opencode/plugin/tui"];
+  if (spec === "opencode/plugin/v2/effect" || spec === "@opencode-ai/plugin/v2/effect") return __oc_modules["opencode/plugin/v2/effect"];
+  if (spec === "opencode/plugin/v2/effect/integration" || spec === "@opencode-ai/plugin/v2/effect/integration")
+    return __oc_modules["opencode/plugin/v2/effect/integration"];
+  if (spec === "opencode/plugin/v2/effect/plugin" || spec === "@opencode-ai/plugin/v2/effect/plugin")
+    return __oc_modules["opencode/plugin/v2/effect/plugin"];
+  if (spec === "opencode/plugin/v2/promise" || spec === "@opencode-ai/plugin/v2/promise")
+    return __oc_modules["opencode/plugin/v2/promise"];
+  if (spec === "zod") return __oc_modules["zod"];
+  if (spec.startsWith("node:")) return __oc_modules[spec];
+  const hit = __oc_resolve_spec(spec);
+  if (hit !== undefined) return hit;
+  if (__oc_file_cache.has(spec)) return __oc_file_cache.get(spec);
+
+  // Relative / absolute local file: ask the host for the transpiled source.
+  const resolved = __oc_bridge_sync("resolve", { spec: spec });
+  if (resolved && resolved.kind === "inline") {
+    const exports = __oc_eval_module(resolved.code, resolved.path);
+    __oc_file_cache.set(spec, exports);
+    return exports;
+  }
+  if (resolved && resolved.kind === "path") {
+    const exports = __oc_eval_module_path(resolved.path);
+    __oc_file_cache.set(spec, exports);
+    return exports;
+  }
+  throw new Error("Cannot find module '" + spec + "'");
+}
+
+function __oc_import(spec) {
+  return Promise.resolve().then(function () {
+    return __oc_require(spec);
+  });
+}
+
+function __oc_eval_module(code, filename) {
+  const exports = Object.create(null);
+  const previous = __oc_current_exports;
+  __oc_current_exports = exports;
+  try {
+    const fn = new Function(code);
+    fn();
+  } finally {
+    __oc_current_exports = previous;
+  }
+  return exports;
+}
+
+// Evaluate the plugin's main entry module. Its exports are captured into
+// `__oc_main_exports` and consumed by __oc_load_plugin.
+function __oc_eval_main(code, filename) {
+  const exports = Object.create(null);
+  const previous = __oc_current_exports;
+  __oc_current_exports = exports;
+  __oc_main_exports = exports;
+  try {
+    const fn = new Function(code);
+    fn();
+  } finally {
+    __oc_current_exports = previous;
+  }
+  return exports;
+}
+
+function __oc_eval_module_path(path) {
+  const resolved = __oc_bridge_sync("read", { path: path });
+  if (!resolved || resolved.kind !== "inline") {
+    throw new Error("Cannot read module '" + path + "'");
+  }
+  return __oc_eval_module(resolved.code, path);
+}
+
+// ---------------------------------------------------------------------------
+// console, timers, microtasks
+// ---------------------------------------------------------------------------
+
+if (typeof console === "undefined") {
+  globalThis.console = {
+    log: function () { __oc_bridge_sync("log", { level: "info", args: Array.prototype.map.call(arguments, formatArg) }); },
+    info: function () { __oc_bridge_sync("log", { level: "info", args: Array.prototype.map.call(arguments, formatArg) }); },
+    warn: function () { __oc_bridge_sync("log", { level: "warn", args: Array.prototype.map.call(arguments, formatArg) }); },
+    error: function () { __oc_bridge_sync("log", { level: "error", args: Array.prototype.map.call(arguments, formatArg) }); },
+    debug: function () { __oc_bridge_sync("log", { level: "debug", args: Array.prototype.map.call(arguments, formatArg) }); },
+  };
+}
+
+function formatArg(arg) {
+  if (typeof arg === "string") return arg;
+  try {
+    return JSON.stringify(arg);
+  } catch (e) {
+    return String(arg);
+  }
+}
+
+if (typeof queueMicrotask === "undefined") {
+  globalThis.queueMicrotask = function (fn) {
+    Promise.resolve().then(fn);
+  };
+}
+
+// Timers are not backed by a real event loop. setTimeout/setInterval callbacks
+// are scheduled as microtasks with the delay ignored; this keeps plugins that
+// use timers for debouncing working while documenting that wall-clock delays
+// are not honored. Flags: quick-js limitation.
+if (typeof setTimeout === "undefined") {
+  globalThis.setTimeout = function (fn) {
+    Promise.resolve().then(function () { fn(); });
+    return 0;
+  };
+  globalThis.clearTimeout = function () {};
+  globalThis.setInterval = function (fn) {
+    Promise.resolve().then(function () { fn(); });
+    return 0;
+  };
+  globalThis.clearInterval = function () {};
+}
+
+// ---------------------------------------------------------------------------
+// fetch polyfill (blocking via the host bridge)
+// ---------------------------------------------------------------------------
+
+function __oc_fetch(url, options) {
+  options = options || {};
+  return Promise.resolve().then(function () {
+    const result = __oc_bridge_sync("fetch", {
+      url: String(url),
+      method: options.method || "GET",
+      headers: options.headers || {},
+      body: options.body !== undefined && options.body !== null ? String(options.body) : null,
+    });
+    return __oc_make_response(result);
+  });
+}
+
+function __oc_make_response(result) {
+  if (!result) throw new Error("fetch failed");
+  const status = result.status || 200;
+  const headers = result.headers || {};
+  const body = result.body === undefined ? "" : result.body;
+  const response = {
+    ok: status >= 200 && status < 300,
+    status: status,
+    statusText: status === 200 ? "OK" : "Error",
+    url: result.url || "",
+    headers: new __oc_Headers(headers),
+    text: function () { return Promise.resolve(body); },
+    json: function () { return Promise.resolve(JSON.parse(body)); },
+    arrayBuffer: function () { return Promise.resolve(new Uint8Array(0).buffer); },
+  };
+  return response;
+}
+
+function __oc_Headers(init) {
+  const map = Object.create(null);
+  if (init) {
+    for (const key of Object.keys(init)) map[key.toLowerCase()] = String(init[key]);
+  }
+  this.get = function (name) { return map[name.toLowerCase()] || null; };
+  this.has = function (name) { return map[name.toLowerCase()] !== undefined; };
+  this.entries = function () { return Object.entries(map); };
+  this.forEach = function (cb) { for (const [k, v] of Object.entries(map)) cb(v, k, this); };
+}
+
+globalThis.fetch = __oc_fetch;
+
+// ---------------------------------------------------------------------------
+// @opencode-ai/plugin polyfill
+// ---------------------------------------------------------------------------
+
+const __oc_plugin = {
+  hooks: [],
+  tools: Object.create(null),
+  toolKeys: Object.create(null),
+  workspaceAdapters: Object.create(null),
+  authMethods: [],
+};
+
+// Minimal zod subset producing JSON schema via __oc_schema_to_json_schema.
+function __oc_make_zod() {
+  const makeSchema = (kind, params) => new __oc_ZSchema(kind, params);
+  class __oc_ZSchema {
+    constructor(kind, params) {
+      this._oc_kind = kind;
+      this._oc_params = params || {};
+      this._oc_required = !(kind === "optional" || kind === "nullable" || kind === "default");
+    }
+    describe(description) {
+      const next = new __oc_ZSchema(this._oc_kind, this._oc_params);
+      next._oc_required = this._oc_required;
+      next._oc_description = description;
+      return next;
+    }
+    optional() {
+      const next = new __oc_ZSchema("optional", { inner: this });
+      next._oc_required = false;
+      return next;
+    }
+    nullable() {
+      return new __oc_ZSchema("nullable", { inner: this });
+    }
+    default(value) {
+      return new __oc_ZSchema("default", { inner: this, value });
+    }
+    min(value) {
+      const next = new __oc_ZSchema(this._oc_kind, Object.assign({}, this._oc_params, { min: value }));
+      next._oc_required = this._oc_required;
+      return next;
+    }
+    max(value) {
+      const next = new __oc_ZSchema(this._oc_kind, Object.assign({}, this._oc_params, { max: value }));
+      next._oc_required = this._oc_required;
+      return next;
+    }
+    length(value) {
+      return this.min(value).max(value);
+    }
+    email() {
+      const next = new __oc_ZSchema("string", Object.assign({}, this._oc_params, { format: "email" }));
+      next._oc_required = this._oc_required;
+      return next;
+    }
+    url() {
+      const next = new __oc_ZSchema("string", Object.assign({}, this._oc_params, { format: "uri" }));
+      next._oc_required = this._oc_required;
+      return next;
+    }
+    regex(pattern) {
+      const next = new __oc_ZSchema("string", Object.assign({}, this._oc_params, { pattern: String(pattern) }));
+      next._oc_required = this._oc_required;
+      return next;
+    }
+    enum(values) {
+      return new __oc_ZSchema("enum", { values: Array.isArray(values) ? values : Array.from(arguments) });
+    }
+    array() {
+      return new __oc_ZSchema("array", { item: makeSchema("any", {}) });
+    }
+    element(item) {
+      return new __oc_ZSchema("array", { item });
+    }
+    int() {
+      return new __oc_ZSchema("integer", {});
+    }
+    step() {
+      return this;
+    }
+  }
+
+  const string = (params) => makeSchema("string", params || {});
+  string.min = () => string();
+  string.email = () => makeSchema("string", { format: "email" });
+  string.url = () => makeSchema("string", { format: "uri" });
+  string.regex = () => string();
+  string.datetime = () => string();
+
+  return {
+    string,
+    number: (params) => makeSchema("number", params || {}),
+    boolean: () => makeSchema("boolean", {}),
+    bigint: () => makeSchema("string", {}),
+    integer: (params) => makeSchema("integer", params || {}),
+    any: () => makeSchema("any", {}),
+    unknown: () => makeSchema("any", {}),
+    never: () => makeSchema("never", {}),
+    void: () => makeSchema("null", {}),
+    null: () => makeSchema("null", {}),
+    undefined: () => makeSchema("undefined", {}),
+    literal: (value) => makeSchema("literal", { value }),
+    object: (shape) => makeSchema("object", { shape: shape || {} }),
+    array: (item) => makeSchema("array", { item: item || makeSchema("any", {}) }),
+    enum: (values) => new __oc_ZSchema("enum", { values: Array.isArray(values) ? values : Array.from(arguments) }),
+    record: (key, value) => makeSchema("record", { key: key || makeSchema("string", {}), value: value || makeSchema("any", {}) }),
+    union: (items) => makeSchema("union", { items }),
+    discriminatedUnion: (discriminator, options) => makeSchema("union", { options, discriminator }),
+    tuple: (items) => makeSchema("tuple", { items }),
+    date: () => makeSchema("date", {}),
+    instanceOf: () => makeSchema("any", {}),
+    promise: (inner) => makeSchema("promise", { inner }),
+    ZodError: class ZodError extends Error {},
+    default: {},
+  };
+}
+
+const z = __oc_make_zod();
+__oc_modules["zod"] = { default: z, z: z };
+
+function zschema_to_json(schema) {
+  if (!schema || typeof schema._oc_kind !== "string") {
+    // Plain value (not a zod schema): accept anything.
+    return { type: "string" };
+  }
+  const kind = schema._oc_kind;
+  const params = schema._oc_params || {};
+  let out;
+  switch (kind) {
+    case "string": out = { type: "string" }; break;
+    case "number": out = { type: "number" }; break;
+    case "integer": out = { type: "integer" }; break;
+    case "boolean": out = { type: "boolean" }; break;
+    case "null": out = { type: "null" }; break;
+    case "undefined": out = {}; break;
+    case "any": out = {}; break;
+    case "never": out = { not: {} }; break;
+    case "date": out = { type: "string", format: "date-time" }; break;
+    case "literal": out = { const: params.value }; break;
+    case "enum": out = { enum: params.values || [] }; break;
+    case "array": out = { type: "array", items: zschema_to_json(params.item || makeSchema("any", {})) }; break;
+    case "object": out = __oc_schema_to_json_schema(params.shape || {}); break;
+    case "record": out = { type: "object", additionalProperties: zschema_to_json(params.value || makeSchema("any", {})) }; break;
+    case "tuple": out = { type: "array", items: (params.items || []).map(zschema_to_json) }; break;
+    case "union": {
+      const items = params.items || (params.options ? Object.values(params.options) : []);
+      if (params.discriminator) {
+        out = { oneOf: (params.options || []).map((item) => zschema_to_json(item)) };
+      } else {
+        out = { anyOf: items.map(zschema_to_json) };
+      }
+      break;
+    }
+    case "optional": out = zschema_to_json(params.inner || makeSchema("any", {})); break;
+    case "nullable": {
+      const inner = zschema_to_json(params.inner || makeSchema("any", {}));
+      out = { anyOf: [inner, { type: "null" }] };
+      break;
+    }
+    case "default": {
+      out = zschema_to_json(params.inner || makeSchema("any", {}));
+      if (params.value !== undefined) out.default = params.value;
+      break;
+    }
+    case "promise": out = zschema_to_json(params.inner || makeSchema("any", {})); break;
+    default: out = {};
+  }
+  if (params.min !== undefined && params.min !== null) {
+    if (out.type === "string") out.minLength = params.min;
+    else if (out.type === "array") out.minItems = params.min;
+    else out.minimum = params.min;
+  }
+  if (params.max !== undefined && params.max !== null) {
+    if (out.type === "string") out.maxLength = params.max;
+    else if (out.type === "array") out.maxItems = params.max;
+    else out.maximum = params.max;
+  }
+  if (params.format) out.format = params.format;
+  if (params.pattern) out.pattern = params.pattern;
+  if (schema._oc_description) out.description = schema._oc_description;
+  return out;
+}
+
+function __oc_schema_to_json_schema(shape) {
+  if (!shape || typeof shape !== "object") return { type: "object" };
+  const properties = {};
+  const required = [];
+  for (const key of Object.keys(shape)) {
+    const schema = shape[key];
+    properties[key] = zschema_to_json(schema);
+    if (schema && schema._oc_required !== false) required.push(key);
+  }
+  const out = { type: "object", properties };
+  if (required.length) out.required = required;
+  return out;
+}
+
+// The v1.18.13 tool() API: returns input unchanged; tool.schema = z.
+function __oc_tool(input) {
+  return input;
+}
+__oc_tool.schema = z;
+
+__oc_modules["opencode/plugin/tool"] = {
+  tool: __oc_tool,
+  z: z,
+  default: __oc_tool,
+};
+
+// Shell shim (`$`). No real streaming; commands run synchronously via the
+// host bridge and resolve with a BunShellOutput-like object.
+function __oc_make_shell() {
+  let env = null;
+  let cwd = null;
+  let nothrow = false;
+  let quiet = false;
+
+  const shell = function (strings, ...expressions) {
+    let command = "";
+    for (let i = 0; i < strings.length; i++) {
+      command += strings[i];
+      if (i < expressions.length) {
+        const value = expressions[i];
+        command += value && typeof value.toString === "function" ? value.toString() : String(value);
+      }
+    }
+    return __oc_run_shell(command);
+  };
+
+  shell.braces = function (pattern) {
+    const result = __oc_bridge_sync("shell.braces", { pattern: String(pattern) });
+    return result && Array.isArray(result) ? result : [String(pattern)];
+  };
+  shell.escape = function (input) {
+    return String(input).replace(/[^A-Za-z0-9_.,-]/g, "\\$&");
+  };
+  shell.env = function (newEnv) {
+    if (newEnv === undefined) return env;
+    env = Object.assign({}, env, newEnv);
+    return shell;
+  };
+  shell.cwd = function (newCwd) {
+    if (newCwd === undefined) return cwd;
+    cwd = newCwd;
+    return shell;
+  };
+  shell.nothrow = function () {
+    nothrow = true;
+    return shell;
+  };
+  shell.throws = function (shouldThrow) {
+    nothrow = !shouldThrow;
+    return shell;
+  };
+
+  function __oc_run_shell(command) {
+    const result = __oc_bridge_sync("shell.exec", {
+      command: command,
+      cwd: cwd,
+      env: env,
+      nothrow: nothrow,
+      quiet: quiet,
+    }) || { stdout: "", stderr: "", exitCode: 0 };
+    const output = __oc_make_shell_output(result);
+    const promise = Promise.resolve().then(function () { return output; });
+    promise.cwd = function () { return promise; };
+    promise.env = function () { return promise; };
+    promise.quiet = function () { quiet = true; return promise; };
+    promise.nothrow = function () { return promise; };
+    promise.throws = function () { return promise; };
+    promise.text = function () { quiet = true; return Promise.resolve(result.stdout); };
+    promise.json = function () { quiet = true; try { return Promise.resolve(JSON.parse(result.stdout)); } catch (e) { return Promise.reject(e); } };
+    promise.arrayBuffer = function () { quiet = true; return Promise.resolve(new Uint8Array(0).buffer); };
+    promise.blob = function () { quiet = true; return Promise.resolve(new Blob()); };
+    promise.stdin = { getWriter: function () { return { write: function () {}, close: function () {}, releaseLock: function () {} }; } };
+    return promise;
+  }
+
+  return shell;
+}
+
+function __oc_make_shell_output(result) {
+  const stdout = String(result.stdout === undefined ? "" : result.stdout);
+  const stderr = String(result.stderr === undefined ? "" : result.stderr);
+  const exitCode = result.exitCode === undefined ? 0 : result.exitCode;
+  const buf = { stdout, stderr, exitCode };
+  buf.text = function () { return stdout; };
+  buf.json = function () { return JSON.parse(stdout); };
+  buf.arrayBuffer = function () { return new Uint8Array(0).buffer; };
+  buf.bytes = function () { return new Uint8Array(0); };
+  buf.blob = function () { return new Blob(); };
+  return buf;
+}
+
+__oc_modules["opencode/plugin/shell"] = {
+  default: __oc_make_shell(),
+  $: __oc_make_shell(),
+};
+
+// TUI shim: no TUI runtime in-process. Exports a no-op createBindingLookup.
+function __oc_create_binding_lookup(config, options) {
+  return {
+    get: function () { return []; },
+    has: function () { return false; },
+    gather: function () { return []; },
+    pick: function () { return []; },
+    omit: function () { return []; },
+    bindings: [],
+  };
+}
+
+__oc_modules["opencode/plugin/tui"] = {
+  createBindingLookup: __oc_create_binding_lookup,
+  default: { createBindingLookup: __oc_create_binding_lookup },
+};
+
+// ---------------------------------------------------------------------------
+// Plugin input construction
+// ---------------------------------------------------------------------------
+
+function __oc_make_client() {
+  const client = {};
+  const methods = [
+    "session.list", "session.create", "session.get", "session.remove",
+    "session.prompt", "session.messages", "session.count", "session.event",
+    "message.create", "message.get", "message.update", "message.remove",
+    "message.parts", "message.reasoning",
+    "part.create", "part.get", "part.update", "part.remove", "part.meta",
+    "session.data",
+    "config.get", "config.set", "config.update",
+    "project.get", "project.update", "project.list",
+    "model.get", "model.list", "provider.list",
+    "tool.list", "tool.get",
+    "file.get", "file.list",
+    "app.version",
+    "user.get", "user.list",
+    "help",
+  ];
+  for (const path of methods) {
+    const parts = path.split(".");
+    const method = parts.pop();
+    const obj = parts.reduce((acc, p) => {
+      if (!acc[p]) acc[p] = {};
+      return acc[p];
+    }, client);
+    obj[method] = function (args) {
+      const result = __oc_bridge_sync("client", { method: path, args: args === undefined ? null : args });
+      if (result && result.ok === false) {
+        const err = new Error(result.error && result.error.message ? result.error.message : "client " + path + " failed");
+        err.status = result.error && result.error.status;
+        throw err;
+      }
+      return result && result.data !== undefined ? result.data : null;
+    };
+  }
+  client.sse = { stream: function () { return { on: function () {}, done: function () {} }; } };
+  return client;
+}
+
+// The v1 PluginInput passed to plugin functions.
+function __oc_make_input(input) {
+  return {
+    client: __oc_make_client(),
+    project: input.project || {},
+    directory: input.directory || "",
+    worktree: input.worktree || "",
+    experimental_workspace: {
+      register: function (type, adapter) {
+        __oc_plugin.workspaceAdapters[type] = adapter;
+      },
+    },
+    serverUrl: input.serverUrl || "http://localhost:4096",
+    $: __oc_modules["opencode/plugin/shell"].default,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Hooks registry
+// ---------------------------------------------------------------------------
+
+function __oc_pick_server(exports) {
+  const value = exports["default"];
+  if (value !== undefined && value !== null && typeof value === "object") {
+    if ("id" in value || "server" in value || "tui" in value) {
+      if (typeof value.server === "function") return { fn: value.server, id: value.id };
+      if (typeof value.tui === "function") return { fn: value.tui, id: value.id };
+      // v2 promise/effect plugin shape: `{ id, setup(ctx) }`.
+      if (typeof value.setup === "function") return { fn: value.setup, id: value.id, v2: true };
+    }
+  }
+  if (typeof value === "function") return { fn: value };
+  // legacy: first exported function or { server }
+  for (const key of Object.keys(exports)) {
+    const entry = exports[key];
+    if (typeof entry === "function") return { fn: entry };
+    if (entry && typeof entry === "object" && typeof entry.server === "function") return { fn: entry.server, id: entry.id };
+  }
+  return undefined;
+}
+
+function __oc_make_v2_context() {
+  return {
+    options: {},
+    agent: __oc_v2_domain("agent"),
+    command: __oc_v2_domain("command"),
+    skill: __oc_v2_domain("skill"),
+    catalog: __oc_v2_domain("catalog"),
+    reference: __oc_v2_domain("reference"),
+    integration: {
+      transform: __oc_v2_domain("integration").transform,
+      reload: __oc_v2_domain("integration").reload,
+      connection: {
+        active: function () { return Promise.resolve(null); },
+        resolve: function (connection) { return Promise.resolve(connection); },
+      },
+    },
+    aisdk: {
+      sdk: function () { return { dispose: function () {} }; },
+      language: function () { return { dispose: function () {} }; },
+    },
+    plugin: {
+      add: function () { return Promise.resolve(); },
+      remove: function () { return Promise.resolve(); },
+    },
+  };
+}
+
+function __oc_register_hooks(hooks) {
+  if (!hooks || typeof hooks !== "object") {
+    throw new Error("Plugin must return an object of hooks");
+  }
+  __oc_plugin.hooks.push(hooks);
+  const tools = hooks.tool;
+  if (tools && typeof tools === "object") {
+    for (const name of Object.keys(tools)) {
+      const def = tools[name];
+      if (!def) continue;
+      __oc_plugin.tools[name] = def;
+      __oc_plugin.toolKeys[name] = {
+        description: def.description || "",
+        schema: def.args ? __oc_schema_to_json_schema(def.args) : { type: "object", properties: {} },
+      };
+    }
+  }
+}
+
+function __oc_hooks_summary() {
+  const names = new Set();
+  for (const hooks of __oc_plugin.hooks) {
+    for (const key of Object.keys(hooks)) {
+      if (typeof hooks[key] === "function") names.add(key);
+      else if (key === "tool") names.add("tool");
+    }
+  }
+  return {
+    hookNames: Array.from(names),
+    tools: Object.keys(__oc_plugin.toolKeys).map((name) => ({
+      name,
+      description: __oc_plugin.toolKeys[name].description,
+      schema: __oc_plugin.toolKeys[name].schema,
+    })),
+  };
+}
+
+// Async entrypoint: load the current module as a plugin.
+async function __oc_load_plugin(payload) {
+  const exports = __oc_main_exports || __oc_modules;
+  const input = __oc_make_input(payload.input || {});
+  const options = payload.options;
+  const picked = __oc_pick_server(exports);
+  if (!picked) {
+    throw new TypeError("Plugin must default export an object with server() or a function");
+  }
+  const hooks = picked.v2 ? await picked.fn(__oc_make_v2_context()) : await picked.fn(input, options);
+  if (hooks !== undefined && hooks !== null) {
+    __oc_register_hooks(hooks);
+  }
+  return __oc_hooks_summary();
+}
+
+// Async entrypoint: call a hook with (input, output), returning the output.
+async function __oc_trigger(payload) {
+  const name = payload.name;
+  let input = payload.input === undefined || payload.input === null ? {} : payload.input;
+  let output = payload.output === undefined || payload.output === null ? {} : payload.output;
+  for (const hooks of __oc_plugin.hooks) {
+    const fn = hooks[name];
+    if (typeof fn !== "function") continue;
+    await fn(input, output);
+  }
+  return output;
+}
+
+// Sync entrypoint: call the config hook.
+function __oc_config(payload) {
+  for (const hooks of __oc_plugin.hooks) {
+    const fn = hooks.config;
+    if (typeof fn === "function") fn(payload.config);
+  }
+  return true;
+}
+
+// Sync entrypoint: deliver an event to the event hook.
+function __oc_event(payload) {
+  for (const hooks of __oc_plugin.hooks) {
+    const fn = hooks.event;
+    if (typeof fn === "function") {
+      Promise.resolve().then(function () {
+        fn({ event: payload.event });
+      });
+    }
+  }
+  return true;
+}
+
+// Sync entrypoint: dispose hooks.
+function __oc_dispose() {
+  const pending = [];
+  for (const hooks of __oc_plugin.hooks) {
+    const fn = hooks.dispose;
+    if (typeof fn === "function") pending.push(Promise.resolve().then(function () { return fn(); }));
+  }
+  __oc_plugin.hooks = [];
+  return Promise.all(pending).then(function () { return true; });
+}
+
+// Async entrypoint: execute a tool.
+async function __oc_tool_execute(payload) {
+  const name = payload.name;
+  const def = __oc_plugin.tools[name];
+  if (!def) throw new Error("Tool '" + name + "' is not registered");
+  if (typeof def.execute !== "function") throw new Error("Tool '" + name + "' has no execute function");
+  const context = __oc_make_tool_context(payload.context || {});
+  const result = await def.execute(payload.args, context);
+  return result;
+}
+
+function __oc_make_tool_context(ctx) {
+  return {
+    sessionID: ctx.sessionID || "",
+    messageID: ctx.messageID || "",
+    agent: ctx.agent || "",
+    directory: ctx.directory || "",
+    worktree: ctx.worktree || "",
+    abort: __oc_abort_signal(),
+    metadata: function (input) {
+      __oc_bridge_sync("tool.metadata", { callID: ctx.callID, title: input && input.title, metadata: input && input.metadata });
+    },
+    ask: function (input) {
+      return Promise.resolve().then(function () {
+        const result = __oc_bridge_sync("tool.ask", { callID: ctx.callID, input });
+        if (result && result.ok === false) throw new Error(result.message || "ask failed");
+        return result;
+      });
+    },
+  };
+}
+
+function __oc_abort_signal() {
+  const signal = {
+    aborted: false,
+    reason: null,
+    addEventListener: function (type, listener) {
+      if (type === "abort") {
+        this._listeners = this._listeners || [];
+        this._listeners.push(listener);
+      }
+    },
+    removeEventListener: function () {},
+    dispatchEvent: function () { return true; },
+  };
+  Object.defineProperty(signal, "aborted", { get: function () { return false; } });
+  return signal;
+}
+
+// Async entrypoint: run a workspace adapter method.
+async function __oc_workspace_adapter(payload) {
+  const adapter = __oc_plugin.workspaceAdapters[payload.type];
+  if (!adapter) throw new Error("No workspace adapter registered for '" + payload.type + "'");
+  const fn = adapter[payload.method];
+  if (typeof fn !== "function") throw new Error("Workspace adapter '" + payload.type + "' has no method '" + payload.method + "'");
+  return fn(payload.args);
+}
+
+// Async entrypoint: run a v2 domain transform callback with a mutable draft.
+async function __oc_v2_transform(payload) {
+  const callbacks = (__oc_plugin.v2Callbacks = __oc_plugin.v2Callbacks || Object.create(null));
+  const callback = callbacks[payload.domain];
+  if (typeof callback !== "function") {
+    throw new Error("No v2 transform callback registered for domain '" + payload.domain + "'");
+  }
+  const draft = payload.draft === undefined || payload.draft === null ? {} : payload.draft;
+  await callback(draft);
+  return draft;
+}
+
+// ---------------------------------------------------------------------------
+// v2 promise / effect API shims
+// ---------------------------------------------------------------------------
+
+// The v2 API is hosted on the same registries. Each domain exposes
+// transform(callback) / reload() backed by the Rust host so Promise-based v2
+// plugins can register agents, commands, skills, providers and references.
+function __oc_v2_domain(method) {
+  return {
+    transform: function (callback) {
+      __oc_plugin.v2Callbacks = __oc_plugin.v2Callbacks || Object.create(null);
+      __oc_plugin.v2Callbacks[method] = callback;
+      __oc_bridge_sync("v2.transform", { domain: method });
+      return { dispose: function () {} };
+    },
+    reload: function () {
+      return Promise.resolve().then(function () {
+        __oc_bridge_sync("v2.reload", { domain: method });
+        return true;
+      });
+    },
+  };
+}
+
+__oc_modules["opencode/plugin/v2/effect"] = {
+  define: function (input) {
+    return input;
+  },
+  default: {},
+};
+__oc_modules["opencode/plugin/v2/effect/integration"] = {
+  define: function (input) { return input; },
+  default: {},
+};
+__oc_modules["opencode/plugin/v2/effect/plugin"] = {
+  define: function (input) { return input; },
+  default: {},
+};
+__oc_modules["opencode/plugin/v2/promise"] = {
+  define: function (input) {
+    return input;
+  },
+  PluginContext: {},
+  Registration: {},
+  default: {},
+};
+
+// ---------------------------------------------------------------------------
+// node:* shims
+// ---------------------------------------------------------------------------
+
+__oc_modules["node:path"] = (function () {
+  function normalizeArray(parts) {
+    const out = [];
+    for (const part of parts) {
+      if (part === "" || part === ".") continue;
+      if (part === "..") {
+        if (out.length && out[out.length - 1] !== "..") out.pop();
+        else if (out.length === 0) out.push("..");
+      } else {
+        out.push(part);
+      }
+    }
+    return out;
+  }
+  function normalize(p) {
+    if (p === "" || p === undefined) return ".";
+    const isAbsolutePath = p.startsWith("/");
+    const parts = normalizeArray(p.split(/[\\/]+/));
+    const prefix = isAbsolutePath ? "/" : "";
+    const joined = prefix + parts.join("/");
+    return joined === "" ? "." : joined;
+  }
+  function join() {
+    let out = "";
+    for (const part of arguments) {
+      if (part === "" || part === undefined) continue;
+      if (out === "") out = part;
+      else out = out.replace(/\/+$/, "") + "/" + String(part).replace(/^\/+/, "");
+    }
+    return normalize(out);
+  }
+  function resolve() {
+    let out = "/";
+    for (const part of arguments) {
+      if (typeof part !== "string") continue;
+      if (part.startsWith("/")) out = part;
+      else out = out.replace(/\/+$/, "") + "/" + part;
+    }
+    return normalize(out);
+  }
+  function dirname(p) {
+    const parts = String(p).split(/[\\/]+/);
+    parts.pop();
+    return parts.join("/") || (String(p).startsWith("/") ? "/" : ".");
+  }
+  function basename(p, ext) {
+    let name = String(p).split(/[\\/]+/).pop() || "";
+    if (ext && name.endsWith(ext)) name = name.slice(0, -ext.length);
+    return name;
+  }
+  function extname(p) {
+    const name = basename(p);
+    const index = name.lastIndexOf(".");
+    if (index <= 0) return "";
+    return name.slice(index);
+  }
+  return {
+    join: join,
+    resolve: resolve,
+    normalize: normalize,
+    dirname: dirname,
+    basename: basename,
+    extname: extname,
+    relative: function (from, to) {
+      const a = normalize(from).split("/").filter(Boolean);
+      const b = normalize(to).split("/").filter(Boolean);
+      while (a.length && b.length && a[0] === b[0]) { a.shift(); b.shift(); }
+      return Array(a.length).fill("..").concat(b).join("/") || ".";
+    },
+    isAbsolute: function (p) { return String(p).startsWith("/"); },
+    sep: "/",
+    delimiter: ":",
+    parse: function (p) {
+      return { root: "/", dir: dirname(p), base: basename(p), ext: extname(p), name: basename(p, extname(p)) };
+    },
+  };
+})();
+
+__oc_modules["node:fs/promises"] = (function () {
+  const fsMethods = ["mkdir", "rm", "readFile", "writeFile", "readdir", "stat", "access", "readlink", "readJson", "writeJson", "exists", "realpath"];
+  const out = {};
+  for (const method of fsMethods) {
+    out[method] = function (arg1, arg2, arg3) {
+      return Promise.resolve().then(function () {
+        const result = __oc_bridge_sync("fs", { method: method, args: [arg1, arg2, arg3] });
+        if (result && result.ok === false) {
+          const err = new Error(result.error || method + " failed");
+          err.code = result.code;
+          throw err;
+        }
+        return result && result.data !== undefined ? result.data : undefined;
+      });
+    };
+  }
+  out.constants = {};
+  return out;
+})();
+
+__oc_modules["node:os"] = {
+  homedir: function () {
+    const result = __oc_bridge_sync("os", { name: "homedir" });
+    return result && result.value !== undefined ? result.value : "";
+  },
+  tmpdir: function () {
+    const result = __oc_bridge_sync("os", { name: "tmpdir" });
+    return result && result.value !== undefined ? result.value : "/tmp";
+  },
+  platform: function () {
+    const result = __oc_bridge_sync("os", { name: "platform" });
+    return result && result.value !== undefined ? result.value : "linux";
+  },
+  arch: function () {
+    return "x64";
+  },
+  EOL: "\n",
+};
+
+__oc_modules["node:url"] = {
+  pathToFileURL: function (p) { return { href: String(p).replace(/^\/+/, "") ? "file://" + String(p) : "file:///" + String(p) }; },
+  fileURLToPath: function (url) {
+    const s = typeof url === "string" ? url : (url && url.href) || String(url);
+    if (s.startsWith("file://")) return s.slice("file://".length);
+    return s;
+  },
+};
+
+__oc_modules["node:process"] = {
+  env: {},
+  cwd: function () {
+    const result = __oc_bridge_sync("os", { name: "cwd" });
+    return result && result.value !== undefined ? result.value : "/";
+  },
+  platform: "linux",
+  arch: "x64",
+  argv: [],
+};
+
+__oc_modules["node:util"] = {
+  promisify: function (fn) {
+    return function () {
+      const args = Array.prototype.slice.call(arguments);
+      return new Promise(function (resolve, reject) {
+        args.push(function (err, value) { return err ? reject(err) : resolve(value); });
+        fn.apply(null, args);
+      });
+    };
+  },
+};
+
+// Blob polyfill (QuickJS may lack it).
+if (typeof Blob === "undefined") {
+  globalThis.Blob = class Blob {
+    constructor(parts, options) {
+      this._parts = parts || [];
+      this._options = options || {};
+      this.size = 0;
+    }
+    text() {
+      const all = this._parts.map((p) => (p instanceof Uint8Array ? String.fromCharCode.apply(null, p) : String(p))).join("");
+      return Promise.resolve(all);
+    }
+    arrayBuffer() {
+      return Promise.resolve(new Uint8Array(0).buffer);
+    }
+    slice() {
+      return new Blob();
+    }
+    get type() { return this._options.type || ""; }
+  };
+}
+
+if (typeof Uint8Array !== "undefined" && typeof TextEncoder === "undefined") {
+  globalThis.TextEncoder = class TextEncoder {
+    encode(input) {
+      const s = String(input);
+      const out = new Uint8Array(s.length * 4);
+      let n = 0;
+      for (let i = 0; i < s.length; i++) {
+        const code = s.codePointAt(i);
+        if (code < 0x80) out[n++] = code;
+        else if (code < 0x800) { out[n++] = 0xc0 | (code >> 6); out[n++] = 0x80 | (code & 0x3f); }
+        else if (code < 0x10000) { out[n++] = 0xe0 | (code >> 12); out[n++] = 0x80 | ((code >> 6) & 0x3f); out[n++] = 0x80 | (code & 0x3f); }
+        else { out[n++] = 0xf0 | (code >> 18); out[n++] = 0x80 | ((code >> 12) & 0x3f); out[n++] = 0x80 | ((code >> 6) & 0x3f); out[n++] = 0x80 | (code & 0x3f); }
+      }
+      return out.subarray(0, n);
+    }
+  };
+}
+
+// ---------------------------------------------------------------------------
+// The @opencode-ai/plugin module
+// ---------------------------------------------------------------------------
+
+const __oc_legacy_default = {
+  config: function (hook) {
+    // Legacy hook registration API (pre-1.18): route into the hooks list.
+    return __oc_register_v1_hook("config", hook);
+  },
+  provider: function (input) {
+    return __oc_register_v1("provider", input);
+  },
+  agent: function (input) {
+    return __oc_register_v1("agent", input);
+  },
+  command: function (input) {
+    return __oc_register_v1("command", input);
+  },
+  skill: function (input) {
+    return __oc_register_v1("skill", input);
+  },
+  variant: function (input) {
+    return __oc_register_v1("variant", input);
+  },
+  tool: __oc_tool,
+  hook: function (name, hook) {
+    return __oc_register_v1_hook(name, hook);
+  },
+  chat: {
+    message: function (hook) { return __oc_register_v1_hook("chat.message", hook); },
+    params: function (hook) { return __oc_register_v1_hook("chat.params", hook); },
+    headers: function (hook) { return __oc_register_v1_hook("chat.headers", hook); },
+  },
+  event: function (hook) { return __oc_register_v1_hook("event", hook); },
+  shell: {
+    env: function (hook) { return __oc_register_v1_hook("shell.env", hook); },
+  },
+  permission: {
+    ask: function (hook) { return __oc_register_v1_hook("permission.ask", hook); },
+  },
+  command_execute_before: function (hook) { return __oc_register_v1_hook("command.execute.before", hook); },
+  tool_execute_before: function (hook) { return __oc_register_v1_hook("tool.execute.before", hook); },
+  tool_execute_after: function (hook) { return __oc_register_v1_hook("tool.execute.after", hook); },
+};
+
+function __oc_register_v1_hook(name, hook) {
+  if (typeof hook !== "function") throw new TypeError("hook " + name + " must be a function");
+  if (__oc_plugin.hooks.length === 0) __oc_plugin.hooks.push({});
+  __oc_plugin.hooks[0][name] = hook;
+  return hook;
+}
+
+function __oc_register_v1(kind, input) {
+  // The legacy declarative registrations (agent/command/skill/...) are routed
+  // to the host so the integrating application can consume them.
+  __oc_bridge_sync("v1.register", { kind: kind, input: input });
+  return input;
+}
+
+__oc_modules["opencode/plugin"] = {
+  tool: __oc_tool,
+  z: z,
+  default: __oc_legacy_default,
+};
