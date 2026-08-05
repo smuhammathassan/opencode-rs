@@ -82,6 +82,23 @@ fn pick_version(metadata: &Value, requested: &str) -> Option<String> {
     best.map(|(version, _)| version.clone())
 }
 
+/// Extract a git URL from an npm-style git spec: `pkg@git+<url>`,
+/// `pkg@github:user/repo`, or a bare `git+<url>`.
+fn git_url(spec: &str) -> Option<String> {
+    if let Some((_name, rest)) = spec.split_once('@') {
+        if let Some(url) = rest.strip_prefix("git+") {
+            return Some(url.to_string());
+        }
+        if let Some(url) = rest.strip_prefix("github:") {
+            return Some(format!("https://github.com/{url}.git"));
+        }
+    }
+    if let Some(url) = spec.strip_prefix("git+") {
+        return Some(url.to_string());
+    }
+    None
+}
+
 /// Add a plugin package to the cache, returning the resolved plugin directory.
 /// Mirrors `Npm.add` in reference/packages/core/src/npm.ts.
 pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
@@ -90,6 +107,11 @@ pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
     let target = dir.join("node_modules").join(pkg_name_dir(&pkg));
     if target.join("package.json").exists() {
         return Ok(target);
+    }
+
+    // Git specs (`pkg@git+...`) are cloned instead of fetched from the registry.
+    if let Some(url) = git_url(spec) {
+        return add_git(&url, &target, &pkg);
     }
 
     let client = reqwest::blocking::Client::new();
@@ -136,6 +158,36 @@ fn pkg_name_dir(pkg: &str) -> PathBuf {
     PathBuf::from(pkg)
 }
 
+/// Clone a git plugin into the cache.
+fn add_git(url: &str, target: &std::path::Path, pkg: &str) -> Result<PathBuf, NpmError> {
+    if let Some(parent) = target.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| NpmError::Unpack {
+            pkg: pkg.to_string(),
+            message: e.to_string(),
+        })?;
+    }
+    if target.exists() {
+        let _ = std::fs::remove_dir_all(target);
+    }
+    let status = std::process::Command::new("git")
+        .args(["clone", "--depth", "1", url])
+        .arg(target)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status()
+        .map_err(|e| NpmError::Tarball {
+            pkg: pkg.to_string(),
+            message: format!("git is not available: {e}"),
+        })?;
+    if !status.success() {
+        return Err(NpmError::Tarball {
+            pkg: pkg.to_string(),
+            message: format!("git clone failed for {url}"),
+        });
+    }
+    Ok(target.to_path_buf())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -165,6 +217,58 @@ mod tests {
             version_tarball(&metadata, "1.0.0").unwrap().1,
             "https://x/1.tgz"
         );
+    }
+
+    #[test]
+    fn detects_git_specs() {
+        assert_eq!(
+            git_url("superpowers@git+https://github.com/obra/superpowers.git").as_deref(),
+            Some("https://github.com/obra/superpowers.git")
+        );
+        assert_eq!(
+            git_url("foo@github:user/repo").as_deref(),
+            Some("https://github.com/user/repo.git")
+        );
+        assert!(git_url("foo@1.0.0").is_none());
+    }
+
+    #[test]
+    fn clones_git_plugin_from_local_repo() {
+        // Skip unless git is available.
+        let probe = std::process::Command::new("git")
+            .arg("--version")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false);
+        if !probe {
+            eprintln!("skipping: git not available");
+            return;
+        }
+        let repo = std::env::temp_dir().join(format!("oc-git-plugin-{}", std::process::id()));
+        let _ = std::fs::create_dir_all(&repo);
+        std::fs::write(repo.join("package.json"), r#"{"name": "local-plugin"}"#).unwrap();
+        let git = |args: &[&str]| {
+            std::process::Command::new("git")
+                .args(args)
+                .current_dir(&repo)
+                .stdout(std::process::Stdio::null())
+                .stderr(std::process::Stdio::null())
+                .status()
+                .unwrap();
+        };
+        git(&["init", "-q"]);
+        git(&["config", "user.email", "t@t"]);
+        git(&["config", "user.name", "t"]);
+        git(&["add", "."]);
+        git(&["commit", "-qm", "init"]);
+
+        let url = format!("file://{}", repo.to_string_lossy());
+        let spec = format!("local-plugin@git+{url}");
+        let paths = GlobalPaths::new();
+        let target = add(&spec, &paths).expect("git add failed");
+        assert!(target.join("package.json").exists());
+        std::fs::remove_dir_all(&paths.npm_packages()).ok();
+        std::fs::remove_dir_all(&repo).ok();
     }
 
     #[test]
