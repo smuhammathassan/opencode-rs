@@ -412,7 +412,7 @@ fn render_table(rows: &[String], options: &MarkdownOptions) -> Vec<MdLine> {
         line.push('+');
         for w in &widths {
             line.push_str(&"-".repeat(*w + 2));
-            line.push_str("+");
+            line.push('+');
         }
         line
     };
@@ -426,7 +426,7 @@ fn render_table(rows: &[String], options: &MarkdownOptions) -> Vec<MdLine> {
             ..MdStyle::default()
         },
     ));
-    let header = cells.get(0);
+    let header = cells.first();
     let mut row_start = 0;
     for (ri, row) in cells.iter().enumerate() {
         let is_separator = row.iter().all(|c| {
@@ -505,7 +505,7 @@ fn wrap_spans(spans: Vec<MdSpan>, width: usize, options: &MarkdownOptions) -> Ve
             // Treat code spans atomically, breaking at width if needed.
             let mut text = span.text.as_str();
             while !text.is_empty() {
-                let take = available(&text, width.saturating_sub(current_len));
+                let take = available(text, width.saturating_sub(current_len));
                 if take == 0 && current_len > 0 {
                     push_line(&mut current, &mut out);
                     current_len = 0;

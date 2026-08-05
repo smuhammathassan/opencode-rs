@@ -733,11 +733,7 @@ impl ProtocolStream for GeminiStream {
 /// `Gemini.protocol`.
 /// From reference/packages/llm/src/protocols/gemini.ts (`protocol`)
 pub fn protocol() -> Protocol {
-    Protocol::make(
-        ADAPTER,
-        Arc::new(|request| from_request(request)),
-        Arc::new(GeminiStream),
-    )
+    Protocol::make(ADAPTER, Arc::new(from_request), Arc::new(GeminiStream))
 }
 
 /// `Gemini.route`.

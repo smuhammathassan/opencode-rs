@@ -391,11 +391,12 @@ impl SessionRunnerService {
         for part in [
             agent.info.as_ref().and_then(|info| info.system.clone()),
             Some(system.baseline.clone()),
-        ] {
-            if let Some(part) = part {
-                if !part.is_empty() {
-                    system_parts.push(SystemPart::make(part));
-                }
+        ]
+        .into_iter()
+        .flatten()
+        {
+            if !part.is_empty() {
+                system_parts.push(SystemPart::make(part));
             }
         }
 
@@ -481,7 +482,7 @@ impl SessionRunnerService {
                         continue;
                     }
                 }
-                publisher.publish(&event, &[]).await.map_err(turn_error)?;
+                publisher.publish(event, &[]).await.map_err(turn_error)?;
 
                 if let LLMEvent::ToolCall {
                     id,
@@ -606,7 +607,7 @@ impl SessionRunnerService {
                     .await
                     .map_err(turn_error)?;
                 publisher
-                    .fail_assistant(&error.reason.message())
+                    .fail_assistant(error.reason.message())
                     .await
                     .map_err(turn_error)?;
             }

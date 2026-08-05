@@ -103,8 +103,8 @@ fn parse_json(data: &str) -> Result<Value, ClientError> {
 
 enum SsePhase {
     Pending {
-        transport: Transport,
-        desc: RequestDescriptor,
+        transport: Box<Transport>,
+        desc: Box<RequestDescriptor>,
         options: Option<RequestOptions>,
     },
     Decoding(SseDecoder),
@@ -120,8 +120,8 @@ pub(crate) fn sse_stream<T: DeserializeOwned + 'static>(
 ) -> std::pin::Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'static>> {
     Box::pin(futures::stream::unfold(
         SsePhase::Pending {
-            transport,
-            desc,
+            transport: Box::new(transport),
+            desc: Box::new(desc),
             options,
         },
         |phase| async move {

@@ -146,11 +146,14 @@ mod tests {
         let def = crate::tool::tool::wrap("write", def());
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("new.txt");
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = def
             .execute(
                 serde_json::json!({

@@ -176,7 +176,7 @@ pub enum AssistantContentKind {
 pub enum AssistantContent {
     Text(AssistantText),
     Reasoning(AssistantReasoning),
-    Tool(AssistantTool),
+    Tool(Box<AssistantTool>),
 }
 
 impl AssistantContent {
@@ -394,6 +394,6 @@ pub enum SessionMessage {
     Synthetic(Synthetic),
     System(System),
     Shell(Shell),
-    Assistant(Assistant),
+    Assistant(Box<Assistant>),
     Compaction(Compaction),
 }

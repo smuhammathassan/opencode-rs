@@ -220,11 +220,9 @@ async fn native_patch(
         context: Some(options.context.unwrap_or(PATCH_CONTEXT_LINES)),
         max_output_bytes: Some(MAX_PATCH_BYTES),
     };
-    let result = if item.code == "??" || r#ref.is_none() {
-        git.patch_untracked(cwd, &item.file, Some(options)).await
-    } else {
-        git.patch(cwd, r#ref.unwrap(), &item.file, Some(options))
-            .await
+    let result = match r#ref {
+        Some(r#ref) if item.code != "??" => git.patch(cwd, r#ref, &item.file, Some(options)).await,
+        _ => git.patch_untracked(cwd, &item.file, Some(options)).await,
     };
     if !result.truncated && !result.text.is_empty() {
         return result.text;
@@ -233,7 +231,7 @@ async fn native_patch(
 }
 
 fn total_patch(file: &str, patch: &str, total: usize) -> (String, bool) {
-    if total + patch.as_bytes().len() <= MAX_TOTAL_PATCH_BYTES {
+    if total + patch.len() <= MAX_TOTAL_PATCH_BYTES {
         return (patch.to_string(), false);
     }
     (empty_patch(file), true)
@@ -294,7 +292,7 @@ async fn files(
         };
         capped = capped || result.1;
         if !capped {
-            total += result.0.as_bytes().len();
+            total += result.0.len();
             capped = total >= MAX_TOTAL_PATCH_BYTES;
         }
         next.push(VcsFileDiff {
@@ -664,7 +662,7 @@ mod tests {
         );
         assert_eq!(parse_quoted_path("\"unterminated"), None);
         assert_eq!(
-            parse_quoted_path("\"plain\"").map(|(v, end)| (v, end)),
+            parse_quoted_path("\"plain\""),
             Some(("plain".to_string(), 7))
         );
     }

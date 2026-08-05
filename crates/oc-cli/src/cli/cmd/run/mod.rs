@@ -44,7 +44,7 @@ fn resolve_directory(args: &RunArgs, root: &Path) -> anyhow::Result<Option<PathB
     } else {
         root.join(dir)
     };
-    if let Err(_) = std::env::set_current_dir(&target) {
+    if std::env::set_current_dir(&target).is_err() {
         ui::error(&format!("Failed to change directory to {dir}"));
         std::process::exit(1);
     }
@@ -408,9 +408,7 @@ async fn share(sdk: &dyn RunClient, session_id: &str, opts: &ExecuteOpts<'_>) {
 }
 
 async fn pick_agent(sdk: &dyn RunClient, opts: &ExecuteOpts<'_>) -> Option<String> {
-    let Some(name) = opts.args.agent.clone() else {
-        return None;
-    };
+    let name = opts.args.agent.clone()?;
 
     if opts.attach_url.is_some() {
         let modes = sdk.app_agents().await.ok();
@@ -513,11 +511,10 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
         die("--mini requires a TTY stdout");
     }
     if interactive {
-        let stdin = runtime_stdin::resolve_interactive_stdin().map_err(|err| {
+        let stdin = runtime_stdin::resolve_interactive_stdin().inspect_err(|err| {
             if err.to_string() == runtime_stdin::INTERACTIVE_INPUT_ERROR {
                 die(&err.to_string());
             }
-            err
         })?;
         stdin.cleanup();
     }

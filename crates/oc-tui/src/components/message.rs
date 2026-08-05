@@ -84,7 +84,7 @@ pub fn render_messages(render: &SessionRender) -> Vec<MessageLine> {
 
     for message in messages {
         if let Some(revert) = &revert_id {
-            if &message.id() == revert {
+            if message.id() == revert {
                 if !first {
                     out.push(MessageLine::new(empty_line()));
                 }
@@ -278,10 +278,8 @@ fn render_assistant_message(
         match part {
             Part::Text(t) => render_text_part(render, t, &assistant.id, out),
             Part::Reasoning(r) => render_reasoning_part(render, r, &assistant.id, out),
-            Part::Tool(t) => {
-                if !should_hide_tool(render, t) {
-                    render_tool_part(render, t, out);
-                }
+            Part::Tool(t) if !should_hide_tool(render, t) => {
+                render_tool_part(render, t, out);
             }
             _ => {}
         }
@@ -552,6 +550,7 @@ fn value<'a>(
 
 /// An inline tool row. Mirrors `InlineTool`/`InlineToolRow` from
 /// reference/packages/tui/src/routes/session/index.tsx.
+#[allow(clippy::too_many_arguments)]
 fn inline_row(
     render: &SessionRender,
     icon: &str,
@@ -764,7 +763,7 @@ fn render_shell(
         ];
         spans.push((
             if running {
-                format!("{command}")
+                command.to_string()
             } else {
                 format!("$ {command}")
             },
@@ -1403,7 +1402,7 @@ fn render_generic(
             )));
         }
     } else {
-        let mut text = format!("{tool}");
+        let mut text = tool.to_string();
         if !args.is_empty() {
             text.push(' ');
             text.push_str(&args);

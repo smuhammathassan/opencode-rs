@@ -119,7 +119,7 @@ pub fn def() -> crate::tool::tool::Def {
         let available = ctx
             .services
             .lsp_available(&file)
-            .map_err(|error| ToolError::Other(error))?;
+            .map_err(ToolError::Other)?;
         if !available {
             return Err(ToolError::Other(
                 "No LSP server available for this file type.".to_string(),

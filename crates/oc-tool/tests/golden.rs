@@ -21,10 +21,6 @@ fn registry() -> ToolRegistry {
     )
 }
 
-fn schema_of(schema: &Schema) -> serde_json::Value {
-    oc_tool::jsonschema::from_schema(schema)
-}
-
 fn assert_schema(name: &str, expected: serde_json::Value) {
     let registry = registry();
     let tools = registry.all();

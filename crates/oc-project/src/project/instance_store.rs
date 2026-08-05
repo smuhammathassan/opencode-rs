@@ -10,7 +10,7 @@ use tokio::sync::{broadcast, Notify};
 
 use crate::project::bootstrap::Bootstrap;
 use crate::project::instance_context::InstanceContext;
-use crate::project::project::Project;
+use crate::project::project_impl::Project;
 use crate::schema::ProjectInfo;
 use crate::util::bus::{Bus, BusEvent, EventPayload};
 use crate::util::pathutil;
@@ -166,7 +166,7 @@ impl InstanceStore {
                 if &value != ctx {
                     return;
                 }
-                self.dispose_entry(&ctx.directory, &entry, &ctx).await;
+                self.dispose_entry(&ctx.directory, &entry, ctx).await;
             }
         }
     }

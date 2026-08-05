@@ -138,11 +138,13 @@ mod tests {
         let def = tool::wrap("glob", def());
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("keep.rs"), "fn main() {}").unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
         let result = def
             .execute(serde_json::json!({ "pattern": "**/*.zzz" }), &mut ctx)
             .await

@@ -2,7 +2,7 @@
 ///
 /// TODO(integration): move to oc-core; this is a minimal XDG-path port used
 /// until oc-core exposes `Global.Path`.
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use crate::util::pathutil;
 
@@ -55,11 +55,11 @@ impl Global {
     }
 }
 
-fn xdg_dir(key: &str, fallback: &PathBuf) -> Option<PathBuf> {
+fn xdg_dir(key: &str, fallback: &Path) -> Option<PathBuf> {
     std::env::var_os(key)
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
-        .or_else(|| Some(fallback.clone()))
+        .or_else(|| Some(fallback.to_path_buf()))
 }
 
 #[cfg(target_os = "windows")]

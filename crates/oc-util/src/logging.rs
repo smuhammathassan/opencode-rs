@@ -20,7 +20,7 @@ use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::field::Visit;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt::format::Writer;
-use tracing_subscriber::fmt::{FormatEvent, FormatFields, FmtContext};
+use tracing_subscriber::fmt::{FmtContext, FormatEvent, FormatFields};
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::registry::LookupSpan;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -77,7 +77,9 @@ fn format_value(value: &str) -> String {
 }
 
 fn timestamp() -> String {
-    chrono::Utc::now().format("%Y-%m-%dT%H:%M:%S%.6fZ").to_string()
+    chrono::Utc::now()
+        .format("%Y-%m-%dT%H:%M:%S%.6fZ")
+        .to_string()
 }
 
 fn level_name(level: &Level) -> &'static str {
@@ -99,7 +101,8 @@ struct FieldCollector {
 
 impl Visit for FieldCollector {
     fn record_str(&mut self, field: &tracing::field::Field, value: &str) {
-        self.entries.push((field.name().to_string(), value.to_string()));
+        self.entries
+            .push((field.name().to_string(), value.to_string()));
     }
 
     fn record_debug(&mut self, field: &tracing::field::Field, value: &dyn std::fmt::Debug) {
@@ -179,7 +182,11 @@ fn open_log_file() -> Option<Mutex<File>> {
     if let Some(dir) = path.parent() {
         let _ = fs::create_dir_all(dir);
     }
-    let file = OpenOptions::new().create(true).append(true).open(path).ok()?;
+    let file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .ok()?;
     Some(Mutex::new(file))
 }
 

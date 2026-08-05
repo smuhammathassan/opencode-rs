@@ -95,7 +95,7 @@ impl Handler {
         let supports_permission = self
             .connection
             .as_ref()
-            .map_or(false, |connection| connection.supports_request_permission());
+            .is_some_and(|connection| connection.supports_request_permission());
         if !supports_permission {
             self.reply(&permission.id, Reply::Reject, &session.cwd)
                 .await;
@@ -168,7 +168,7 @@ impl Handler {
         let supports_write = self
             .connection
             .as_ref()
-            .map_or(false, |connection| connection.supports_write_text_file());
+            .is_some_and(|connection| connection.supports_write_text_file());
         let Some(connection) = self.connection.as_ref() else {
             return;
         };
@@ -484,7 +484,7 @@ fn parse_patch(patch: &str) -> Option<Vec<Hunk>> {
     let mut no_newline_next = false;
 
     for raw in patch.lines() {
-        let line = if let Some(_) = raw.strip_prefix('\\') {
+        let line = if raw.strip_prefix('\\').is_some() {
             // `\ No newline at end of file`
             if no_newline_next {
                 if let Some(hunk) = &mut current {
@@ -519,10 +519,10 @@ fn parse_patch(patch: &str) -> Option<Vec<Hunk>> {
                 op: Op::Remove,
                 text: text.to_string(),
             });
-        } else if line.starts_with(' ') {
+        } else if let Some(text) = line.strip_prefix(' ') {
             hunk.lines.push(PatchLine {
                 op: Op::Context,
-                text: line[1..].to_string(),
+                text: text.to_string(),
             });
         }
     }

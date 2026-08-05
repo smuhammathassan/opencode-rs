@@ -25,7 +25,7 @@ impl TextBuffer {
         Self::default()
     }
 
-    pub fn from_str(text: &str) -> Self {
+    pub fn from_text(text: &str) -> Self {
         let chars: Vec<char> = text.chars().collect();
         TextBuffer {
             cursor: chars.len(),
@@ -468,7 +468,7 @@ mod tests {
 
     #[test]
     fn insert_at_cursor() {
-        let mut b = TextBuffer::from_str("abcd");
+        let mut b = TextBuffer::from_text("abcd");
         b.set_cursor(2);
         b.insert_str("XY");
         assert_eq!(b.text(), "abXYcd");
@@ -477,12 +477,12 @@ mod tests {
 
     #[test]
     fn backspace_and_delete() {
-        let mut b = TextBuffer::from_str("abc");
+        let mut b = TextBuffer::from_text("abc");
         b.set_cursor(3);
         b.backspace();
         assert_eq!(b.text(), "ab");
 
-        let mut b = TextBuffer::from_str("abc");
+        let mut b = TextBuffer::from_text("abc");
         b.set_cursor(0);
         b.delete();
         assert_eq!(b.text(), "bc");
@@ -490,7 +490,7 @@ mod tests {
 
     #[test]
     fn selection_deletes() {
-        let mut b = TextBuffer::from_str("abcdef");
+        let mut b = TextBuffer::from_text("abcdef");
         b.set_cursor(1);
         b.select_right();
         b.select_right();
@@ -516,7 +516,7 @@ mod tests {
 
     #[test]
     fn movement_across_lines() {
-        let mut b = TextBuffer::from_str("ab\ncd\nef");
+        let mut b = TextBuffer::from_text("ab\ncd\nef");
         b.set_cursor(5); // after 'd' on line 1 (col 2)
         b.move_up();
         assert_eq!(b.cursor(), 2); // col 2 on line 0 -> after 'b'
@@ -530,7 +530,7 @@ mod tests {
 
     #[test]
     fn line_boundaries() {
-        let mut b = TextBuffer::from_str("ab\ncd\n");
+        let mut b = TextBuffer::from_text("ab\ncd\n");
         b.set_cursor(5);
         assert_eq!(b.line_start(), 3);
         assert_eq!(b.line_end(), 5);
@@ -546,7 +546,7 @@ mod tests {
 
     #[test]
     fn word_movement() {
-        let mut b = TextBuffer::from_str("foo bar baz");
+        let mut b = TextBuffer::from_text("foo bar baz");
         b.set_cursor(b.len());
         b.word_backward();
         assert_eq!(&b.text()[..b.cursor()], "foo bar ");
@@ -560,7 +560,7 @@ mod tests {
 
     #[test]
     fn delete_words() {
-        let mut b = TextBuffer::from_str("foo bar baz");
+        let mut b = TextBuffer::from_text("foo bar baz");
         b.set_cursor(b.len());
         b.delete_word_backward();
         assert_eq!(b.text(), "foo bar ");
@@ -571,11 +571,11 @@ mod tests {
 
     #[test]
     fn delete_to_line_edges() {
-        let mut b = TextBuffer::from_str("ab\ncd");
+        let mut b = TextBuffer::from_text("ab\ncd");
         b.set_cursor(4);
         b.delete_to_line_start();
         assert_eq!(b.text(), "ab\nd");
-        let mut b = TextBuffer::from_str("ab\ncd");
+        let mut b = TextBuffer::from_text("ab\ncd");
         b.set_cursor(3);
         b.delete_to_line_end();
         assert_eq!(b.text(), "ab\n");
@@ -583,7 +583,7 @@ mod tests {
 
     #[test]
     fn delete_line_collapses() {
-        let mut b = TextBuffer::from_str("a\nb\nc");
+        let mut b = TextBuffer::from_text("a\nb\nc");
         b.set_cursor(2);
         b.delete_line();
         assert_eq!(b.text(), "a\nc");
@@ -591,7 +591,7 @@ mod tests {
 
     #[test]
     fn select_all() {
-        let mut b = TextBuffer::from_str("hello");
+        let mut b = TextBuffer::from_text("hello");
         b.select_all();
         assert_eq!(b.selection(), Some((0, 5)));
         b.delete();
@@ -600,7 +600,7 @@ mod tests {
 
     #[test]
     fn non_ascii_handling() {
-        let mut b = TextBuffer::from_str("héllo");
+        let mut b = TextBuffer::from_text("héllo");
         b.set_cursor(2);
         b.insert_str("y");
         assert_eq!(b.text(), "héyllo");

@@ -275,9 +275,7 @@ fn relative_path(from: &str, to: &str) -> String {
         common += 1;
     }
     let mut parts = Vec::new();
-    for _ in common..from.len() {
-        parts.push("..");
-    }
+    parts.extend(std::iter::repeat_n("..", from.len() - common));
     for part in &to[common..] {
         parts.push(*part);
     }

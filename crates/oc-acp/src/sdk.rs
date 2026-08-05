@@ -123,7 +123,7 @@ pub struct MessagePath {
 #[serde(untagged)]
 pub enum Message {
     User(UserMessage),
-    Assistant(AssistantMessage),
+    Assistant(Box<AssistantMessage>),
 }
 
 impl Message {
@@ -273,7 +273,7 @@ pub enum Part {
     Text(TextPart),
     File(FilePart),
     Reasoning(ReasoningPart),
-    Tool(ToolPart),
+    Tool(Box<ToolPart>),
     Other(Value),
 }
 

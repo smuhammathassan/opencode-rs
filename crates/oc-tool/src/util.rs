@@ -4,8 +4,8 @@
 pub mod bom {
     /// `Bom.split` from `reference/packages/opencode/src/util/bom.ts:4`.
     pub fn split(text: &str) -> (bool, String) {
-        if text.starts_with('\u{feff}') {
-            (true, text[3..].to_string())
+        if let Some(rest) = text.strip_prefix('\u{feff}') {
+            (true, rest.to_string())
         } else {
             (false, text.to_string())
         }
@@ -117,8 +117,8 @@ pub mod identifier {
             now = !now;
         }
         let mut time_bytes = [0u8; 6];
-        for i in 0..6 {
-            time_bytes[i] = ((now >> (40 - 8 * i)) & 0xff) as u8;
+        for (i, byte) in time_bytes.iter_mut().enumerate() {
+            *byte = ((now >> (40 - 8 * i)) & 0xff) as u8;
         }
         let mut out = String::new();
         for byte in time_bytes {

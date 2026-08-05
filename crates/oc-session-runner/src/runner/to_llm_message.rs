@@ -419,7 +419,7 @@ mod tests {
 
     #[test]
     fn tool_results_are_separate_tool_messages() {
-        let tool = AssistantContent::Tool(AssistantTool {
+        let tool = AssistantContent::Tool(Box::new(AssistantTool {
             kind: crate::session::message::AssistantContentKind::Tool,
             id: "call_1".into(),
             name: "read".into(),
@@ -438,9 +438,11 @@ mod tests {
                 completed: None,
                 pruned: None,
             },
-        });
+        }));
         let messages = to_llm_messages(
-            &[SessionMessage::Assistant(assistant_message(vec![tool]))],
+            &[SessionMessage::Assistant(Box::new(assistant_message(
+                vec![tool],
+            )))],
             &Model::make("gpt-4o", "openai"),
         );
         assert_eq!(messages.len(), 2);
@@ -461,9 +463,9 @@ mod tests {
             }),
         });
         let messages = to_llm_messages(
-            &[SessionMessage::Assistant(assistant_message(vec![
-                reasoning,
-            ]))],
+            &[SessionMessage::Assistant(Box::new(assistant_message(
+                vec![reasoning],
+            )))],
             &Model::make("claude-3-5", "anthropic"),
         );
         // Different model: reasoning is lowered to plain text, not dropped.
@@ -499,7 +501,7 @@ mod tests {
 
     #[test]
     fn pending_tool_input_is_parsed_json() {
-        let tool = AssistantContent::Tool(AssistantTool {
+        let tool = AssistantContent::Tool(Box::new(AssistantTool {
             kind: crate::session::message::AssistantContentKind::Tool,
             id: "call_2".into(),
             name: "bash".into(),
@@ -517,9 +519,11 @@ mod tests {
                 completed: None,
                 pruned: None,
             },
-        });
+        }));
         let messages = to_llm_messages(
-            &[SessionMessage::Assistant(assistant_message(vec![tool]))],
+            &[SessionMessage::Assistant(Box::new(assistant_message(
+                vec![tool],
+            )))],
             &Model::make("gpt-4o", "openai"),
         );
         let call = &messages[0].content[0];
@@ -543,9 +547,9 @@ mod tests {
             time: None,
         });
         let messages = to_llm_messages(
-            &[SessionMessage::Assistant(assistant_message(vec![
-                reasoning,
-            ]))],
+            &[SessionMessage::Assistant(Box::new(assistant_message(
+                vec![reasoning],
+            )))],
             &Model::make("gpt-4o", "openai"),
         );
         assert_eq!(messages.len(), 1);
@@ -561,7 +565,9 @@ mod tests {
             text: "".into(),
         });
         let messages = to_llm_messages(
-            &[SessionMessage::Assistant(assistant_message(vec![text]))],
+            &[SessionMessage::Assistant(Box::new(assistant_message(
+                vec![text],
+            )))],
             &Model::make("gpt-4o", "openai"),
         );
         assert!(messages.is_empty());

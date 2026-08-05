@@ -53,8 +53,8 @@ pub enum LlmErrorReason {
         message: String,
         parameter: Option<String>,
         classification: Option<ProviderFailureClassification>,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     NoRoute {
         route: String,
@@ -64,50 +64,50 @@ pub enum LlmErrorReason {
     Authentication {
         message: String,
         kind: AuthKind,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     RateLimit {
         message: String,
         retry_after_ms: Option<i64>,
-        rate_limit: Option<HttpRateLimitDetails>,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        rate_limit: Option<Box<HttpRateLimitDetails>>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     QuotaExceeded {
         message: String,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     ContentPolicy {
         message: String,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     ProviderInternal {
         message: String,
         status: i64,
         retry_after_ms: Option<i64>,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
     Transport {
         message: String,
         kind: Option<String>,
-        url: Option<String>,
-        http: Option<HttpContext>,
+        url: Option<Box<String>>,
+        http: Option<Box<HttpContext>>,
     },
     InvalidProviderOutput {
         message: String,
         route: Option<String>,
         raw: Option<String>,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
     },
     UnknownProvider {
         message: String,
         status: Option<i64>,
-        provider_metadata: Option<super::ids::ProviderMetadata>,
-        http: Option<HttpContext>,
+        provider_metadata: Option<Box<super::ids::ProviderMetadata>>,
+        http: Option<Box<HttpContext>>,
     },
 }
 
@@ -192,7 +192,7 @@ impl LlmErrorReason {
 pub struct LlmError {
     pub module: String,
     pub method: String,
-    pub reason: LlmErrorReason,
+    pub reason: Box<LlmErrorReason>,
 }
 
 impl LlmError {
@@ -204,12 +204,12 @@ impl LlmError {
         LlmError {
             module: module.into(),
             method: method.into(),
-            reason,
+            reason: Box::new(reason),
         }
     }
 
     pub fn message(&self) -> String {
-        match &self.reason {
+        match self.reason.as_ref() {
             LlmErrorReason::NoRoute {
                 route,
                 provider,
@@ -233,7 +233,7 @@ impl LlmError {
     }
 
     pub fn is_invalid_request(&self) -> bool {
-        matches!(self.reason, LlmErrorReason::InvalidRequest { .. })
+        matches!(self.reason.as_ref(), LlmErrorReason::InvalidRequest { .. })
     }
 }
 
@@ -281,8 +281,8 @@ impl LlmError {
 #[derive(Debug, Clone)]
 pub struct ToolFailure {
     pub message: String,
-    pub error: Option<Value>,
-    pub metadata: Option<BTreeMap<String, Value>>,
+    pub error: Option<Box<Value>>,
+    pub metadata: Option<Box<BTreeMap<String, Value>>>,
 }
 
 impl ToolFailure {

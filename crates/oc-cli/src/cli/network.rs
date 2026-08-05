@@ -59,7 +59,7 @@ pub struct ResolvedNetwork {
 pub fn has_arg(name: &str) -> bool {
     args_before_dashes()
         .iter()
-        .any(|arg| arg == name || arg.strip_prefix(name).map_or(false, |s| s.starts_with('=')))
+        .any(|arg| arg == name || arg.strip_prefix(name).is_some_and(|s| s.starts_with('=')))
 }
 
 /// Mirrors `hasBooleanArg(name)`.

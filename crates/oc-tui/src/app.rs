@@ -89,6 +89,16 @@ pub struct SessionView {
     pub sidebar_init: bool,
 }
 
+/// Pending `/create` request captured while a new session is being spawned.
+pub type PendingCreate = (
+    mpsc::Receiver<Option<String>>,
+    String,
+    String,
+    crate::local::ModelSelection,
+    PromptMode,
+    Vec<serde_json::Value>,
+);
+
 pub struct App {
     pub client: Arc<dyn SdkClient>,
     pub config: ResolvedConfig,
@@ -123,14 +133,7 @@ pub struct App {
     pub autosubmitted: bool,
     pub kv: HashMap<String, serde_json::Value>,
     pub(crate) pending_session_data: Option<(String, mpsc::Receiver<SessionData>)>,
-    pub(crate) pending_create: Option<(
-        mpsc::Receiver<Option<String>>,
-        String,
-        String,
-        crate::local::ModelSelection,
-        PromptMode,
-        Vec<serde_json::Value>,
-    )>,
+    pub(crate) pending_create: Option<PendingCreate>,
     pub(crate) on_submit: Option<Box<dyn FnOnce()>>,
     pub initial_session_id: Option<String>,
     pub initial_agent: Option<String>,
@@ -1477,7 +1480,7 @@ impl App {
     }
 
     fn quick_switch(&mut self, slot: usize) {
-        let id = self.sync.sessions.iter().nth(slot).map(|s| s.id.clone());
+        let id = self.sync.sessions.get(slot).map(|s| s.id.clone());
         if let Some(id) = id {
             self.navigate_session(&id);
         }
@@ -1829,10 +1832,7 @@ impl App {
                         let model = &provider.models[id];
                         items.push(
                             DialogItem::new(format!("{} / {}", provider.name, model.name))
-                                .with_description(format!(
-                                    "{provider_id}",
-                                    provider_id = provider.id
-                                )),
+                                .with_description(provider.id.clone()),
                         );
                         if let Some(current) = &current {
                             if current.provider_id == provider.id && current.model_id == *id {
@@ -2219,8 +2219,7 @@ impl App {
         for (idx, line) in logo.iter().enumerate() {
             let spans: Vec<ratatui::text::Span> = line
                 .chars()
-                .enumerate()
-                .map(|(_ci, c)| {
+                .map(|c| {
                     let color = match c {
                         '█' => theme.text,
                         '▄' => theme.text_muted,
@@ -2470,8 +2469,7 @@ impl App {
         if status_y < rect.y + rect.height {
             let status = self.prompt_status_row(prompt, width);
             let status_rect = ratatui::layout::Rect::new(rect.x, status_y, width as u16, 1);
-            let mut lines: Vec<StyledLine> = Vec::new();
-            lines.push(status);
+            let lines = vec![status];
             self.draw_styled_lines(frame, status_rect, &lines);
         }
 
@@ -2592,7 +2590,7 @@ impl App {
             })
             .unwrap_or_else(|| "ctrl+p".to_string());
         let hint = if prompt.mode == PromptMode::Shell {
-            format!("  esc exit shell mode")
+            "  esc exit shell mode".to_string()
         } else {
             format!("  {agent_shortcut} agents  {palette_shortcut} commands")
         };
@@ -2660,8 +2658,7 @@ impl App {
             "  Parent ↑  Prev ←  Next →".to_string(),
             Style::default().fg(theme.text_muted),
         ));
-        let mut lines = Vec::new();
-        lines.push(line);
+        let lines = vec![line];
         self.draw_styled_lines(frame, rect, &lines);
     }
 
@@ -2864,15 +2861,10 @@ async fn run_with_terminal<W: std::io::Write>(
 
         // Poll terminal input (blocking up to 16ms).
         if crossterm::event::poll(Duration::from_millis(16))? {
-            loop {
-                match crossterm::event::read() {
-                    Ok(event) => {
-                        let redraw = app.handle_input(event);
-                        if redraw {
-                            app.dirty = true;
-                        }
-                    }
-                    Err(_) => break,
+            while let Ok(event) = crossterm::event::read() {
+                let redraw = app.handle_input(event);
+                if redraw {
+                    app.dirty = true;
                 }
                 if !crossterm::event::poll(Duration::from_millis(0))? {
                     break;
@@ -2898,9 +2890,7 @@ async fn run_with_terminal<W: std::io::Write>(
 }
 
 fn parse_model_arg(input: &str) -> Option<(String, String)> {
-    let mut parts = input.splitn(2, '/');
-    let provider = parts.next()?;
-    let model = parts.next()?;
+    let (provider, model) = input.split_once('/')?;
     if provider.is_empty() || model.is_empty() {
         None
     } else {

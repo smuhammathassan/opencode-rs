@@ -71,9 +71,11 @@ pub struct Enabled {
 }
 
 /// One `mcp` map entry: a local/remote server or a bare `{ enabled }` flag.
+/// The large `Server` payload is boxed (serde-transparent) to keep the enum
+/// size small (clippy `large_enum_variant`).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Value {
-    Server(Info),
+    Server(Box<Info>),
     Enabled(Enabled),
 }

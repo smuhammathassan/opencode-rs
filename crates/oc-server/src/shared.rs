@@ -29,7 +29,7 @@ pub mod pty_ticket {
                 .collect();
         params
             .get(PTY_CONNECT_TICKET_QUERY)
-            .map_or(false, |t| !t.is_empty())
+            .is_some_and(|t| !t.is_empty())
     }
 
     #[cfg(test)]

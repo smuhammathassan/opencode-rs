@@ -649,10 +649,7 @@ impl Workspace {
             let mut db = self.inner.db.lock().await;
             let index = db.iter().position(|row| row.id == id);
             index.map(|index| db.remove(index))
-        };
-        let Some(row) = row else {
-            return None;
-        };
+        }?;
 
         self.stop_sync(id).await;
 

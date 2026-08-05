@@ -62,7 +62,7 @@ pub async fn fs_list(
                 "name": name,
                 "path": entry.path().to_string_lossy(),
                 "type": if is_dir { "directory" } else { "file" },
-                "mime": mime_guess::from_path(&entry.path()).first_or_octet_stream().to_string(),
+                "mime": mime_guess::from_path(entry.path()).first_or_octet_stream().to_string(),
             }));
         }
     }
@@ -91,7 +91,7 @@ pub async fn fs_find(
                     "name": name,
                     "path": entry.path().to_string_lossy(),
                     "type": if entry.file_type().map(|t| t.is_dir()).unwrap_or(false) { "directory" } else { "file" },
-                    "mime": mime_guess::from_path(&entry.path()).first_or_octet_stream().to_string(),
+                    "mime": mime_guess::from_path(entry.path()).first_or_octet_stream().to_string(),
                 }));
             }
         }

@@ -77,10 +77,10 @@ async fn create_session_matches_reference_shape() {
     assert_eq!(data["agent"], "build");
     assert_eq!(data["cost"], 0.0);
     assert_eq!(data["tokens"]["input"], 0.0);
-    assert_eq!(data["time"]["created"].as_i64().unwrap() > 0, true);
+    assert!(data["time"]["created"].as_i64().unwrap() > 0);
     assert_eq!(data["title"], "New Session");
     assert!(data["location"]["directory"].as_str().is_some());
-    assert_eq!(data["projectID"].as_str().unwrap().len() > 0, true);
+    assert!(!data["projectID"].as_str().unwrap().is_empty());
 }
 
 #[tokio::test]

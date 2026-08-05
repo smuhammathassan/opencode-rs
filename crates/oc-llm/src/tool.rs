@@ -12,14 +12,17 @@ use crate::schema::messages::{
     ToolCallPart, ToolContent, ToolDefinition, ToolOutput, ToolResultValue,
 };
 
+/// JSON schema encode/decode closure for a tool.
+pub type ToolCodec = Arc<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>;
+
 /// `ToolSchema` — parameter / success codec constraint (Effect `Schema.Codec`
 /// has no Rust equivalent; the schema shape and codecs are captured directly).
 /// From reference/packages/llm/src/tool.ts (`ToolSchema`)
 #[derive(Clone)]
 pub struct ToolSchema {
     pub json_schema: Value,
-    pub decode: Arc<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>,
-    pub encode: Arc<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>,
+    pub decode: ToolCodec,
+    pub encode: ToolCodec,
 }
 
 impl ToolSchema {
@@ -84,8 +87,8 @@ pub struct Tool {
     pub execute: Option<Arc<ToolExecute>>,
     pub to_model_output: Option<Arc<ToolToModelOutput>>,
     pub to_structured_output: Option<Arc<ToolToStructuredOutput>>,
-    pub decode: Arc<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>,
-    pub encode: Arc<dyn Fn(&Value) -> Result<Value, String> + Send + Sync>,
+    pub decode: ToolCodec,
+    pub encode: ToolCodec,
     pub legacy_result: bool,
     pub definition: ToolDefinition,
 }

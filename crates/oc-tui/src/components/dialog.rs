@@ -77,7 +77,7 @@ impl DialogItem {
 }
 
 /// Filter item indices by the query using fuzzy relevance.
-pub fn filter_items<'a>(items: &'a [DialogItem], query: &str) -> Vec<usize> {
+pub fn filter_items(items: &[DialogItem], query: &str) -> Vec<usize> {
     if query.trim().is_empty() {
         return (0..items.len()).collect();
     }
@@ -153,8 +153,6 @@ pub fn render_list(
         };
         let fg = if active {
             selected_foreground(theme.primary)
-        } else if item.selected {
-            theme.text
         } else {
             theme.text
         };

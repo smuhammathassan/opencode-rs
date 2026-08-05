@@ -25,7 +25,7 @@ async fn snapshot_track_diff_and_restore() {
         data_dir()
             .join("snapshot")
             .join(&project_id)
-            .join(&oc_project::util::hash::Hash::fast(
+            .join(oc_project::util::hash::Hash::fast(
                 repo.to_str().unwrap().as_bytes(),
             ));
     let first = runtime

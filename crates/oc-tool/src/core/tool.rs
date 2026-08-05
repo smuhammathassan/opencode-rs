@@ -51,6 +51,14 @@ pub type CoreExecute = std::sync::Arc<
         + Sync,
 >;
 
+/// Structured-output projection for a core tool.
+pub type ToStructuredOutput =
+    std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> JsonValue + Send + Sync>;
+
+/// Model-output projection for a core tool.
+pub type ToModelOutput =
+    std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> Vec<Content> + Send + Sync>;
+
 /// `Core.Tool.Definition` from `reference/packages/core/src/tool/tool.ts:20`.
 #[derive(Clone)]
 pub struct CoreTool {
@@ -58,10 +66,8 @@ pub struct CoreTool {
     pub input: Schema,
     pub output: Schema,
     pub structured: Option<Schema>,
-    pub to_structured_output:
-        Option<std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> JsonValue + Send + Sync>>,
-    pub to_model_output:
-        Option<std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> Vec<Content> + Send + Sync>>,
+    pub to_structured_output: Option<ToStructuredOutput>,
+    pub to_model_output: Option<ToModelOutput>,
     pub execute: CoreExecute,
     pub permission: Option<String>,
 }
@@ -80,12 +86,8 @@ pub fn make(
     input: Schema,
     output: Schema,
     structured: Option<Schema>,
-    to_structured_output: Option<
-        std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> JsonValue + Send + Sync>,
-    >,
-    to_model_output: Option<
-        std::sync::Arc<dyn Fn(&JsonValue, &JsonValue) -> Vec<Content> + Send + Sync>,
-    >,
+    to_structured_output: Option<ToStructuredOutput>,
+    to_model_output: Option<ToModelOutput>,
     execute: impl Fn(JsonValue, &mut CoreContext) -> Result<JsonValue, ToolError>
         + Send
         + Sync
@@ -151,11 +153,9 @@ pub fn settle(
     call: &ToolCall,
     context: &mut CoreContext,
 ) -> Result<Settled, ToolError> {
-    let input = tool
-        .input
+    tool.input
         .validate(&call.input)
         .map_err(|error| ToolError::failure(format!("Invalid tool input: {error}")))?;
-    let _ = input;
     let output = poll(tool, call.input.clone(), call, context)?;
     tool.output.validate(&output).map_err(|error| {
         ToolError::failure(format!(

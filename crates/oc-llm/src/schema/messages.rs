@@ -518,7 +518,7 @@ pub struct Message {
 #[derive(Debug, Clone)]
 pub enum ContentInput {
     String(String),
-    One(ContentPart),
+    One(Box<ContentPart>),
     Many(Vec<ContentPart>),
 }
 
@@ -536,7 +536,7 @@ impl From<&str> for ContentInput {
 
 impl From<ContentPart> for ContentInput {
     fn from(value: ContentPart) -> Self {
-        ContentInput::One(value)
+        ContentInput::One(Box::new(value))
     }
 }
 
@@ -551,7 +551,7 @@ impl Message {
     pub fn content_parts(input: &ContentInput) -> Vec<ContentPart> {
         match input {
             ContentInput::String(text) => vec![ContentPart::text(text)],
-            ContentInput::One(part) => vec![part.clone()],
+            ContentInput::One(part) => vec![part.as_ref().clone()],
             ContentInput::Many(parts) => parts.clone(),
         }
     }
@@ -606,7 +606,7 @@ impl Message {
         Message::make(MessageInput {
             id: None,
             role: MessageRole::Tool,
-            content: ContentInput::One(ContentPart::from_tool_result(result)),
+            content: ContentInput::One(Box::new(ContentPart::from_tool_result(result))),
             metadata: None,
             native: None,
         })
@@ -738,7 +738,7 @@ impl ToolChoice {
 #[derive(Debug, Clone)]
 pub enum ToolChoiceInput {
     Choice(ToolChoice),
-    Definition(ToolDefinition),
+    Definition(Box<ToolDefinition>),
     String(String),
     Fields {
         kind: ToolChoiceType,
@@ -754,7 +754,7 @@ impl From<ToolChoice> for ToolChoiceInput {
 
 impl From<ToolDefinition> for ToolChoiceInput {
     fn from(value: ToolDefinition) -> Self {
-        ToolChoiceInput::Definition(value)
+        ToolChoiceInput::Definition(Box::new(value))
     }
 }
 
@@ -778,9 +778,9 @@ pub enum ResponseFormat {
     #[serde(rename = "text")]
     Text,
     #[serde(rename = "json")]
-    Json { schema: JsonSchema },
+    Json { schema: Box<JsonSchema> },
     #[serde(rename = "tool")]
-    Tool { tool: ToolDefinition },
+    Tool { tool: Box<ToolDefinition> },
 }
 
 /// `LLMRequest` — canonical request class.

@@ -101,7 +101,7 @@ async fn run(args: serde_json::Value, ctx: &mut ToolContext) -> Result<ExecuteRe
     let client = crate::http::client();
     let response = tokio::time::timeout(
         std::time::Duration::from_millis(timeout_millis),
-        send(&client, &url, &headers),
+        send(client, &url, &headers),
     )
     .await
     .map_err(|_| ToolError::Other("Request timed out".to_string()))?;
@@ -117,7 +117,7 @@ async fn run(args: serde_json::Value, ctx: &mut ToolContext) -> Result<ExecuteRe
                 ];
                 tokio::time::timeout(
                     std::time::Duration::from_millis(timeout_millis),
-                    send(&client, &url, &honest_headers),
+                    send(client, &url, &honest_headers),
                 )
                 .await
                 .map_err(|_| ToolError::Other("Request timed out".to_string()))?
@@ -230,9 +230,7 @@ pub fn extract_text_from_html(html: &str) -> String {
                 let name = name.split_whitespace().next().unwrap_or("").to_string();
                 let name = name.trim_start_matches('/').to_string();
                 if closing {
-                    if skip_depth > 0 {
-                        skip_depth -= 1;
-                    }
+                    skip_depth = skip_depth.saturating_sub(1);
                     closing = false;
                 } else if skip_depth > 0
                     || ["script", "style", "noscript", "iframe", "object", "embed"]
@@ -312,11 +310,14 @@ mod tests {
     #[test]
     fn rejects_non_http_urls() {
         let dir = tempfile::tempdir().unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = tokio::runtime::Runtime::new().unwrap().block_on(
             super::def().execute(serde_json::json!({ "url": "file:///etc/passwd" }), &mut ctx),
         );

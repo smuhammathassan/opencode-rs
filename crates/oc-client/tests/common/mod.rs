@@ -26,6 +26,8 @@ impl RecordedRequest {
 
 pub type Responder = Arc<dyn Fn(&RecordedRequest) -> AxumResponse + Send + Sync>;
 
+type MockServerState = Arc<(Arc<Mutex<Vec<RecordedRequest>>>, Responder)>;
+
 pub struct MockServer {
     pub base_url: String,
     pub requests: Arc<Mutex<Vec<RecordedRequest>>>,
@@ -67,7 +69,7 @@ impl Drop for MockServer {
 }
 
 async fn handler(
-    state: axum::extract::State<Arc<(Arc<Mutex<Vec<RecordedRequest>>>, Responder)>>,
+    state: axum::extract::State<MockServerState>,
     request: Request<Body>,
 ) -> AxumResponse {
     let method = request.method().to_string();

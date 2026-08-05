@@ -431,11 +431,8 @@ impl Service {
         let last = page.last().cloned();
         Ok(ListSessionsResponse {
             sessions: page,
-            next_cursor: if filtered.len() > limit && last.is_some() {
-                Some(format!(
-                    "{}",
-                    entry_timestamp(last.as_ref().unwrap()) as u64
-                ))
+            next_cursor: if filtered.len() > limit {
+                last.map(|last| format!("{}", entry_timestamp(&last) as u64))
             } else {
                 None
             },
@@ -666,7 +663,7 @@ impl Service {
 
         if params.config_id == "effort" {
             let variants = directory::variants(&snapshot, &model);
-            if variants.map_or(true, |variants| !variants.contains_key(value)) {
+            if variants.is_none_or(|variants| !variants.contains_key(value)) {
                 return Err(ACPError::InvalidEffort {
                     effort: value.clone(),
                 });
@@ -1002,7 +999,7 @@ impl Service {
             let known = model
                 .variants
                 .as_ref()
-                .map_or(false, |variants| variants.contains_key(variant));
+                .is_some_and(|variants| variants.contains_key(variant));
             if !known {
                 return Err(ACPError::InvalidEffort {
                     effort: variant.clone(),
@@ -1300,9 +1297,10 @@ fn parse_model(model: &str) -> directory::DefaultModel {
 /// `restoreFromMessages` from reference/packages/opencode/src/acp/service.ts.
 fn restore_from_messages(messages: &[SessionMessageResponse]) -> Restored {
     let user = messages.iter().rev().find(|message| match &message.info {
-        Message::User(user) => user.model.as_ref().map_or(false, |model| {
-            !model.provider_id.is_empty() && !model.model_id.is_empty()
-        }),
+        Message::User(user) => user
+            .model
+            .as_ref()
+            .is_some_and(|model| !model.provider_id.is_empty() && !model.model_id.is_empty()),
         _ => false,
     });
     if let Some(user) = user {

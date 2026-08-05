@@ -42,15 +42,19 @@ impl Modality {
             Modality::Pdf => "pdf",
         }
     }
+}
 
-    pub fn from_str(s: &str) -> Option<Modality> {
+impl std::str::FromStr for Modality {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "text" => Some(Modality::Text),
-            "audio" => Some(Modality::Audio),
-            "image" => Some(Modality::Image),
-            "video" => Some(Modality::Video),
-            "pdf" => Some(Modality::Pdf),
-            _ => None,
+            "text" => Ok(Modality::Text),
+            "audio" => Ok(Modality::Audio),
+            "image" => Ok(Modality::Image),
+            "video" => Ok(Modality::Video),
+            "pdf" => Ok(Modality::Pdf),
+            _ => Err(()),
         }
     }
 }

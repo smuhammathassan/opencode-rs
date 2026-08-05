@@ -311,11 +311,10 @@ async fn new_session_golden() {
 async fn prompt_golden_with_usage() {
     let sdk = Arc::new(FakeSdk::default());
     // Provide a session with assistant messages so usage can be computed.
-    let mut messages = Vec::new();
-    messages.push(SessionMessageResponse {
-        info: oc_acp::sdk::Message::Assistant(assistant_message()),
+    let messages = vec![SessionMessageResponse {
+        info: oc_acp::sdk::Message::Assistant(Box::new(assistant_message())),
         parts: vec![],
-    });
+    }];
     *sdk.messages.lock().unwrap() = messages;
 
     let service = Service::make(ServiceInput::new(sdk.clone()));

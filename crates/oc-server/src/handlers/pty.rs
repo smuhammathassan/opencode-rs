@@ -231,11 +231,11 @@ async fn pty_socket(state: AppState, pty_id: String, mut socket: WebSocket) {
             .unwrap_or_default()
     };
     if !replay.is_empty() {
-        let _ = socket.send(Message::Binary(replay.into())).await;
+        let _ = socket.send(Message::Binary(replay)).await;
     }
     let meta = serde_json::json!({ "cursor": -1 });
     let _ = socket
-        .send(Message::Binary(serde_json::to_vec(&meta).unwrap().into()))
+        .send(Message::Binary(serde_json::to_vec(&meta).unwrap()))
         .await;
 
     while let Some(Ok(message)) = socket.recv().await {

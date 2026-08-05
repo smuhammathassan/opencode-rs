@@ -132,7 +132,7 @@ pub fn build(input: BuildInput) -> Snapshot {
 ///
 /// Sorts models by a priority filter list, preferring `latest` models first,
 /// then by model id descending. Only the `model_id` is considered.
-pub fn provider_sort<T>(models: &mut Vec<T>, key: impl for<'a> Fn(&'a T) -> &'a str) {
+pub fn provider_sort<T>(models: &mut [T], key: impl for<'a> Fn(&'a T) -> &'a str) {
     const PRIORITY: [&str; 4] = ["gpt-5", "claude-sonnet-4", "big-pickle", "gemini-3-pro"];
 
     models.sort_by(|a, b| {

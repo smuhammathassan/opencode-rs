@@ -240,7 +240,7 @@ mod tests {
     }
 
     fn assistant_message(content: Vec<v2::AssistantContent>) -> Message {
-        Message::Assistant(v2::Assistant {
+        Message::Assistant(Box::new(v2::Assistant {
             base: v2::MessageBaseId {
                 id: "msg_2".into(),
                 metadata: None,
@@ -262,7 +262,7 @@ mod tests {
                 created: 2,
                 completed: None,
             },
-        })
+        }))
     }
 
     #[test]

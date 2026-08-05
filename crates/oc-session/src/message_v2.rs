@@ -695,15 +695,15 @@ pub fn latest(msgs: &[WithParts]) -> Latest {
         match &msg.info {
             Info::User(u) => {
                 if user.as_ref().is_none_or(|current| u.id > current.id) {
-                    user = Some(u.clone());
+                    user = Some(u.as_ref().clone());
                 }
             }
             Info::Assistant(a) => {
                 if assistant.as_ref().is_none_or(|current| a.id > current.id) {
-                    assistant = Some(a.clone());
+                    assistant = Some(a.as_ref().clone());
                 }
                 if a.finish.is_some() && finished.as_ref().is_none_or(|current| a.id > current.id) {
-                    finished = Some(a.clone());
+                    finished = Some(a.as_ref().clone());
                 }
             }
         }
@@ -1112,7 +1112,7 @@ mod tests {
             metadata: None,
         });
         let msg = WithParts {
-            info: Info::User(crate::v1::User {
+            info: Info::User(Box::new(crate::v1::User {
                 id: "m".into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -1127,9 +1127,13 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![user_part],
         };
+        // `filter_compacted` takes owned `&[WithParts]`, so a one-element
+        // slice requires a clone (`std::slice::from_ref` would change the
+        // element type to `&WithParts`).
+        #[allow(clippy::cloned_ref_to_slice_refs)]
         let result = filter_compacted(&[msg.clone()]);
         assert_eq!(result.len(), 1);
         let _ = JsonMap::new();
@@ -1159,11 +1163,11 @@ mod tests {
         };
         let msgs = vec![
             WithParts {
-                info: Info::User(user1),
+                info: Info::User(Box::new(user1)),
                 parts: vec![],
             },
             WithParts {
-                info: Info::User(user2),
+                info: Info::User(Box::new(user2)),
                 parts: vec![],
             },
         ];

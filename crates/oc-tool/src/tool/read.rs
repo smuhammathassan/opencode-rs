@@ -152,7 +152,7 @@ fn run(args: serde_json::Value, ctx: &mut ToolContext) -> Result<ExecuteResult, 
         )));
     }
 
-    let file = read_lines(&filepath, limit, offset).map_err(|error| ToolError::Other(error))?;
+    let file = read_lines(&filepath, limit, offset).map_err(ToolError::Other)?;
     if file.count < file.offset && !(file.count == 0 && file.offset == 1) {
         return Err(ToolError::Other(format!(
             "Offset {} is out of range for this file ({} lines)",
@@ -508,11 +508,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("example.txt");
         std::fs::write(&file, "foo\nbar\nbaz\n").unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = run(
             serde_json::json!({ "filePath": file.to_string_lossy() }),
             &mut ctx,
@@ -529,11 +532,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("a.txt"), "a").unwrap();
         std::fs::create_dir(dir.path().join("sub")).unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = run(
             serde_json::json!({ "filePath": dir.path().to_string_lossy() }),
             &mut ctx,
@@ -547,11 +553,14 @@ mod tests {
     fn miss_suggests_similar_files() {
         let dir = tempfile::tempdir().unwrap();
         std::fs::write(dir.path().join("broken.ts"), "x").unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let error = run(
             serde_json::json!({ "filePath": dir.path().join("broken.t").to_string_lossy() }),
             &mut ctx,

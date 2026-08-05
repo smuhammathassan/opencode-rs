@@ -997,9 +997,7 @@ impl Snapshot {
             if head.ends_with(" missing") {
                 continue;
             }
-            let Some(captures) = header_re.captures(&head) else {
-                return None;
-            };
+            let captures = header_re.captures(&head)?;
             let size: usize = match captures[1].parse() {
                 Ok(size) => size,
                 Err(_) => return None,

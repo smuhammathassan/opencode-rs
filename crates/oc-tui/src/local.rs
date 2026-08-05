@@ -166,26 +166,27 @@ mod tests {
     use serde_json::json;
 
     fn sync_with_provider() -> SyncState {
-        let mut sync = SyncState::default();
-        sync.providers = serde_json::from_value(json!([
-            { "id": "p1", "name": "P1", "source": "config", "env": [], "options": {},
-              "models": {
-                "m1": { "id": "m1", "providerID": "p1", "name": "M1",
-                    "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
-                    "limit": {"context": 10, "output": 10}, "status": "active", "options": {}, "headers": {}, "release_date": "" },
-                "m2": { "id": "m2", "providerID": "p1", "name": "M2",
-                    "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
-                    "limit": {"context": 10, "output": 10}, "status": "active", "options": {}, "headers": {}, "release_date": "" }
-              } }
-        ]))
-        .unwrap();
-        sync.agents = serde_json::from_value(json!([
-            { "name": "build", "mode": "primary", "permission": [], "options": {} },
-            { "name": "plan", "mode": "primary", "permission": [], "options": {} },
-            { "name": "coder", "mode": "subagent", "permission": [], "options": {} }
-        ]))
-        .unwrap();
-        sync
+        SyncState {
+            providers: serde_json::from_value(json!([
+                { "id": "p1", "name": "P1", "source": "config", "env": [], "options": {},
+                  "models": {
+                    "m1": { "id": "m1", "providerID": "p1", "name": "M1",
+                        "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+                        "limit": {"context": 10, "output": 10}, "status": "active", "options": {}, "headers": {}, "release_date": "" },
+                    "m2": { "id": "m2", "providerID": "p1", "name": "M2",
+                        "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+                        "limit": {"context": 10, "output": 10}, "status": "active", "options": {}, "headers": {}, "release_date": "" }
+                  } }
+            ]))
+            .unwrap(),
+            agents: serde_json::from_value(json!([
+                { "name": "build", "mode": "primary", "permission": [], "options": {} },
+                { "name": "plan", "mode": "primary", "permission": [], "options": {} },
+                { "name": "coder", "mode": "subagent", "permission": [], "options": {} }
+            ]))
+            .unwrap(),
+            ..Default::default()
+        }
     }
 
     #[test]
@@ -229,7 +230,7 @@ mod tests {
 
     #[test]
     fn recent_models_cycle() {
-        let sync = sync_with_provider();
+        let _sync = sync_with_provider();
         let mut local = Local::default();
         local.set_model(
             ModelSelection {

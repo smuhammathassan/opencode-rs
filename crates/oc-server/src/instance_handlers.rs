@@ -191,7 +191,7 @@ pub async fn formatter_status(State(_state): State<crate::state::AppState>) -> H
 fn v1_info(info: &SessionInfo, _directory: &str) -> serde_json::Value {
     serde_json::json!({
         "id": info.id,
-        "slug": info.id.split('_').last().unwrap_or(&info.id),
+        "slug": info.id.split('_').next_back().unwrap_or(&info.id),
         "projectID": info.project_id,
         "directory": info.location.directory,
         "cost": info.cost,
@@ -281,7 +281,7 @@ pub async fn session_messages(
         .get(&session_id)
         .ok_or_else(|| crate::errors::session_not_found(&session_id))?;
     let mut messages = record.messages.clone();
-    if query.get("limit").is_some() {
+    if query.contains_key("limit") {
         if let Some(limit) = query.get("limit").and_then(|v| v.parse::<usize>().ok()) {
             messages.truncate(limit);
         }

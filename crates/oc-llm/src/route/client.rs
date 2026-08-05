@@ -25,6 +25,9 @@ use crate::schema::{
 /// From reference/packages/llm/src/route/client.ts (`RouteBody`)
 pub type BodyFn = Arc<dyn Fn(&LlmRequest) -> Result<Value, LlmError> + Send + Sync>;
 
+/// Dynamic header construction for a route.
+pub type RouteHeadersFn = Arc<dyn Fn(&LlmRequest) -> BTreeMap<String, String> + Send + Sync>;
+
 /// `Protocol` — semantic API contract for one model server family.
 /// From reference/packages/llm/src/route/protocol.ts
 #[derive(Clone)]
@@ -122,7 +125,7 @@ pub struct Route {
     pub auth: Auth,
     pub framing: Framing,
     pub defaults: RouteDefaults,
-    pub headers: Option<Arc<dyn Fn(&LlmRequest) -> BTreeMap<String, String> + Send + Sync>>,
+    pub headers: Option<RouteHeadersFn>,
 }
 
 impl std::fmt::Debug for Route {
@@ -169,12 +172,13 @@ impl Route {
     /// `route.with(patch)`.
     /// From reference/packages/llm/src/route/client.ts (`Route.with`)
     pub fn with(&self, patch: RoutePatch) -> Route {
-        let mut defaults_patch = RouteDefaultsInput::default();
-        defaults_patch.headers = patch.headers;
-        defaults_patch.limits = patch.limits;
-        defaults_patch.generation = patch.generation;
-        defaults_patch.provider_options = patch.provider_options;
-        defaults_patch.http = patch.http;
+        let defaults_patch = RouteDefaultsInput {
+            headers: patch.headers,
+            limits: patch.limits,
+            generation: patch.generation,
+            provider_options: patch.provider_options,
+            http: patch.http,
+        };
 
         let endpoint = match &patch.endpoint {
             Some(endpoint_patch) => endpoint::merge(&self.endpoint, endpoint_patch.clone()),
@@ -233,7 +237,7 @@ pub struct RouteMakeInput {
     pub endpoint: Endpoint,
     pub auth: Option<Auth>,
     pub framing: Option<Framing>,
-    pub headers: Option<Arc<dyn Fn(&LlmRequest) -> BTreeMap<String, String> + Send + Sync>>,
+    pub headers: Option<RouteHeadersFn>,
     pub defaults: Option<RouteDefaultsInput>,
 }
 
@@ -261,7 +265,7 @@ pub struct RoutePatch {
     pub auth: Option<Auth>,
     pub endpoint: Option<EndpointPatch>,
     pub headers: Option<BTreeMap<String, String>>,
-    pub headers_fn: Option<Arc<dyn Fn(&LlmRequest) -> BTreeMap<String, String> + Send + Sync>>,
+    pub headers_fn: Option<RouteHeadersFn>,
     pub limits: Option<ModelLimits>,
     pub generation: Option<GenerationOptions>,
     pub provider_options: Option<ProviderOptions>,

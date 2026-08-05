@@ -92,7 +92,7 @@ pub fn latest_assistant_message(messages: &[SessionMessage]) -> Option<&Assistan
         .iter()
         .rev()
         .find_map(|message| match &message.info {
-            Message::Assistant(message) if message.role == "assistant" => Some(message),
+            Message::Assistant(message) if message.role == "assistant" => Some(message.as_ref()),
             _ => None,
         })
 }
@@ -281,7 +281,7 @@ mod tests {
         );
         let usage = build_usage(&message);
         assert_eq!(
-            serde_json::to_value(&usage).unwrap(),
+            serde_json::to_value(usage).unwrap(),
             serde_json::json!({
                 "inputTokens": 10,
                 "outputTokens": 20,
@@ -303,10 +303,10 @@ mod tests {
         let messages = vec![
             SessionMessage { info: user },
             SessionMessage {
-                info: Message::Assistant(assistant(2.0, Tokens::default())),
+                info: Message::Assistant(Box::new(assistant(2.0, Tokens::default()))),
             },
             SessionMessage {
-                info: Message::Assistant(assistant(3.0, Tokens::default())),
+                info: Message::Assistant(Box::new(assistant(3.0, Tokens::default()))),
             },
         ];
         let latest = latest_assistant_message(&messages).unwrap();

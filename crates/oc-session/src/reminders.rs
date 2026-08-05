@@ -123,7 +123,7 @@ mod tests {
 
     fn user(id: &str) -> WithParts {
         WithParts {
-            info: crate::v1::Info::User(crate::v1::User {
+            info: crate::v1::Info::User(Box::new(crate::v1::User {
                 id: id.into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -138,7 +138,7 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![],
         }
     }
@@ -159,7 +159,7 @@ mod tests {
     #[test]
     fn build_after_plan_gets_build_switch() {
         let assistant = WithParts {
-            info: crate::v1::Info::Assistant(crate::v1::Assistant {
+            info: crate::v1::Info::Assistant(Box::new(crate::v1::Assistant {
                 id: "m2".into(),
                 session_id: "s".into(),
                 role: "assistant".into(),
@@ -192,7 +192,7 @@ mod tests {
                 structured: None,
                 variant: None,
                 finish: Some("stop".into()),
-            }),
+            })),
             parts: vec![],
         };
         let messages = vec![user("m1"), assistant];

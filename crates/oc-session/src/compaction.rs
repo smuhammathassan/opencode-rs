@@ -336,7 +336,7 @@ mod tests {
 
     fn user(id: &str) -> WithParts {
         WithParts {
-            info: Info::User(User {
+            info: Info::User(Box::new(User {
                 id: id.into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -351,14 +351,14 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![text_part(id, id)],
         }
     }
 
     fn assistant(id: &str, parent: &str, summary: Option<bool>) -> WithParts {
         WithParts {
-            info: Info::Assistant(crate::v1::Assistant {
+            info: Info::Assistant(Box::new(crate::v1::Assistant {
                 id: id.into(),
                 session_id: "s".into(),
                 role: "assistant".into(),
@@ -391,7 +391,7 @@ mod tests {
                 structured: None,
                 variant: None,
                 finish: Some("stop".into()),
-            }),
+            })),
             parts: vec![],
         }
     }
@@ -445,7 +445,7 @@ mod tests {
     #[test]
     fn summary_text_joins_text_parts() {
         let msg = WithParts {
-            info: Info::User(User {
+            info: Info::User(Box::new(User {
                 id: "m".into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -460,7 +460,7 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![text_part("m", "  first  "), text_part("m", "second")],
         };
         assert_eq!(summary_text(&msg).as_deref(), Some("first\n\nsecond"));

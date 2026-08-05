@@ -74,7 +74,7 @@ pub fn part_ranges(parts: &[Value]) -> Vec<PartRange> {
 /// Strip markers (file/agent/pasted-text ranges) from buffer text.
 pub fn plain_text(buffer: &str, parts: &[Value]) -> String {
     let mut ranges = part_ranges(parts);
-    ranges.sort_by(|a, b| b.start.cmp(&a.start));
+    ranges.sort_by_key(|range| std::cmp::Reverse(range.start));
     let mut result = buffer.to_string();
     for range in ranges {
         if range.start <= result.chars().count() && range.end <= result.chars().count() {
@@ -89,8 +89,7 @@ pub fn plain_text(buffer: &str, parts: &[Value]) -> String {
 pub fn expand_text_parts(buffer: &str, parts: &[Value]) -> String {
     let mut edits: Vec<(usize, usize, String)> = parts
         .iter()
-        .enumerate()
-        .filter_map(|(_index, part)| {
+        .filter_map(|part| {
             if part_kind(part) != Some(PartKind::PastedText) {
                 return None;
             }
@@ -111,7 +110,7 @@ pub fn expand_text_parts(buffer: &str, parts: &[Value]) -> String {
             edits.push((start, end, String::new()));
         }
     }
-    edits.sort_by(|a, b| b.1.cmp(&a.1));
+    edits.sort_by_key(|edit| std::cmp::Reverse(edit.1));
     let mut result = buffer.to_string();
     for (start, end, replacement) in edits {
         result = replace_char_range(&result, start, end, &replacement);
@@ -216,21 +215,16 @@ fn find_substring(text: &str, needle: &str) -> Option<(usize, usize)> {
 fn find_nearest_occurrence(text: &str, needle: &str, near: usize) -> Option<(usize, usize)> {
     let mut best: Option<(usize, usize)> = None;
     let mut search_from = 0usize;
-    loop {
-        match find_substring_from(text, needle, search_from) {
-            Some((start, end)) => {
-                let distance = (start as i64 - near as i64).unsigned_abs();
-                let better = match best {
-                    None => true,
-                    Some((bs, _)) => distance < (bs as i64 - near as i64).unsigned_abs(),
-                };
-                if better {
-                    best = Some((start, end));
-                }
-                search_from = end;
-            }
-            None => break,
+    while let Some((start, end)) = find_substring_from(text, needle, search_from) {
+        let distance = (start as i64 - near as i64).unsigned_abs();
+        let better = match best {
+            None => true,
+            Some((bs, _)) => distance < (bs as i64 - near as i64).unsigned_abs(),
+        };
+        if better {
+            best = Some((start, end));
         }
+        search_from = end;
     }
     best
 }

@@ -12,7 +12,7 @@ use crate::cli::effect_cmd::not_wired;
 pub fn database_path(ctx: &Context) -> PathBuf {
     if let Some(db) = std::env::var_os("OPENCODE_DB") {
         let db = PathBuf::from(db);
-        if db == PathBuf::from(":memory:") || db.is_absolute() {
+        if db == *":memory:" || db.is_absolute() {
             return db;
         }
         return ctx.paths.data.join(db);

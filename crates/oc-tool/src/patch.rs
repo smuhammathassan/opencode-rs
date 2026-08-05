@@ -8,8 +8,8 @@
 pub mod bom {
     /// `Bom.split` from `reference/packages/opencode/src/util/bom.ts:4`.
     pub fn split(text: &str) -> (bool, String) {
-        if text.starts_with('\u{feff}') {
-            (true, text[3..].to_string())
+        if let Some(rest) = text.strip_prefix('\u{feff}') {
+            (true, rest.to_string())
         } else {
             (false, text.to_string())
         }
@@ -322,6 +322,10 @@ fn compute_replacements(
     let mut line_index = 0;
     for chunk in chunks {
         if let Some(context) = &chunk.change_context {
+            // `seek_sequence` takes owned `&[String]`, so the one-element
+            // slice needs a clone (`std::slice::from_ref` would change the
+            // element type to `&String`).
+            #[allow(clippy::cloned_ref_to_slice_refs)]
             let context_idx = seek_sequence(original_lines, &[context.clone()], line_index, false);
             let context_idx = context_idx
                 .ok_or_else(|| format!("Failed to find context '{context}' in {file_path}"))?;
@@ -329,7 +333,7 @@ fn compute_replacements(
         }
 
         if chunk.old_lines.is_empty() {
-            let insertion_idx = if original_lines.last().map(|line| line == "") == Some(true) {
+            let insertion_idx = if original_lines.last().map(|line| line.is_empty()) == Some(true) {
                 original_lines.len() - 1
             } else {
                 original_lines.len()
@@ -543,10 +547,8 @@ pub fn maybe_parse_apply_patch_verified(
     argv: &[String],
     cwd: &str,
 ) -> Result<MaybeApplyPatchVerified, String> {
-    if argv.len() == 1 {
-        if parse_patch(&argv[0]).is_ok() {
-            return Err("ImplicitInvocation".to_string());
-        }
+    if argv.len() == 1 && parse_patch(&argv[0]).is_ok() {
+        return Err("ImplicitInvocation".to_string());
     }
     let result = maybe_parse_apply_patch(argv);
     match result {

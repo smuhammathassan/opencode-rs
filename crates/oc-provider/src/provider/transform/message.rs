@@ -366,7 +366,7 @@ fn normalize_mistral(msgs: Vec<ModelMessage>) -> Vec<ModelMessage> {
 /// last two non-system messages.
 ///
 /// From `applyCaching()` in `transform.ts`.
-fn apply_caching(msgs: &mut Vec<ModelMessage>, model: &Model) {
+fn apply_caching(msgs: &mut [ModelMessage], model: &Model) {
     let provider_options = json!({
         "anthropic": { "cacheControl": { "type": "ephemeral" } },
         "openrouter": { "cacheControl": { "type": "ephemeral" } },
@@ -544,7 +544,11 @@ fn unsupported_parts(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessage
                     let Some(modality) = super::sampling::mime_to_modality(&mime) else {
                         return part.clone();
                     };
-                    if model.capabilities.input.get(models_dev::Modality::from_str(modality).expect("known modality")) {
+                    if model
+                        .capabilities
+                        .input
+                        .get(modality.parse::<models_dev::Modality>().expect("known modality"))
+                    {
                         return part.clone();
                     }
                     let name = match &filename {
@@ -609,7 +613,6 @@ pub fn message(msgs: Vec<ModelMessage>, model: &Model, options: &JsonMap) -> Vec
     }
 
     if options.get("store") != Some(&Value::Bool(true))
-        && key.is_some()
         && [
             "@ai-sdk/openai",
             "@ai-sdk/azure",
@@ -618,22 +621,24 @@ pub fn message(msgs: Vec<ModelMessage>, model: &Model, options: &JsonMap) -> Vec
         ]
         .contains(&model.api.npm.as_str())
     {
-        let key = key.unwrap().to_string();
-        msgs = map_provider_options(msgs, &move |opts| {
-            let mut opts = opts?;
-            let Some(metadata) = opts.get(&key).cloned() else {
-                return Some(opts);
-            };
-            let Some(mut metadata) = metadata.as_object().cloned() else {
-                return Some(opts);
-            };
-            if !metadata.contains_key("itemId") {
-                return Some(opts);
-            }
-            metadata.remove("itemId");
-            opts.insert(key.clone(), Value::Object(metadata));
-            Some(opts)
-        });
+        if let Some(key) = key {
+            let key = key.to_string();
+            msgs = map_provider_options(msgs, &move |opts| {
+                let mut opts = opts?;
+                let Some(metadata) = opts.get(&key).cloned() else {
+                    return Some(opts);
+                };
+                let Some(mut metadata) = metadata.as_object().cloned() else {
+                    return Some(opts);
+                };
+                if !metadata.contains_key("itemId") {
+                    return Some(opts);
+                }
+                metadata.remove("itemId");
+                opts.insert(key.clone(), Value::Object(metadata));
+                Some(opts)
+            });
+        }
     }
 
     msgs

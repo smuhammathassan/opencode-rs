@@ -749,7 +749,7 @@ impl ProtocolStream for OpenAIChatStream {
 pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
-        Arc::new(|request| from_request(request)),
+        Arc::new(from_request),
         Arc::new(OpenAIChatStream {
             adapter: ADAPTER.to_string(),
         }),

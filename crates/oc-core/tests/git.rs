@@ -28,7 +28,7 @@ fn git(dir: &str, args: &[&str]) {
 }
 
 fn service() -> GitService {
-    GitService::new(Arc::new(FSUtilService::default()))
+    GitService::new(Arc::new(FSUtilService))
 }
 
 #[tokio::test]

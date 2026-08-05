@@ -102,11 +102,7 @@ pub fn create_plugin_entry(
     } else {
         SOURCE_NPM
     };
-    let pkg = if source == SOURCE_NPM {
-        read_plugin_package(target).ok()
-    } else {
-        read_plugin_package(target).ok()
-    };
+    let pkg = read_plugin_package(target).ok();
     let entry = resolve_entrypoint(spec, target, kind, pkg.as_ref());
     Ok(PluginEntry {
         spec: spec.to_string(),

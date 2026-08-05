@@ -142,7 +142,6 @@ where
                         .unwrap_or(serde_json::Value::Null),
                 )
                 .unwrap_or_default();
-                if part.session_id.is_empty() {}
                 if part.session_id != *session_id {
                     continue;
                 }
@@ -265,7 +264,7 @@ where
                     continue;
                 }
                 let err_value = properties.get("error");
-                if err_value.map_or(true, serde_json::Value::is_null) {
+                if err_value.is_none_or(serde_json::Value::is_null) {
                     continue;
                 }
                 let err = session_error_message(err_value);

@@ -21,6 +21,9 @@ pub type ExecuteFn = std::sync::Arc<
         + Sync,
 >;
 
+/// Format-error rendering for a tool definition.
+pub type FormatErrorFn = std::sync::Arc<dyn Fn(&str) -> String + Send + Sync>;
+
 /// Wrap a synchronous handler as an `ExecuteFn`.
 pub fn sync_execute<F>(handler: F) -> ExecuteFn
 where
@@ -42,7 +45,7 @@ pub struct Def {
     /// Explicit JSON Schema override (e.g. task's `BaseParameters`).
     pub json_schema: Option<JsonValue>,
     pub execute: ExecuteFn,
-    pub format_validation_error: Option<std::sync::Arc<dyn Fn(&str) -> String + Send + Sync>>,
+    pub format_validation_error: Option<FormatErrorFn>,
 }
 
 impl Def {

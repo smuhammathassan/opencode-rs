@@ -61,6 +61,9 @@ pub fn root_commit(dir: &Path) -> String {
     String::from_utf8(output.stdout).unwrap().trim().to_string()
 }
 
+// Shared by all oc-project integration tests; each test binary only pulls the
+// helpers it uses, so some appear dead per-target.
+#[allow(dead_code)]
 pub fn data_dir() -> PathBuf {
     test_home().join(".local/share/opencode")
 }

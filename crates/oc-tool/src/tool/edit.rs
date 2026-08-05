@@ -267,16 +267,16 @@ fn line_trimmed_replacer(content: &str, find: &str) -> Vec<String> {
     }
     for i in 0..=original_lines.len() - search_lines.len() {
         let mut matches = true;
-        for j in 0..search_lines.len() {
-            if original_lines[i + j].trim() != search_lines[j].trim() {
+        for (j, search_line) in search_lines.iter().enumerate() {
+            if original_lines[i + j].trim() != search_line.trim() {
                 matches = false;
                 break;
             }
         }
         if matches {
             let mut match_start_index = 0;
-            for k in 0..i {
-                match_start_index += original_lines[k].len() + 1;
+            for line in &original_lines[..i] {
+                match_start_index += line.len() + 1;
             }
             let mut match_end_index = match_start_index;
             for k in 0..search_lines.len() {
@@ -314,8 +314,8 @@ fn block_anchor_replacer(content: &str, find: &str) -> Vec<String> {
         if original_lines[i].trim() != first_line_search {
             continue;
         }
-        for j in (i + 2)..original_lines.len() {
-            if original_lines[j].trim() == last_line_search {
+        for (j, line) in original_lines.iter().enumerate().skip(i + 2) {
+            if line.trim() == last_line_search {
                 let actual_block_size = j - i + 1;
                 if actual_block_size.abs_diff(search_block_size) <= max_line_delta {
                     candidates.push((i, j));
@@ -410,12 +410,17 @@ fn slice_by_lines(
     end_line: usize,
 ) -> String {
     let mut match_start_index = 0;
-    for k in 0..start_line {
-        match_start_index += original_lines[k].len() + 1;
+    for line in &original_lines[..start_line] {
+        match_start_index += line.len() + 1;
     }
     let mut match_end_index = match_start_index;
-    for k in start_line..=end_line {
-        match_end_index += original_lines[k].len();
+    for (k, line) in original_lines
+        .iter()
+        .enumerate()
+        .take(end_line + 1)
+        .skip(start_line)
+    {
+        match_end_index += line.len();
         if k < end_line {
             match_end_index += 1;
         }
@@ -437,10 +442,9 @@ fn whitespace_normalized_replacer(content: &str, find: &str) -> Vec<String> {
         } else {
             let normalized_line = normalize(line);
             if normalized_line.contains(&normalized_find) {
-                let words: Vec<&str> = find.trim().split_whitespace().collect();
+                let words: Vec<&str> = find.split_whitespace().collect();
                 if !words.is_empty() {
-                    let escaped: Vec<String> =
-                        words.iter().map(|word| regex::escape(word)).collect();
+                    let escaped: Vec<String> = words.iter().copied().map(regex::escape).collect();
                     let pattern = escaped.join("\\s+");
                     if let Ok(re) = regex::Regex::new(&pattern) {
                         if let Some(matched) = re.find(line) {
@@ -806,11 +810,14 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("a.txt");
         std::fs::write(&file, "line one\nline two\n").unwrap();
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let def = crate::tool::tool::wrap("edit", def());
         let result = tokio::runtime::Runtime::new()
             .unwrap()

@@ -124,7 +124,7 @@ pub enum Command {
     /// attach to a running opencode server
     Attach(AttachArgs),
     /// run opencode with a message
-    Run(RunArgs),
+    Run(Box<RunArgs>),
     /// debugging and troubleshooting tools
     Debug(DebugArgs),
     /// manage AI providers and credentials

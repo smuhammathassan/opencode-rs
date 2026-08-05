@@ -68,11 +68,13 @@ mod tests {
     #[test]
     fn skips_internal_paths() {
         let dir = std::env::temp_dir().join("oc-tool-ext-test");
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.to_string_lossy().to_string(),
-            worktree: dir.to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.to_string_lossy().to_string(),
+                worktree: dir.to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
         let inside = dir.join("sub/file.txt").to_string_lossy().to_string();
         let asserted = assert_external_directory_file(&mut ctx, &inside).unwrap();
         assert!(!asserted);
@@ -82,11 +84,13 @@ mod tests {
     #[test]
     fn asks_for_external_paths() {
         let dir = std::env::temp_dir().join("oc-tool-ext-test");
-        let mut ctx = ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.to_string_lossy().to_string(),
-            worktree: dir.to_string_lossy().to_string(),
-        });
+        let mut ctx = ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.to_string_lossy().to_string(),
+                worktree: dir.to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
         let outside = std::env::temp_dir()
             .join("unrelated/file.txt")
             .to_string_lossy()

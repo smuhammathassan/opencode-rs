@@ -54,10 +54,7 @@ pub fn relative(parent: &str, child: &str) -> String {
     if index == parent.len() && index == child.len() {
         return String::new();
     }
-    let mut out: Vec<&str> = Vec::new();
-    for _ in index..parent.len() {
-        out.push("..");
-    }
+    let mut out: Vec<&str> = vec![".."; parent.len() - index];
     for component in &child[index..] {
         out.push(component);
     }

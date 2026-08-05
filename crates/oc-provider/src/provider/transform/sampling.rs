@@ -61,7 +61,7 @@ fn gemini_sampling_defaults(id: &str) -> bool {
 
 fn gemini_2_5(id: &str) -> bool {
     for (idx, _) in id.match_indices("gemini-2") {
-        let rest = &id[idx + 8..].as_bytes();
+        let rest = &id.as_bytes()[idx + 8..];
         if rest.len() >= 2 && (rest[0] == b'.' || rest[0] == b'-') && rest[1] == b'5' {
             let tail = &rest[2..];
             if tail.is_empty() || tail[0] == b'.' || tail[0] == b'-' {
@@ -88,7 +88,7 @@ fn gemini_3_flash_pro(id: &str) -> bool {
 
 fn gemini_3_1(id: &str) -> bool {
     for (idx, _) in id.match_indices("gemini-3") {
-        let rest = &id[idx + 8..].as_bytes();
+        let rest = &id.as_bytes()[idx + 8..];
         if rest.len() >= 2 && (rest[0] == b'.' || rest[0] == b'-') && rest[1] == b'1' {
             let tail = &rest[2..];
             if tail.is_empty() || tail[0] == b'.' || tail[0] == b'-' {
@@ -101,7 +101,7 @@ fn gemini_3_1(id: &str) -> bool {
 
 fn gemini_3_5_flash_no_lite(id: &str) -> bool {
     for (idx, _) in id.match_indices("gemini-3") {
-        let rest = &id[idx + 8..].as_bytes();
+        let rest = &id.as_bytes()[idx + 8..];
         if rest.len() >= 2 && (rest[0] == b'.' || rest[0] == b'-') && rest[1] == b'5' {
             let tail = &rest[2..];
             if let Some(after) = tail.strip_prefix(b"-flash") {

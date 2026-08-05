@@ -206,7 +206,7 @@ pub struct HttpRateLimitDetails {
 pub struct LLMError {
     pub module: String,
     pub method: String,
-    pub reason: LLMErrorReason,
+    pub reason: Box<LLMErrorReason>,
 }
 
 impl std::fmt::Display for LLMError {
@@ -308,7 +308,7 @@ pub fn is_context_overflow(message: &str) -> bool {
 pub fn is_context_overflow_failure(failure: &RunFailure) -> bool {
     match failure {
         RunFailure::Error(error) => matches!(
-            &error.reason,
+            error.reason.as_ref(),
             LLMErrorReason::InvalidRequest(reason)
                 if reason.classification == Some(ProviderFailureClassification::ContextOverflow)
         ),

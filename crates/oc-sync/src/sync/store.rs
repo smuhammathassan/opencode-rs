@@ -172,6 +172,7 @@ pub type Listener = Arc<dyn Fn(&Payload) + Send + Sync>;
 type Commit = Box<dyn FnOnce(i64) -> Result<(), StoreError> + Send>;
 
 /// Options for `Store::publish`, mirroring `EventV2.PublishOptions`.
+#[derive(Default)]
 pub struct PublishOptions {
     pub id: Option<EventID>,
     pub metadata: Option<Value>,
@@ -179,17 +180,6 @@ pub struct PublishOptions {
     /// Local operational projection committed atomically with the durable event.
     /// Not replayed or serialized.
     pub commit: Option<Commit>,
-}
-
-impl Default for PublishOptions {
-    fn default() -> Self {
-        Self {
-            id: None,
-            metadata: None,
-            location: None,
-            commit: None,
-        }
-    }
 }
 
 /// Options for `Store::replay`, mirroring the replay options in `EventV2.replay`.
@@ -726,9 +716,9 @@ impl Store {
                     if input.owner_id.is_some()
                         && row.as_ref().and_then(|r| r.owner_id.clone()).is_none()
                     {
-                        db.sequences
-                            .get_mut(&aggregate_id)
-                            .map(|r| r.owner_id = input.owner_id.clone());
+                        if let Some(seq) = db.sequences.get_mut(&aggregate_id) {
+                            seq.owner_id = input.owner_id.clone();
+                        }
                     }
                     return Ok(None);
                 }

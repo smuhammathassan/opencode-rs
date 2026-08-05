@@ -98,6 +98,7 @@ pub fn compute_diff(
 }
 
 /// From reference `summary.ts:summarize`.
+#[allow(clippy::too_many_arguments)]
 pub fn summarize(
     messages: &[WithParts],
     session_id: &str,
@@ -203,7 +204,7 @@ mod tests {
 
     fn user(parts: Vec<v1::Part>) -> WithParts {
         WithParts {
-            info: v1::Info::User(v1::User {
+            info: v1::Info::User(Box::new(v1::User {
                 id: "msg1".into(),
                 session_id: "ses1".into(),
                 role: "user".into(),
@@ -218,7 +219,7 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts,
         }
     }
@@ -237,7 +238,7 @@ mod tests {
                 snapshot: Some("a".into()),
             })]),
             WithParts {
-                info: v1::Info::Assistant(v1::Assistant {
+                info: v1::Info::Assistant(Box::new(v1::Assistant {
                     id: "a".into(),
                     session_id: "s".into(),
                     role: "assistant".into(),
@@ -270,7 +271,7 @@ mod tests {
                     structured: None,
                     variant: None,
                     finish: None,
-                }),
+                })),
                 parts: vec![v1::Part::StepFinish(v1::StepFinishPart {
                     base,
                     type_: "step-finish".into(),

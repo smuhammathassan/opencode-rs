@@ -230,7 +230,7 @@ impl Project {
             &input.worktree,
             &["ico", "png", "svg", "jpg", "jpeg", "webp"],
         );
-        matches.sort_by(|a, b| a.len().cmp(&b.len()));
+        matches.sort_by_key(|a| a.len());
         let Some(shortest) = matches.into_iter().next() else {
             return;
         };

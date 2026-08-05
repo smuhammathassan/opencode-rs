@@ -25,7 +25,7 @@ pub fn titlecase(input: &str) -> String {
 /// Local short time, e.g. `12:30 PM`.
 /// From reference/packages/tui/src/util/locale.ts (`time`)
 pub fn time(ms: i64) -> String {
-    let secs = (ms / 1000) as i64;
+    let secs = ms / 1000;
     let (h, m) = ((secs / 3600) % 24, (secs / 60) % 60);
     let period = if h >= 12 { "PM" } else { "AM" };
     let hour12 = h % 12;

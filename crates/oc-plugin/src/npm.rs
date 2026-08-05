@@ -188,6 +188,70 @@ fn add_git(url: &str, target: &std::path::Path, pkg: &str) -> Result<PathBuf, Np
     Ok(target.to_path_buf())
 }
 
+/// Unpack a gzipped npm tarball into `target`, stripping the `package/` prefix
+/// npm tarballs carry.
+fn unpack_tarball(bytes: &[u8], target: &Path, pkg: &str) -> Result<(), NpmError> {
+    let staging = target
+        .parent()
+        .unwrap_or(Path::new("."))
+        .join(format!(".staging-{}", std::process::id()));
+
+    if staging.exists() {
+        let _ = std::fs::remove_dir_all(&staging);
+    }
+    std::fs::create_dir_all(&staging).map_err(|e| NpmError::Unpack {
+        pkg: pkg.to_string(),
+        message: e.to_string(),
+    })?;
+
+    let gz = flate2::read::GzDecoder::new(bytes);
+    let mut archive = tar::Archive::new(gz);
+    archive.unpack(&staging).map_err(|e| NpmError::Unpack {
+        pkg: pkg.to_string(),
+        message: e.to_string(),
+    })?;
+
+    // npm tarballs wrap everything under `package/`; move that directory (or
+    // the whole staging dir) into the target.
+    let src = if staging.join("package").exists() {
+        staging.join("package")
+    } else {
+        staging.clone()
+    };
+    if target.exists() {
+        let _ = std::fs::remove_dir_all(target);
+    }
+    if let Some(parent) = target.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    match std::fs::rename(&src, target) {
+        Ok(_) => {}
+        Err(_) => {
+            // Cross-device fallback: copy the contents.
+            move_dir_contents(&src, target);
+        }
+    }
+    let _ = std::fs::remove_dir_all(&staging);
+    Ok(())
+}
+
+/// Move the contents of `src` into `dest` (both directories).
+fn move_dir_contents(src: &Path, dest: &Path) {
+    if let Ok(entries) = std::fs::read_dir(src) {
+        for entry in entries.flatten() {
+            let from = entry.path();
+            let to = dest.join(entry.file_name());
+            match std::fs::rename(&from, &to) {
+                Ok(_) => {}
+                Err(_) => {
+                    let _ = std::fs::remove_dir_all(&to);
+                    let _ = std::fs::rename(&from, &to);
+                }
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,7 +331,7 @@ mod tests {
         let paths = GlobalPaths::new();
         let target = add(&spec, &paths).expect("git add failed");
         assert!(target.join("package.json").exists());
-        std::fs::remove_dir_all(&paths.npm_packages()).ok();
+        std::fs::remove_dir_all(paths.npm_packages()).ok();
         std::fs::remove_dir_all(&repo).ok();
     }
 
@@ -311,69 +375,5 @@ mod tests {
             "abc"
         );
         std::fs::remove_dir_all(&target).ok();
-    }
-}
-
-/// Unpack a gzipped npm tarball into `target`, stripping the `package/` prefix
-/// npm tarballs carry.
-fn unpack_tarball(bytes: &[u8], target: &Path, pkg: &str) -> Result<(), NpmError> {
-    let staging = target
-        .parent()
-        .unwrap_or(Path::new("."))
-        .join(format!(".staging-{}", std::process::id()));
-
-    if staging.exists() {
-        let _ = std::fs::remove_dir_all(&staging);
-    }
-    std::fs::create_dir_all(&staging).map_err(|e| NpmError::Unpack {
-        pkg: pkg.to_string(),
-        message: e.to_string(),
-    })?;
-
-    let gz = flate2::read::GzDecoder::new(bytes);
-    let mut archive = tar::Archive::new(gz);
-    archive.unpack(&staging).map_err(|e| NpmError::Unpack {
-        pkg: pkg.to_string(),
-        message: e.to_string(),
-    })?;
-
-    // npm tarballs wrap everything under `package/`; move that directory (or
-    // the whole staging dir) into the target.
-    let src = if staging.join("package").exists() {
-        staging.join("package")
-    } else {
-        staging.clone()
-    };
-    if target.exists() {
-        let _ = std::fs::remove_dir_all(target);
-    }
-    if let Some(parent) = target.parent() {
-        let _ = std::fs::create_dir_all(parent);
-    }
-    match std::fs::rename(&src, target) {
-        Ok(_) => {}
-        Err(_) => {
-            // Cross-device fallback: copy the contents.
-            move_dir_contents(&src, target);
-        }
-    }
-    let _ = std::fs::remove_dir_all(&staging);
-    Ok(())
-}
-
-/// Move the contents of `src` into `dest` (both directories).
-fn move_dir_contents(src: &Path, dest: &Path) {
-    if let Ok(entries) = std::fs::read_dir(src) {
-        for entry in entries.flatten() {
-            let from = entry.path();
-            let to = dest.join(entry.file_name());
-            match std::fs::rename(&from, &to) {
-                Ok(_) => {}
-                Err(_) => {
-                    let _ = std::fs::remove_dir_all(&to);
-                    let _ = std::fs::rename(&from, &to);
-                }
-            }
-        }
     }
 }

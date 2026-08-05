@@ -527,7 +527,7 @@ fn ensure_gitignore(dir: &std::path::Path) -> std::io::Result<()> {
 
 /// `ConfigManaged.managedConfigDir()` — system-managed config directory.
 pub fn managed_config_dir() -> Option<std::path::PathBuf> {
-    if let Some(dir) = std::env::var("OPENCODE_TEST_MANAGED_CONFIG_DIR").ok() {
+    if let Ok(dir) = std::env::var("OPENCODE_TEST_MANAGED_CONFIG_DIR") {
         return Some(std::path::PathBuf::from(dir));
     }
     #[cfg(target_os = "macos")]
@@ -681,7 +681,7 @@ pub fn resolve_plugin_spec(plugin: Spec, config_filepath: &str) -> Spec {
     } else {
         path_to_file_url(&base.join(specifier))
     };
-    let resolved = resolve_path_plugin_target(&file).unwrap_or_else(|_| file);
+    let resolved = resolve_path_plugin_target(&file).unwrap_or(file);
     match plugin {
         Spec::Package(_) => Spec::Package(resolved),
         Spec::Entry((_, options)) => Spec::Entry((resolved, options)),

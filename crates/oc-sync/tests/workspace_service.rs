@@ -19,10 +19,13 @@ use oc_sync::control_plane::workspace_events::ConnectionStatus;
 use oc_sync::sync::event::SerializedEvent;
 use oc_sync::sync::store::Store;
 
+/// (name, env) recorded per created workspace.
+type CreatedEnv = (String, std::collections::BTreeMap<String, Option<String>>);
+
 /// A recording adapter so the workspace service can resolve targets.
 struct RecordingAdapter {
     target: Mutex<Target>,
-    created: Mutex<Vec<(String, std::collections::BTreeMap<String, Option<String>>)>>,
+    created: Mutex<Vec<CreatedEnv>>,
     removed: Mutex<Vec<String>>,
     listed: Mutex<Vec<WorkspaceListedInfo>>,
 }
@@ -207,7 +210,8 @@ async fn create_inserts_and_returns_workspace() {
     assert_eq!(info.project_id, project_id);
     assert!(info.time_used > 0);
     assert_eq!(adapter.created.lock().unwrap().len(), 1);
-    let (name, env) = &adapter.created.lock().unwrap()[0];
+    let created = adapter.created.lock().unwrap().clone();
+    let (name, env) = &created[0];
     assert!(name.contains('-'));
     assert_eq!(
         env.get("OPENCODE_EXPERIMENTAL_WORKSPACES")

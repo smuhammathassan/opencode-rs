@@ -176,12 +176,11 @@ impl<'de> Deserialize<'de> for Info {
                 let mut out = IndexMap::new();
                 for (key, value) in map {
                     let rule = Rule::from_value(&value).map_err(D::Error::custom)?;
-                    if ACTION_ONLY_KEYS.contains(&key.as_str()) {
-                        if !matches!(rule, Rule::Action(_)) {
-                            return Err(D::Error::custom(format!(
-                                "Expected a permission action for \"{key}\" but got an object"
-                            )));
-                        }
+                    if ACTION_ONLY_KEYS.contains(&key.as_str()) && !matches!(rule, Rule::Action(_))
+                    {
+                        return Err(D::Error::custom(format!(
+                            "Expected a permission action for \"{key}\" but got an object"
+                        )));
                     }
                     out.insert(key, rule);
                 }

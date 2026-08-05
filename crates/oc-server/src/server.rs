@@ -113,8 +113,6 @@ async fn start_listener(opts: ListenOptions) -> std::io::Result<Listener> {
         url
     };
 
-    // Keep the serve task from being dropped when `handle` is abandoned.
-    let _ = handle;
     let handle = handle;
 
     Ok(Listener {

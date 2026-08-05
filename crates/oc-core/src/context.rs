@@ -64,7 +64,7 @@ impl Services {
         credential_store: Option<Arc<dyn CredentialStore>>,
         directory_store: Option<Arc<dyn ProjectDirectoryStore>>,
     ) -> Self {
-        let fs = Arc::new(FSUtilService::default());
+        let fs = Arc::new(FSUtilService);
         let registry = Arc::new(DurableRegistry::default());
         let bus = Arc::new(EventBus::new(durable_store, registry.clone()));
         let jobs = Arc::new(BackgroundJob::new());

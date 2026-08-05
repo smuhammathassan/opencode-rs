@@ -155,10 +155,10 @@ impl Service {
             .lock()
             .await
             .values()
-            .filter(|session| cwd.map_or(true, |cwd| session.cwd == cwd))
+            .filter(|session| cwd.is_none_or(|cwd| session.cwd == cwd))
             .map(snapshot)
             .collect();
-        sessions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        sessions.sort_by_key(|session| std::cmp::Reverse(session.created_at));
         sessions
     }
 

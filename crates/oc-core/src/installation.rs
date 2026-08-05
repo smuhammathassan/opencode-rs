@@ -36,7 +36,7 @@ mod tests {
     #[test]
     fn local_build_by_default() {
         assert_eq!(INSTALLATION_CHANNEL, "local");
-        assert!(INSTALLATION_LOCAL);
+        const { assert!(INSTALLATION_LOCAL) }
         assert!(!INSTALLATION_VERSION.is_empty());
     }
 }

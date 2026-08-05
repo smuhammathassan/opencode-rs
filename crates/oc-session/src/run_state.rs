@@ -243,7 +243,7 @@ mod tests {
         let result = runner
             .ensure_running(async {
                 Ok::<WithParts, String>(WithParts {
-                    info: crate::v1::Info::User(crate::v1::User {
+                    info: crate::v1::Info::User(Box::new(crate::v1::User {
                         id: "m".into(),
                         session_id: "s".into(),
                         role: "user".into(),
@@ -258,7 +258,7 @@ mod tests {
                         },
                         system: None,
                         tools: None,
-                    }),
+                    })),
                     parts: vec![],
                 })
             })
@@ -274,7 +274,7 @@ mod tests {
             .start_shell(async {
                 tokio::time::sleep(std::time::Duration::from_millis(50)).await;
                 WithParts {
-                    info: crate::v1::Info::User(empty_user()),
+                    info: crate::v1::Info::User(Box::new(empty_user())),
                     parts: vec![],
                 }
             })
@@ -282,7 +282,7 @@ mod tests {
         let err = runner
             .start_shell(async {
                 WithParts {
-                    info: crate::v1::Info::User(empty_user()),
+                    info: crate::v1::Info::User(Box::new(empty_user())),
                     parts: vec![],
                 }
             })

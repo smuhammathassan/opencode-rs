@@ -29,7 +29,8 @@ const TAG_FLOAT64: i64 = 7;
 /// `value` must be a live QuickJS value owned by `context`.
 unsafe fn free_value(context: *mut q::JSContext, value: q::JSValue) {
     if value.tag < 0 {
-        let ptr = std::mem::transmute::<_, *mut q::JSRefCountHeader>(value.u.ptr);
+        let ptr =
+            std::mem::transmute::<*mut std::ffi::c_void, *mut q::JSRefCountHeader>(value.u.ptr);
         let pref: &mut q::JSRefCountHeader = &mut *ptr;
         pref.ref_count -= 1;
         if pref.ref_count <= 0 {
@@ -215,6 +216,12 @@ pub struct Runtime {
 }
 
 impl Runtime {
+    // QuickJS runtimes are not thread-safe: `Runtime` is deliberately `!Send`
+    // (raw `rt`/`ctx` pointers), so the callback registry may hold `!Send`
+    // closures too. `#[allow(clippy::arc_with_non_send_sync)]`: wrapping in a
+    // `Mutex` is required for interior mutability on the single owning thread
+    // (RUST-005); do not fake `Send`.
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn new() -> Result<Self, JsError> {
         let rt = unsafe { q::JS_NewRuntime() };
         if rt.is_null() {
@@ -629,10 +636,7 @@ fn to_value_inner(
                 return Err(JsError::Internal("could not convert string".into()));
             }
             let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
-            let s = cstr
-                .to_str()
-                .map_err(|e| JsError::InvalidString(e))?
-                .to_string();
+            let s = cstr.to_str().map_err(JsError::InvalidString)?.to_string();
             unsafe { q::JS_FreeCString(ctx, ptr) };
             Ok(JsValue::String(s))
         }
@@ -803,7 +807,7 @@ mod tests {
     #[test]
     fn callbacks_survive_runtime_move() {
         // Regression: the trampoline must not capture the Runtime's address.
-        let mut runtime = Runtime::new().unwrap();
+        let runtime = Runtime::new().unwrap();
         runtime
             .add_callback("echo", |payload: String| payload)
             .unwrap();

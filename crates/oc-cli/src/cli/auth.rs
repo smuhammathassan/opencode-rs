@@ -111,7 +111,7 @@ impl Auth {
                 .mode(0o600)
                 .open(&self.file)?;
             file.write_all(text.as_bytes())?;
-            return Ok(());
+            Ok(())
         }
         #[cfg(not(unix))]
         {
@@ -128,7 +128,7 @@ mod tests {
 
     struct TempDir(std::path::PathBuf);
     impl TempDir {
-        fn tempdir() -> std::io::Result<Self> {
+        fn new() -> std::io::Result<Self> {
             use std::sync::atomic::{AtomicU64, Ordering};
             static COUNTER: AtomicU64 = AtomicU64::new(0);
             let mut path = std::env::temp_dir();
@@ -151,7 +151,7 @@ mod tests {
     }
 
     fn temp_auth() -> (TempDir, Auth) {
-        let dir = TempDir::tempdir().unwrap();
+        let dir = TempDir::new().unwrap();
         let auth = Auth {
             file: dir.path().join("auth.json"),
         };

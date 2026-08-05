@@ -12,7 +12,7 @@ pub fn parse_share_url(url: &str) -> Option<&str> {
     let prefix = url
         .strip_prefix("http://")
         .or_else(|| url.strip_prefix("https://"))?;
-    let slug = prefix.splitn(2, '/').nth(1)?;
+    let slug = prefix.split_once('/')?.1;
     slug.strip_prefix("share/").filter(|s| {
         s.chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')

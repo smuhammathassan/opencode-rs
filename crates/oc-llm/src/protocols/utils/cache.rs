@@ -5,14 +5,14 @@
 /// From reference/packages/llm/src/protocols/utils/cache.ts
 #[derive(Debug, Clone, Default)]
 pub struct Breakpoints {
-    pub remaining: usize,
-    pub dropped: usize,
+    pub remaining: isize,
+    pub dropped: isize,
 }
 
 /// `newBreakpoints(cap)`.
 pub fn new_breakpoints(cap: usize) -> Breakpoints {
     Breakpoints {
-        remaining: cap,
+        remaining: cap as isize,
         dropped: 0,
     }
 }

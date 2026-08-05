@@ -92,7 +92,7 @@ impl PromptHistory {
             }
         }
         let next = self.index + direction;
-        if next.abs() as usize > self.entries.len() {
+        if next.unsigned_abs() as usize > self.entries.len() {
             return None;
         }
         if next > 0 {

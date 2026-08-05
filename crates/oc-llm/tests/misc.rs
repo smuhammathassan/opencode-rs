@@ -234,7 +234,7 @@ fn aws_frame(event_type: &str, payload: &str) -> Vec<u8> {
         headers.extend_from_slice(value.as_bytes());
     }
     let headers_len = headers.len() as u32;
-    let total_len = 12 + headers_len as u32 + payload.len() as u32 + 4;
+    let total_len = 12 + headers_len + payload.len() as u32 + 4;
     let mut frame = Vec::new();
     frame.extend_from_slice(&total_len.to_be_bytes());
     frame.extend_from_slice(&headers_len.to_be_bytes());

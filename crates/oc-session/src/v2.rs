@@ -326,7 +326,7 @@ pub enum AssistantContent {
     #[serde(rename = "reasoning")]
     Reasoning(AssistantReasoning),
     #[serde(rename = "tool")]
-    Tool(AssistantTool),
+    Tool(Box<AssistantTool>),
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -413,9 +413,9 @@ pub enum Message {
     #[serde(rename = "system")]
     System(System),
     #[serde(rename = "shell")]
-    Shell(Shell),
+    Shell(Box<Shell>),
     #[serde(rename = "assistant")]
-    Assistant(Assistant),
+    Assistant(Box<Assistant>),
     #[serde(rename = "compaction")]
     Compaction(Compaction),
 }

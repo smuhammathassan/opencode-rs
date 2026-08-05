@@ -884,38 +884,38 @@ fn on_content_block_start(state: &ParserState, event: &AnthropicEvent) -> StepRe
         return (state.clone(), vec![]);
     };
 
-    if (block.block_type.as_deref() == Some("tool_use")
-        || block.block_type.as_deref() == Some("server_tool_use"))
-        && event.index.is_some()
+    if block.block_type.as_deref() == Some("tool_use")
+        || block.block_type.as_deref() == Some("server_tool_use")
     {
-        let mut events = Vec::new();
-        let lifecycle = lifecycle::step_start(&state.lifecycle, &mut events);
-        let index = event.index.unwrap();
-        let id = block.id.clone().unwrap_or_else(|| index.to_string());
-        let name = block.name.clone().unwrap_or_default();
-        let mut next = state.clone();
-        next.lifecycle = lifecycle;
-        next.tools = ToolStream::start(
-            &state.tools,
-            index,
-            tool_stream::PendingToolInput {
-                id: id.clone(),
-                name: name.clone(),
-                input: None,
-                provider_executed: if block.block_type.as_deref() == Some("server_tool_use") {
-                    Some(true)
-                } else {
-                    None
+        if let Some(index) = event.index {
+            let mut events = Vec::new();
+            let lifecycle = lifecycle::step_start(&state.lifecycle, &mut events);
+            let id = block.id.clone().unwrap_or_else(|| index.to_string());
+            let name = block.name.clone().unwrap_or_default();
+            let mut next = state.clone();
+            next.lifecycle = lifecycle;
+            next.tools = ToolStream::start(
+                &state.tools,
+                index,
+                tool_stream::PendingToolInput {
+                    id: id.clone(),
+                    name: name.clone(),
+                    input: None,
+                    provider_executed: if block.block_type.as_deref() == Some("server_tool_use") {
+                        Some(true)
+                    } else {
+                        None
+                    },
+                    provider_metadata: None,
                 },
+            );
+            events.push(LlmEvent::ToolInputStart {
+                id: id.clone(),
+                name,
                 provider_metadata: None,
-            },
-        );
-        events.push(LlmEvent::ToolInputStart {
-            id: id.clone(),
-            name,
-            provider_metadata: None,
-        });
-        return (next, events);
+            });
+            return (next, events);
+        }
     }
 
     if block.block_type.as_deref() == Some("text") && block.text.is_some() {
@@ -1007,11 +1007,13 @@ fn on_content_block_delta(
         return Ok((next, events));
     }
 
-    if delta.delta_type.as_deref() == Some("input_json_delta") && event.index.is_some() {
+    if delta.delta_type.as_deref() == Some("input_json_delta") {
+        let Some(index) = event.index else {
+            return Ok((state.clone(), vec![]));
+        };
         let Some(partial_json) = &delta.partial_json else {
             return Ok((state.clone(), vec![]));
         };
-        let index = event.index.unwrap();
         let result = tool_stream::append_existing(
             ADAPTER,
             &state.tools,
@@ -1212,7 +1214,7 @@ impl ProtocolStream for AnthropicMessagesStream {
 pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
-        Arc::new(|request| from_request(request)),
+        Arc::new(from_request),
         Arc::new(AnthropicMessagesStream),
     )
 }

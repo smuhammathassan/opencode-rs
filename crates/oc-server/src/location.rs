@@ -90,8 +90,8 @@ pub fn resolve_location(
     let directory = params
         .get("location[directory]")
         .cloned()
-        .map(|d| decode(d))
-        .or_else(|| header_value(headers, "x-opencode-directory").map(|d| decode(d)))
+        .map(decode)
+        .or_else(|| header_value(headers, "x-opencode-directory").map(decode))
         .unwrap_or_else(|| default.directory.clone());
     Location::with_directory(&directory, workspace_id.as_deref())
 }

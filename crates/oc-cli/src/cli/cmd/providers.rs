@@ -72,7 +72,7 @@ async fn list(ctx: &Context) -> anyhow::Result<i32> {
     ));
 
     let mut active_env_vars: Vec<(String, String)> = Vec::new();
-    for (_provider_id, provider) in &db.providers {
+    for provider in db.providers.values() {
         for env_var in &provider.env {
             if std::env::var_os(env_var).is_some() {
                 active_env_vars.push((provider.name.clone(), env_var.clone()));

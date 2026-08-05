@@ -11,7 +11,7 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use crate::project::instance_context::InstanceContext;
-use crate::project::project::Project;
+use crate::project::project_impl::Project;
 use crate::project::vcs::Vcs;
 use crate::snapshot::Snapshot;
 use crate::util::config::Config;
@@ -63,7 +63,7 @@ impl Bootstrap {
         let vcs_ctx = ctx.clone();
         let shutdown = sender.subscribe();
         handles.push(tokio::spawn(async move {
-            let _ = vcs.init(vcs_ctx, shutdown).await;
+            vcs.init(vcs_ctx, shutdown).await;
         }));
 
         // Snapshot init starts its hourly cleanup loop.
@@ -71,7 +71,7 @@ impl Bootstrap {
         let snapshot_ctx = ctx.clone();
         let shutdown = sender.subscribe();
         handles.push(tokio::spawn(async move {
-            let _ = snapshot.init(snapshot_ctx, shutdown).await;
+            snapshot.init(snapshot_ctx, shutdown).await;
         }));
 
         handles

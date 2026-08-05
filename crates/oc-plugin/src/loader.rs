@@ -296,9 +296,11 @@ pub fn resolve(plan: &Plan, kind: PluginKind) -> Result<Result2, ResolveError> {
 
 /// The outcome of resolving and loading a plan. Mirrors the staged results of
 /// `PluginLoader.resolve` in loader.ts (with the import step folded in).
+/// The large `Loaded` payload is boxed to keep the enum size small (clippy
+/// `large_enum_variant`).
 #[derive(Debug, Clone)]
 pub enum ResolveOutcome {
-    Resolved(Loaded),
+    Resolved(Box<Loaded>),
     Missing(Missing),
     Failed { stage: &'static str, error: String },
 }
@@ -348,7 +350,7 @@ pub fn resolve_and_load(plan: &Plan, kind: PluginKind) -> ResolveOutcome {
         }
     }
     match load(&resolved) {
-        Ok(loaded) => ResolveOutcome::Resolved(loaded),
+        Ok(loaded) => ResolveOutcome::Resolved(Box::new(loaded)),
         Err(error) => ResolveOutcome::Failed {
             stage: "load",
             error: error.to_string(),
@@ -416,7 +418,7 @@ pub fn load_external_reported(
         match resolve_and_load(&plan, kind) {
             ResolveOutcome::Resolved(loaded) => {
                 register_with_resolver(&loaded, resolver);
-                out.push(loaded);
+                out.push(*loaded);
             }
             ResolveOutcome::Missing(missing) => report.missing(origin, &missing.message),
             ResolveOutcome::Failed { stage, error } => report.error(origin, stage, &error),

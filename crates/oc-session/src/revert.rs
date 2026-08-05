@@ -137,7 +137,7 @@ mod tests {
 
     fn user_with_text(id: &str, part_id: &str) -> WithParts {
         WithParts {
-            info: crate::v1::Info::User(crate::v1::User {
+            info: crate::v1::Info::User(Box::new(crate::v1::User {
                 id: id.into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -152,7 +152,7 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![Part::Text(crate::v1::TextPart {
                 base: crate::v1::PartBase {
                     id: part_id.into(),

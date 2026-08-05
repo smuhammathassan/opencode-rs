@@ -180,7 +180,9 @@ pub fn find(
 }
 
 /// From reference `instruction.ts:resolve` — walk up from the read file and
-/// attach nearby instruction files once per message.
+/// attach nearby instruction files once per message. Mirrors the reference's
+/// `resolve` parameter list.
+#[allow(clippy::too_many_arguments)]
 pub fn resolve_instructions(
     messages: &[WithParts],
     filepath: &str,
@@ -288,7 +290,7 @@ mod tests {
                 input: Default::default(),
                 output: String::new(),
                 title: String::new(),
-                metadata: metadata,
+                metadata,
                 time: crate::v1::CompletedTime {
                     start: 0,
                     end: 1,
@@ -299,7 +301,7 @@ mod tests {
             metadata: None,
         });
         let messages = vec![WithParts {
-            info: crate::v1::Info::User(crate::v1::User {
+            info: crate::v1::Info::User(Box::new(crate::v1::User {
                 id: "m".into(),
                 session_id: "s".into(),
                 role: "user".into(),
@@ -314,7 +316,7 @@ mod tests {
                 },
                 system: None,
                 tools: None,
-            }),
+            })),
             parts: vec![part],
         }];
         let loaded = extract(&messages);

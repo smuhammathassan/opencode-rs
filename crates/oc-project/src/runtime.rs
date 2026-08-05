@@ -10,7 +10,7 @@ use crate::git::Git;
 use crate::project::bootstrap::Bootstrap;
 use crate::project::instance_context::InstanceContext;
 use crate::project::instance_store::{InstanceStore, LoadInput};
-use crate::project::project::Project;
+use crate::project::project_impl::Project;
 use crate::project::store::ProjectStore;
 use crate::project::vcs::Vcs;
 use crate::snapshot::Snapshot;

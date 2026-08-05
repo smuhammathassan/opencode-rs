@@ -152,7 +152,7 @@ pub fn display_stats(
         if !stats.model_usage.is_empty() {
             let sorted: Vec<&(String, ModelUsage)> = {
                 let mut items: Vec<&(String, ModelUsage)> = stats.model_usage.iter().collect();
-                items.sort_by(|a, b| b.1.messages.cmp(&a.1.messages));
+                items.sort_by_key(|item| std::cmp::Reverse(item.1.messages));
                 items
             };
             let shown: Vec<&&(String, ModelUsage)> = match model_limit {
@@ -206,7 +206,7 @@ pub fn display_stats(
 
     if !stats.tool_usage.is_empty() {
         let mut sorted = stats.tool_usage.clone();
-        sorted.sort_by(|a, b| b.1.cmp(&a.1));
+        sorted.sort_by_key(|entry| std::cmp::Reverse(entry.1));
         let shown: Vec<&(String, u64)> = match tool_limit {
             Some(limit) => sorted.iter().take(limit as usize).collect(),
             None => sorted.iter().collect(),
@@ -227,7 +227,7 @@ pub fn display_stats(
             let percentage = (*count as f64 / total_tool_usage as f64) * 100.0;
             let truncated: String = tool.chars().take(16).collect();
             let tool_name = if tool.chars().count() > 18 {
-                format!("{}..", &tool.chars().take(16).collect::<String>())
+                format!("{}..", tool.chars().take(16).collect::<String>())
             } else {
                 truncated
             };
@@ -245,7 +245,7 @@ fn thousands(value: u64) -> String {
     let s = value.to_string();
     let mut out = String::new();
     for (i, ch) in s.chars().enumerate() {
-        if i > 0 && (s.len() - i) % 3 == 0 {
+        if i > 0 && (s.len() - i).is_multiple_of(3) {
             out.push(',');
         }
         out.push(ch);

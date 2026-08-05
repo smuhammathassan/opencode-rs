@@ -632,16 +632,9 @@ use std::sync::Arc;
 
 /// Minimal SSE parser: accumulates `data:` payloads and yields one event per
 /// blank line.
+#[derive(Default)]
 struct SseParser {
     data: String,
-}
-
-impl Default for SseParser {
-    fn default() -> Self {
-        SseParser {
-            data: String::new(),
-        }
-    }
 }
 
 impl SseParser {

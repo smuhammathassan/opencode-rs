@@ -11,20 +11,22 @@ use oc_tui::types::{Message, Part};
 use serde_json::json;
 
 fn session_fixture() -> SyncState {
-    let mut sync = SyncState::default();
-    sync.agents = serde_json::from_value(json!([
-        { "name": "build", "mode": "primary", "permission": [], "options": {} }
-    ]))
-    .unwrap();
-    sync.providers = serde_json::from_value(json!([
-        { "id": "openrouter", "name": "OpenRouter", "source": "config", "env": [],
-          "options": {}, "models": {
-            "model-x": { "id": "model-x", "providerID": "openrouter", "name": "Model X",
-                "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
-                "limit": {"context": 1000, "output": 1000}, "status": "active", "options": {}, "headers": {}, "release_date": "" } }
-        }
-    ]))
-    .unwrap();
+    let mut sync = SyncState {
+        agents: serde_json::from_value(json!([
+            { "name": "build", "mode": "primary", "permission": [], "options": {} }
+        ]))
+        .unwrap(),
+        providers: serde_json::from_value(json!([
+            { "id": "openrouter", "name": "OpenRouter", "source": "config", "env": [],
+              "options": {}, "models": {
+                "model-x": { "id": "model-x", "providerID": "openrouter", "name": "Model X",
+                    "capabilities": {"input": {}, "output": {}}, "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+                    "limit": {"context": 1000, "output": 1000}, "status": "active", "options": {}, "headers": {}, "release_date": "" } }
+            }
+        ]))
+        .unwrap(),
+        ..Default::default()
+    };
     let session: oc_tui::types::Session = serde_json::from_value(json!({
         "id": "ses_1", "slug": "s", "projectID": "p", "directory": "/proj", "title": "Fix bug",
         "version": "1", "time": { "created": 1, "updated": 1 }
@@ -155,7 +157,6 @@ fn message_list_wraps_to_fixed_width() {
 
 #[test]
 fn prompt_layout_renders_placeholder_and_cursor() {
-    let prompt = PromptState::default();
     let (lines, cursor) = oc_tui::components::prompt::prompt_lines(
         "",
         40,

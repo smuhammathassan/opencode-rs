@@ -38,6 +38,9 @@ use crate::Result;
 pub const DEFAULT_TIMEOUT: u64 = 30_000;
 pub const DEFAULT_REQUEST_TIMEOUT: u64 = 60_000;
 
+/// Callback fired when an authorization completes.
+type OnAuthorization = Option<Arc<dyn Fn(&str) + Send + Sync>>;
+
 /// Event emitted by the MCP service.
 /// From reference/packages/schema/src/mcp-event.ts.
 #[derive(Debug, Clone, Serialize)]
@@ -95,20 +98,11 @@ pub enum AuthStatus {
     NotAuthenticated,
 }
 
+#[derive(Default)]
 pub struct McpOptions {
     pub auth: Option<Arc<McpAuth>>,
     pub default_timeout: Option<u64>,
     pub events: Option<mpsc::UnboundedSender<McpEvent>>,
-}
-
-impl Default for McpOptions {
-    fn default() -> Self {
-        McpOptions {
-            auth: None,
-            default_timeout: None,
-            events: None,
-        }
-    }
 }
 
 struct CreateResult {
@@ -319,7 +313,7 @@ impl Mcp {
         self.collect_from_connected(
             "prompts",
             None::<&catalog::KeyFn<crate::types::Prompt>>,
-            |client, timeout| catalog::prompts(client, timeout),
+            catalog::prompts,
             None,
         )
         .await
@@ -333,7 +327,7 @@ impl Mcp {
         self.collect_from_connected(
             "resources",
             Some(&|resource: &crate::types::Resource| resource.uri.clone()),
-            |client, timeout| catalog::resources(client, timeout),
+            catalog::resources,
             client_name,
         )
         .await
@@ -347,7 +341,7 @@ impl Mcp {
         self.collect_from_connected(
             "resource templates",
             Some(&|template: &crate::types::ResourceTemplate| template.uri_template.clone()),
-            |client, timeout| catalog::resource_templates(client, timeout),
+            catalog::resource_templates,
             client_name,
         )
         .await
@@ -510,7 +504,7 @@ impl Mcp {
     pub async fn authenticate(
         &self,
         mcp_name: &str,
-        on_authorization: Option<Arc<dyn Fn(&str) + Send + Sync>>,
+        on_authorization: OnAuthorization,
     ) -> Result<Status> {
         let result = self.start_auth(mcp_name).await?;
 

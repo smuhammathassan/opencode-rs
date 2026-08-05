@@ -33,7 +33,7 @@ impl<'a> Adapter for Memory<'a> {
             .rposition(|message| matches!(message, Message::Assistant(_)))?;
         match &self.state.messages[index] {
             Message::Assistant(assistant) if assistant.time.completed.is_none() => {
-                Some(assistant.clone())
+                Some(assistant.as_ref().clone())
             }
             _ => None,
         }
@@ -46,7 +46,7 @@ impl<'a> Adapter for Memory<'a> {
             .iter()
             .rposition(|message| message.id() == message_id)?;
         match &self.state.messages[index] {
-            Message::Assistant(assistant) => Some(assistant.clone()),
+            Message::Assistant(assistant) => Some(assistant.as_ref().clone()),
             _ => None,
         }
     }
@@ -56,7 +56,7 @@ impl<'a> Adapter for Memory<'a> {
             |message| matches!(message, Message::Shell(shell) if shell.call_id == call_id),
         )?;
         match &self.state.messages[index] {
-            Message::Shell(shell) => Some(shell.clone()),
+            Message::Shell(shell) => Some(shell.as_ref().clone()),
             _ => None,
         }
     }
@@ -68,7 +68,7 @@ impl<'a> Adapter for Memory<'a> {
             .iter()
             .rposition(|message| message.id() == assistant.base.id)
             .expect("assistant exists");
-        self.state.messages[index] = Message::Assistant(assistant);
+        self.state.messages[index] = Message::Assistant(Box::new(assistant));
     }
 
     fn update_shell(&mut self, shell: Shell) {
@@ -78,7 +78,7 @@ impl<'a> Adapter for Memory<'a> {
             .iter()
             .rposition(|message| matches!(message, Message::Shell(s) if s.call_id == shell.call_id))
             .expect("shell exists");
-        self.state.messages[index] = Message::Shell(shell);
+        self.state.messages[index] = Message::Shell(Box::new(shell));
     }
 
     fn append_message(&mut self, message: Message) {
@@ -160,7 +160,7 @@ pub fn update(adapter: &mut dyn Adapter, event: &EventData) {
             command,
             ..
         } => {
-            adapter.append_message(Message::Shell(Shell {
+            adapter.append_message(Message::Shell(Box::new(Shell {
                 base: crate::v2::MessageBaseId {
                     id: message_id.clone(),
                     metadata: None,
@@ -173,7 +173,7 @@ pub fn update(adapter: &mut dyn Adapter, event: &EventData) {
                     created: *timestamp,
                     completed: None,
                 },
-            }));
+            })));
         }
         EventData::ShellEnded {
             call_id,
@@ -201,7 +201,7 @@ pub fn update(adapter: &mut dyn Adapter, event: &EventData) {
                 next.time.completed = Some(*timestamp);
                 adapter.update_assistant(next);
             }
-            adapter.append_message(Message::Assistant(Assistant {
+            adapter.append_message(Message::Assistant(Box::new(Assistant {
                 base: crate::v2::MessageBaseId {
                     id: assistant_message_id.clone(),
                     metadata: None,
@@ -223,7 +223,7 @@ pub fn update(adapter: &mut dyn Adapter, event: &EventData) {
                     created: *timestamp,
                     completed: None,
                 },
-            }));
+            })));
         }
         EventData::StepEnded {
             assistant_message_id,
@@ -316,22 +316,24 @@ pub fn update(adapter: &mut dyn Adapter, event: &EventData) {
             ..
         } => {
             update_owned_assistant(adapter, assistant_message_id, |draft| {
-                draft.content.push(AssistantContent::Tool(AssistantTool {
-                    type_: "tool".into(),
-                    id: call_id.clone(),
-                    name: name.clone(),
-                    provider: None,
-                    state: crate::v2::ToolState::Pending(crate::v2::ToolStatePending {
-                        status: "pending".into(),
-                        input: String::new(),
-                    }),
-                    time: crate::v2::AssistantToolTime {
-                        created: *timestamp,
-                        ran: None,
-                        completed: None,
-                        pruned: None,
-                    },
-                }));
+                draft
+                    .content
+                    .push(AssistantContent::Tool(Box::new(AssistantTool {
+                        type_: "tool".into(),
+                        id: call_id.clone(),
+                        name: name.clone(),
+                        provider: None,
+                        state: crate::v2::ToolState::Pending(crate::v2::ToolStatePending {
+                            status: "pending".into(),
+                            input: String::new(),
+                        }),
+                        time: crate::v2::AssistantToolTime {
+                            created: *timestamp,
+                            ran: None,
+                            completed: None,
+                            pruned: None,
+                        },
+                    })));
             });
         }
         EventData::ToolInputEnded {
@@ -597,7 +599,7 @@ fn latest_tool<'a>(
         .find_map(|part| match part {
             AssistantContent::Tool(tool) => {
                 if call_id.is_none_or(|id| tool.id == id) {
-                    Some(tool)
+                    Some(tool.as_mut())
                 } else {
                     None
                 }

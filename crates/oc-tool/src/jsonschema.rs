@@ -50,14 +50,7 @@ fn normalize(value: &JsonValue) -> JsonValue {
 
 fn normalize_with(value: &JsonValue, strip_null: bool) -> JsonValue {
     if value.is_array() {
-        return JsonValue::Array(
-            value
-                .as_array()
-                .unwrap()
-                .iter()
-                .map(|item| normalize(item))
-                .collect(),
-        );
+        return JsonValue::Array(value.as_array().unwrap().iter().map(normalize).collect());
     }
     if !is_record(value) {
         return value.clone();
@@ -82,7 +75,7 @@ fn normalize_with(value: &JsonValue, strip_null: bool) -> JsonValue {
             for (name, property) in props {
                 let strip = required
                     .as_ref()
-                    .map_or(true, |required| !required.contains(name));
+                    .is_none_or(|required| !required.contains(name));
                 next.insert(name.clone(), normalize_with(property, strip));
             }
             JsonValue::Object(next)

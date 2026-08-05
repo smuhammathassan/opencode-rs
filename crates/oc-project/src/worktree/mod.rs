@@ -6,7 +6,7 @@ use regex::Regex;
 use crate::git::Git;
 use crate::project::instance_context::InstanceContext;
 use crate::project::instance_store::InstanceStore;
-use crate::project::project::Project;
+use crate::project::project_impl::Project;
 use crate::schema::{
     WorktreeCreateInput, WorktreeError, WorktreeInfo, WorktreeRemoveInput, WorktreeResetInput,
 };

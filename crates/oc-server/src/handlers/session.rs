@@ -137,12 +137,12 @@ pub async fn session_list(
             let in_location = query
                 .directory
                 .as_ref()
-                .map_or(true, |d| s.location.directory == *d);
-            let in_project = query.project.as_ref().map_or(true, |p| s.project_id == *p);
+                .is_none_or(|d| s.location.directory == *d);
+            let in_project = query.project.as_ref().is_none_or(|p| s.project_id == *p);
             let matches_search = query
                 .search
                 .as_ref()
-                .map_or(true, |q| s.title.contains(q) || s.id.contains(q));
+                .is_none_or(|q| s.title.contains(q) || s.id.contains(q));
             in_location && in_project && matches_search
         })
         .collect();
@@ -575,7 +575,7 @@ pub async fn session_history(
         .messages
         .iter()
         .enumerate()
-        .filter(|(i, _)| after.map_or(true, |after| (*i as i64) > after))
+        .filter(|(i, _)| after.is_none_or(|after| (*i as i64) > after))
         .map(|(i, m)| {
             json!({
                 "id": event_id(),

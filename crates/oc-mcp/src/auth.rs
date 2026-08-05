@@ -82,11 +82,6 @@ impl McpAuth {
         }
     }
 
-    /// `filepath = path.join(Global.Path.data, "mcp-auth.json")`
-    pub fn default() -> Self {
-        Self::new(default_data_dir().join("mcp-auth.json"))
-    }
-
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -240,6 +235,12 @@ impl McpAuth {
         })
         .await
         .map_err(|error| crate::Error::message(format!("auth write task failed: {error}")))?
+    }
+}
+
+impl Default for McpAuth {
+    fn default() -> Self {
+        Self::new(default_data_dir().join("mcp-auth.json"))
     }
 }
 

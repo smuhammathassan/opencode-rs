@@ -399,8 +399,10 @@ fn parse_model_handles_slashes() {
 fn build_registry_merges_env_and_api_keys() {
     let catalog = snapshot();
     let provider_config = IndexMap::new();
-    let mut config = ConfigInput::default();
-    config.provider = &provider_config;
+    let config = ConfigInput {
+        provider: &provider_config,
+        ..Default::default()
+    };
     let mut envs = BTreeMap::new();
     envs.insert("OPENAI_API_KEY".to_string(), Some("sk-env".to_string()));
     let mut auths = BTreeMap::new();
@@ -440,9 +442,11 @@ fn build_registry_respects_disabled_providers() {
     let catalog = snapshot();
     let provider_config = IndexMap::new();
     let disabled = vec!["anthropic".to_string()];
-    let mut config = ConfigInput::default();
-    config.provider = &provider_config;
-    config.disabled_providers = Some(&disabled);
+    let config = ConfigInput {
+        provider: &provider_config,
+        disabled_providers: Some(&disabled),
+        ..Default::default()
+    };
     let input = RegistryInput {
         catalog: &catalog,
         config,
@@ -492,8 +496,10 @@ fn build_registry_filters_alpha_and_deprecated() {
 fn build_registry_applies_custom_loader_options() {
     let catalog = snapshot();
     let provider_config = IndexMap::new();
-    let mut config = ConfigInput::default();
-    config.provider = &provider_config;
+    let config = ConfigInput {
+        provider: &provider_config,
+        ..Default::default()
+    };
     let mut envs = BTreeMap::new();
     envs.insert("ANTHROPIC_API_KEY".to_string(), Some("key".to_string()));
     let input = RegistryInput {

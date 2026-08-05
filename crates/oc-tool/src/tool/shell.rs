@@ -214,7 +214,7 @@ fn collect(command: &str, cwd: &str, ps: bool, instance_directory: &str, shell: 
                         continue;
                     }
                 }
-                let file = if ps { unquote(&arg) } else { unquote(&arg) };
+                let file = unquote(&arg);
                 let resolved = crate::util::path_resolve(cwd, &file);
                 if crate::util::fs_contains(instance_directory, &resolved) {
                     continue;
@@ -598,6 +598,10 @@ pub async fn run(
     })
 }
 
+/// Accumulates one streamed chunk into the shared parser state, mirroring the
+/// reference's per-chunk processing loop (which threads the same mutable state
+/// through the handler).
+#[allow(clippy::too_many_arguments)]
 fn process_chunk(
     list: &mut Vec<Chunk>,
     used: &mut usize,
@@ -866,11 +870,14 @@ mod tests {
     async fn executes_and_returns_exit_code() {
         let dir = tempfile::tempdir().unwrap();
         let def = crate::tool::tool::wrap("bash", def(None));
-        let mut ctx = crate::model::ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = crate::model::ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = def
             .execute(serde_json::json!({ "command": "echo hello" }), &mut ctx)
             .await
@@ -884,11 +891,14 @@ mod tests {
     async fn reports_timeout_metadata() {
         let dir = tempfile::tempdir().unwrap();
         let def = crate::tool::tool::wrap("bash", def(None));
-        let mut ctx = crate::model::ToolContext::default();
-        ctx.instance = Some(crate::model::InstanceContext {
-            directory: dir.path().to_string_lossy().to_string(),
-            worktree: dir.path().to_string_lossy().to_string(),
-        });
+        let mut ctx = crate::model::ToolContext {
+            instance: Some(crate::model::InstanceContext {
+                directory: dir.path().to_string_lossy().to_string(),
+                worktree: dir.path().to_string_lossy().to_string(),
+            }),
+            ..Default::default()
+        };
+
         let result = def
             .execute(
                 serde_json::json!({ "command": "sleep 5", "timeout": 100 }),

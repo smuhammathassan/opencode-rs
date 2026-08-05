@@ -191,8 +191,8 @@ pub fn render(
                 let custom_idx = question.options.len();
                 let other = selected == custom_idx;
                 let custom_value = state.custom.get(tab).cloned().unwrap_or_default();
-                let custom_picked = !custom_value.is_empty()
-                    && state.answers[tab].iter().any(|a| *a == custom_value);
+                let custom_picked =
+                    !custom_value.is_empty() && state.answers[tab].contains(&custom_value);
                 let bg = if other {
                     theme.background_element
                 } else {

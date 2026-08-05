@@ -37,7 +37,7 @@ pub fn is_allowed_cors_origin(input: Option<&str>, opts: Option<&CorsOptions>) -
         return true;
     }
     opts.and_then(|o| o.cors.as_ref())
-        .map_or(false, |cors| cors.iter().any(|o| o == input))
+        .is_some_and(|cors| cors.iter().any(|o| o == input))
 }
 
 /// Origin check that also accepts same-host requests. From

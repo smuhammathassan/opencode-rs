@@ -110,8 +110,10 @@ mod tests {
     #[tokio::test]
     async fn executes_and_counts_pending() {
         let def = tool::wrap("todowrite", def());
-        let mut ctx = ToolContext::default();
-        ctx.session_id = "ses_1".to_string();
+        let mut ctx = ToolContext {
+            session_id: "ses_1".to_string(),
+            ..Default::default()
+        };
         let result = def
             .execute(
                 serde_json::json!({

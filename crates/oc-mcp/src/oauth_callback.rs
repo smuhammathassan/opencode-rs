@@ -308,10 +308,10 @@ pub async fn cancel_pending(mcp_name: &str) {
 /// True if a TCP connection can be established on `port`. From reference
 /// `McpOAuthCallback.isPortInUse`.
 pub async fn is_port_in_use(port: u16) -> bool {
-    match tokio::time::timeout(Duration::from_millis(500), TcpStream::connect((HOST, port))).await {
-        Ok(Ok(_stream)) => true,
-        _ => false,
-    }
+    matches!(
+        tokio::time::timeout(Duration::from_millis(500), TcpStream::connect((HOST, port))).await,
+        Ok(Ok(_stream))
+    )
 }
 
 /// Stop the server and reject all pending authorizations.
@@ -368,13 +368,13 @@ fn url_decode(value: &str) -> String {
 /// `reference/packages/core/src/oauth/page.ts`.
 /// TODO(integration): full visual parity with the reference page.
 fn success_page() -> String {
-    let body = format!(
+    let body =
         r#"<main class="card" id="oc-card" data-status="success" role="status" aria-live="polite">
       <h1 class="headline" id="oc-headline">Authorization successful</h1>
       <p class="message" id="oc-message">OpenCode is now connected to MCP.</p>
       <p class="footnote" id="oc-footnote">You can close this window.</p>
     </main>"#
-    );
+            .to_string();
     document("Authorization successful", &body, true)
 }
 

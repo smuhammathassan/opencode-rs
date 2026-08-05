@@ -70,6 +70,7 @@ pub struct SseEvent {
 }
 
 /// Streaming SSE parser used by the HTTP transports.
+#[derive(Default)]
 pub struct SseParser {
     buffer: String,
 }

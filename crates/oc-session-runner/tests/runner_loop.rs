@@ -315,13 +315,13 @@ impl LlmClient for MockLlm {
             response.ok_or_else(|| LLMError {
                 module: "test".into(),
                 method: "stream".into(),
-                reason: oc_session_runner::llm::LLMErrorReason::NoRoute(
+                reason: Box::new(oc_session_runner::llm::LLMErrorReason::NoRoute(
                     oc_session_runner::llm::error::ReasonMessage {
                         message: "no more responses".into(),
                         provider_metadata: None,
                         http: None,
                     },
-                ),
+                )),
             })
         })
     }
@@ -408,9 +408,9 @@ async fn tool_call_continuation_round_trip() {
     let deps = RunnerDeps {
         events: events.clone(),
         llm,
-        agents: Arc::new(MockAgents::default()),
-        tools: Arc::new(MockTools::default()),
-        models: Arc::new(MockModels::default()),
+        agents: Arc::new(MockAgents),
+        tools: Arc::new(MockTools),
+        models: Arc::new(MockModels),
         store: Arc::new(MockStore {
             session: SessionInfo {
                 id: "ses_abc".into(),
@@ -426,15 +426,15 @@ async fn tool_call_continuation_round_trip() {
                 },
             },
         }),
-        location: Arc::new(MockLocation::default()),
-        system_context: Arc::new(MockSystemContext::default()),
-        skill_guidance: Arc::new(MockGuidance::default()),
-        reference_guidance: Arc::new(MockGuidance::default()),
-        snapshots: Arc::new(MockSnapshots::default()),
+        location: Arc::new(MockLocation),
+        system_context: Arc::new(MockSystemContext),
+        skill_guidance: Arc::new(MockGuidance),
+        reference_guidance: Arc::new(MockGuidance),
+        snapshots: Arc::new(MockSnapshots),
         input: Arc::new(MockInput::new(true)),
-        history: Arc::new(MockHistory::default()),
-        context_epoch: Arc::new(MockContextEpoch::default()),
-        compaction: Arc::new(MockCompaction::default()),
+        history: Arc::new(MockHistory),
+        context_epoch: Arc::new(MockContextEpoch),
+        compaction: Arc::new(MockCompaction),
     };
 
     let runner = SessionRunnerService::new(deps);
@@ -500,9 +500,9 @@ async fn no_eligible_work_is_a_noop() {
         llm: Arc::new(MockLlm {
             responses: Mutex::new(VecDeque::new()),
         }),
-        agents: Arc::new(MockAgents::default()),
-        tools: Arc::new(MockTools::default()),
-        models: Arc::new(MockModels::default()),
+        agents: Arc::new(MockAgents),
+        tools: Arc::new(MockTools),
+        models: Arc::new(MockModels),
         store: Arc::new(MockStore {
             session: SessionInfo {
                 id: "ses_abc".into(),
@@ -514,15 +514,15 @@ async fn no_eligible_work_is_a_noop() {
                 },
             },
         }),
-        location: Arc::new(MockLocation::default()),
-        system_context: Arc::new(MockSystemContext::default()),
-        skill_guidance: Arc::new(MockGuidance::default()),
-        reference_guidance: Arc::new(MockGuidance::default()),
-        snapshots: Arc::new(MockSnapshots::default()),
+        location: Arc::new(MockLocation),
+        system_context: Arc::new(MockSystemContext),
+        skill_guidance: Arc::new(MockGuidance),
+        reference_guidance: Arc::new(MockGuidance),
+        snapshots: Arc::new(MockSnapshots),
         input: Arc::new(input),
-        history: Arc::new(MockHistory::default()),
-        context_epoch: Arc::new(MockContextEpoch::default()),
-        compaction: Arc::new(MockCompaction::default()),
+        history: Arc::new(MockHistory),
+        context_epoch: Arc::new(MockContextEpoch),
+        compaction: Arc::new(MockCompaction),
     };
     let runner = SessionRunnerService::new(deps);
     let token = CancellationToken::new();

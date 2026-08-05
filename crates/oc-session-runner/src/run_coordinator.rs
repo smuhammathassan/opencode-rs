@@ -24,6 +24,8 @@ type DrainFn<K, E> = Arc<
         + Sync,
 >;
 
+type ActiveEntries<K, E> = Arc<Mutex<HashMap<K, Arc<EntryState<E>>>>>;
+
 struct EntryState<E> {
     result: Mutex<Option<Result<(), E>>>,
     notify: Notify,
@@ -154,7 +156,7 @@ where
 /// token; interruption is cooperative (the drain must observe the token).
 /// /// From reference/packages/core/src/session/run-coordinator.ts (`start`)
 fn start_entry<K, E>(
-    active: &Arc<Mutex<HashMap<K, Arc<EntryState<E>>>>>,
+    active: &ActiveEntries<K, E>,
     drain: &DrainFn<K, E>,
     key: K,
     entry: Arc<EntryState<E>>,
@@ -181,7 +183,7 @@ fn start_entry<K, E>(
 /// wake was recorded. Mirrors `settle`.
 /// /// From reference/packages/core/src/session/run-coordinator.ts (`settle`)
 fn settle<K, E>(
-    active: &Arc<Mutex<HashMap<K, Arc<EntryState<E>>>>>,
+    active: &ActiveEntries<K, E>,
     drain: &DrainFn<K, E>,
     key: K,
     entry: Arc<EntryState<E>>,

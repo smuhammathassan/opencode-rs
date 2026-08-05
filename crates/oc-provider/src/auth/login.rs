@@ -57,6 +57,9 @@ pub trait HasAuth {
     fn auth_provider(&self) -> Option<&str>;
 }
 
+/// A validate callback for a prompt, mirroring the reference `validate` option.
+type Validator<'a> = Option<&'a dyn Fn(&str) -> Option<String>>;
+
 /// Interactive prompt/UI surface used by the login flows.
 ///
 /// TODO(integration): bind to the real TUI in oc-cli (Prompts from
@@ -72,7 +75,7 @@ pub trait LoginPrompt: Send + Sync {
         &self,
         message: &str,
         placeholder: Option<&str>,
-        validate: Option<&dyn Fn(&str) -> Option<String>>,
+        validate: Validator<'_>,
     ) -> Option<String>;
     fn password(&self, message: &str) -> Option<String>;
     fn select(&self, message: &str, options: &[(String, String)]) -> Option<usize>;

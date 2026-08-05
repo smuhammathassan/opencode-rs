@@ -100,10 +100,7 @@ fn parse_yaml(input: &str) -> Option<IndexMap<String, Value>> {
 
 fn parse_block(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> {
     let mut map = IndexMap::new();
-    loop {
-        let Some(raw_line) = lines.get(*idx) else {
-            break;
-        };
+    while let Some(raw_line) = lines.get(*idx) {
         let line = raw_line.trim_end();
         if line.trim().is_empty() || line.trim().starts_with('#') {
             *idx += 1;
@@ -119,7 +116,7 @@ fn parse_block(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> 
         }
         let trimmed = line.trim_start();
         if trimmed.starts_with('-') {
-            return Some(parse_list(lines, idx, indent)?);
+            return parse_list(lines, idx, indent);
         }
         if trimmed == "---" || trimmed == "..." {
             *idx += 1;
@@ -142,10 +139,7 @@ fn parse_block(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> 
 
 fn parse_list(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> {
     let mut items = Vec::new();
-    loop {
-        let Some(raw_line) = lines.get(*idx) else {
-            break;
-        };
+    while let Some(raw_line) = lines.get(*idx) {
         let line = raw_line.trim_end();
         if line.trim().is_empty() || line.trim().starts_with('#') {
             *idx += 1;

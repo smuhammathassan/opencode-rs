@@ -29,20 +29,11 @@ pub struct Result {
     pub output_path: Option<String>,
 }
 
+#[derive(Default)]
 pub struct Options {
     pub max_lines: Option<usize>,
     pub max_bytes: Option<usize>,
     pub direction: Option<Direction>,
-}
-
-impl Default for Options {
-    fn default() -> Self {
-        Options {
-            max_lines: None,
-            max_bytes: None,
-            direction: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

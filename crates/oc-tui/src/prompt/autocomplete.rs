@@ -222,14 +222,14 @@ mod tests {
 
     #[test]
     fn fuzzy_matching() {
-        assert_eq!(fuzzy_score("mod", "model").is_some(), true);
-        assert_eq!(fuzzy_score("models", "model").is_some(), false);
+        assert!(fuzzy_score("mod", "model").is_some());
+        assert!(!fuzzy_score("models", "model").is_some());
         assert_eq!(fuzzy_score("", "anything"), Some(0.0));
         // Exact prefix scores higher than a scattered match.
         let a = fuzzy_score("mo", "model").unwrap();
         let b = fuzzy_score("mo", "compact o m").unwrap();
         assert!(a > b);
-        assert_eq!(fuzzy_score("xyz", "no match").is_none(), true);
+        assert!(fuzzy_score("xyz", "no match").is_none());
     }
 
     #[test]

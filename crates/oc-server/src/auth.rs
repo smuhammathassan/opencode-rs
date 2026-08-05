@@ -41,7 +41,7 @@ impl AuthConfig {
 
     /// Whether auth is enforced at all.
     pub fn required(&self) -> bool {
-        self.password.as_ref().map_or(false, |p| !p.is_empty())
+        self.password.as_ref().is_some_and(|p| !p.is_empty())
     }
 
     /// Constant-time credential comparison.

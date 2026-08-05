@@ -22,7 +22,7 @@ fn has_pty_connect_ticket_url(path: &str, query: Option<&str>) -> bool {
         url::form_urlencoded::parse(query.unwrap_or("").as_bytes())
             .into_owned()
             .collect();
-    params.get("ticket").map_or(false, |t| !t.is_empty())
+    params.get("ticket").is_some_and(|t| !t.is_empty())
 }
 
 /// Basic-auth gate. Mirrors `authorizationLayer` from
@@ -119,7 +119,7 @@ mod tests {
         let long = "x".repeat(2000);
         let out = truncate_reason(&long);
         assert!(out.ends_with("more chars)"));
-        assert_eq!(out.len() < 2000, true);
+        assert!(out.len() < 2000);
         assert_eq!(truncate_reason("short"), "short");
     }
 }

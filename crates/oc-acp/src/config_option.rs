@@ -83,13 +83,13 @@ pub fn build_model_select_option(input: BuildModelSelectOptionInput) -> SessionC
         category: Some("model".into()),
         r#type: "select".into(),
         current_value: format_current_model_id(FormatCurrentModelIdInput {
-            model: &input.current_model,
+            model: input.current_model,
             variant: input.current_variant,
-            variants: &variants_for_model(&input.providers, &input.current_model),
+            variants: &variants_for_model(input.providers, input.current_model),
             include_variant: input.include_variants,
         }),
         options: build_model_select_options(
-            &input.providers,
+            input.providers,
             input.include_variants.unwrap_or(false),
         ),
     }
@@ -154,7 +154,7 @@ pub fn build_mode_select_option(
 
 /// `buildConfigOptions` from reference/packages/opencode/src/acp/config-option.ts.
 pub fn build_config_options(input: BuildConfigOptionsInput) -> Vec<SessionConfigOption> {
-    let variants = variants_for_model(input.providers, &input.current_model);
+    let variants = variants_for_model(input.providers, input.current_model);
     let effort = build_effort_select_option(&variants, input.current_variant);
 
     let mut options = vec![build_model_select_option(BuildModelSelectOptionInput {

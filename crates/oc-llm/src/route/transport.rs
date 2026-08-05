@@ -12,6 +12,7 @@ use serde_json::Value;
 use url::Url;
 
 use super::auth::{Auth, AuthInput};
+use super::client::RouteHeadersFn;
 use super::endpoint::{self, Endpoint};
 use super::framing::Framing;
 use super::protocol::FramePayload;
@@ -110,7 +111,7 @@ pub fn json_request_parts(
     request: &LlmRequest,
     endpoint: &Endpoint,
     auth: &Auth,
-    headers: Option<&Arc<dyn Fn(&LlmRequest) -> BTreeMap<String, String> + Send + Sync>>,
+    headers: Option<&RouteHeadersFn>,
 ) -> Result<JsonRequestParts, LlmError> {
     let endpoint_input = endpoint::EndpointInput { request, body };
     let rendered = endpoint::render(endpoint, &endpoint_input)?;
@@ -221,10 +222,7 @@ impl SseStream {
     }
 
     fn process(&mut self) {
-        loop {
-            let Some(delim) = find_delim(&self.buf) else {
-                break;
-            };
+        while let Some(delim) = find_delim(&self.buf) {
             let (start, len) = delim;
             let event_bytes = &self.buf[..start];
             let event = String::from_utf8_lossy(event_bytes).replace('\r', "");

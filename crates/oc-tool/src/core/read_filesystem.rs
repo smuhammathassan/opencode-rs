@@ -53,19 +53,10 @@ pub struct ListPage {
     pub next: Option<i64>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct PageInput {
     pub offset: Option<i64>,
     pub limit: Option<i64>,
-}
-
-impl Default for PageInput {
-    fn default() -> Self {
-        PageInput {
-            offset: None,
-            limit: None,
-        }
-    }
 }
 
 fn starts_with(bytes: &[u8], prefix: &[u8]) -> bool {
@@ -148,7 +139,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
     }
     let bytes = std::fs::read(&real)
         .map_err(|error| ToolError::Other(format!("Unable to read {real}: {error}")))?;
-    let first_len = (64 * 1024).min(bytes.len().max(0));
+    let first_len = (64 * 1024).min(bytes.len());
     let first = &bytes[..first_len.min(bytes.len())];
 
     if let Some(mime) = image_mime(first) {
@@ -157,7 +148,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
                 "Media exceeds {MAX_MEDIA_INGEST_BYTES} byte ingestion limit: {resource}"
             )));
         }
-        return Ok(serde_json::to_value(FileContent {
+        return serde_json::to_value(FileContent {
             uri: file_url(&real),
             name: Some(
                 Path::new(&real)
@@ -169,7 +160,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
             encoding: "base64".to_string(),
             mime: mime.to_string(),
         })
-        .map_err(|error| ToolError::Other(error.to_string()))?);
+        .map_err(|error| ToolError::Other(error.to_string()));
     }
 
     let extension = Path::new(&resource)
@@ -193,7 +184,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
             )));
         }
         let text = String::from_utf8_lossy(&bytes).to_string();
-        return Ok(serde_json::to_value(FileContent {
+        return serde_json::to_value(FileContent {
             uri: file_url(&real),
             name: Some(
                 Path::new(&real)
@@ -205,7 +196,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
             encoding: "utf8".to_string(),
             mime: mime_type(&real),
         })
-        .map_err(|error| ToolError::Other(error.to_string()))?);
+        .map_err(|error| ToolError::Other(error.to_string()));
     }
 
     let offset = page.offset.unwrap_or(1) as usize;
@@ -227,7 +218,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
         )));
     }
 
-    Ok(serde_json::to_value(TextPage {
+    serde_json::to_value(TextPage {
         kind: "text-page".to_string(),
         content,
         mime: mime_type(&real),
@@ -235,7 +226,7 @@ pub fn read(input: &str, resource: &str, page: &PageInput) -> Result<serde_json:
         truncated,
         next: next.map(|value| value as i64),
     })
-    .map_err(|error| ToolError::Other(error.to_string()))?)
+    .map_err(|error| ToolError::Other(error.to_string()))
 }
 
 fn read_text_page(text: &str, offset: usize, limit: usize) -> (String, bool, Option<usize>) {

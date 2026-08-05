@@ -72,7 +72,7 @@ pub type HistoryPayload = std::collections::HashMap<String, u64>;
 
 /// One entry in the `/sync/history` response (see `HistoryEvent` in the
 /// reference). `HistoryEvent` itself lives in `sync::event`.
-
+///
 /// A single request to the remote workspace, mirroring the `HttpClientRequest`
 /// construction in the reference.
 #[derive(Debug, Clone)]

@@ -12,6 +12,9 @@ pub mod shell;
 pub mod shell_prompt;
 pub mod skill;
 pub mod todo;
+// `tool/tool.rs` mirrors `reference/packages/opencode/src/tool/tool.ts`; the
+// shared module path (`crate::tool::tool::Def`) is used throughout the crate.
+#[allow(clippy::module_inception)]
 pub mod tool;
 pub mod webfetch;
 pub mod websearch;

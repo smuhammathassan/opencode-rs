@@ -640,9 +640,9 @@ pub struct Assistant {
 #[serde(tag = "role")]
 pub enum Info {
     #[serde(rename = "user")]
-    User(User),
+    User(Box<User>),
     #[serde(rename = "assistant")]
-    Assistant(Assistant),
+    Assistant(Box<Assistant>),
 }
 
 impl Info {
@@ -820,7 +820,7 @@ mod tests {
 
     #[test]
     fn assistant_serializes_full_shape() {
-        let info = Info::Assistant(Assistant {
+        let info = Info::Assistant(Box::new(Assistant {
             id: "msg1".into(),
             session_id: "ses1".into(),
             role: "assistant".into(),
@@ -853,7 +853,7 @@ mod tests {
             structured: None,
             variant: None,
             finish: None,
-        });
+        }));
         let value = serde_json::to_value(&info).unwrap();
         assert_eq!(value["role"], "assistant");
         assert_eq!(value["tokens"]["total"], 10.0);

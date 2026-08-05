@@ -42,11 +42,7 @@ impl ParseState {
             Some(index) => {
                 let field = &line[..index];
                 let rest = &line[index + 1..];
-                let value = if rest.starts_with(' ') {
-                    &rest[1..]
-                } else {
-                    rest
-                };
+                let value = rest.strip_prefix(' ').unwrap_or(rest);
                 (field, value)
             }
             None => (line, ""),

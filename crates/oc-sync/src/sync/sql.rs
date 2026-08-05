@@ -49,7 +49,7 @@ pub struct Table {
 impl Table {
     pub(crate) fn render(&self) -> String {
         let mut out = String::new();
-        write!(out, "CREATE TABLE `{}` (\n", self.name).unwrap();
+        writeln!(out, "CREATE TABLE `{}` (", self.name).unwrap();
         let mut lines: Vec<String> = Vec::new();
         for column in &self.columns {
             let mut line = format!("\t`{}` {}", column.name, column.ty);
@@ -194,7 +194,7 @@ pub fn event_table() -> Table {
 
 /// The `workspace` table lives in `control_plane::workspace_sql`, mirroring
 /// reference/packages/core/src/control-plane/workspace.sql.ts.
-
+///
 /// Render a full `migration.sql` bundle (with `--> statement-breakpoint`
 /// separators) for the given tables, in declaration order.
 pub fn render_migration(tables: &[Table]) -> String {

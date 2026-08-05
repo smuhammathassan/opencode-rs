@@ -94,7 +94,7 @@ fn normalize(p: &Path) -> String {
 fn info(data: &serde_json::Map<String, Value>, skip: &[&str]) -> String {
     let parts: Vec<String> = data
         .iter()
-        .filter(|(key, _)| !skip.iter().any(|s| *s == key.as_str()))
+        .filter(|(key, _)| !skip.contains(&key.as_str()))
         .filter(|(_, val)| val.is_string() || val.is_number() || val.is_boolean())
         .map(|(key, val)| format!("{key}={val}"))
         .collect();

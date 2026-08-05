@@ -8,6 +8,9 @@ use crate::schema::{AuthKind, LlmError, LlmErrorReason};
 
 pub type HeaderMap = BTreeMap<String, String>;
 
+/// Custom header computation for `Auth::Custom`.
+pub type AuthBody = Arc<dyn Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync>;
+
 /// `MissingCredentialError`.
 /// From reference/packages/llm/src/route/auth.ts
 #[derive(Debug, Clone)]
@@ -112,7 +115,7 @@ pub enum Auth {
     /// Apply `self`, falling back to `that` on failure.
     OrElse(Box<Auth>, Box<Auth>),
     /// Arbitrary header logic.
-    Custom(Arc<dyn Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync>),
+    Custom(AuthBody),
 }
 
 impl std::fmt::Debug for Auth {

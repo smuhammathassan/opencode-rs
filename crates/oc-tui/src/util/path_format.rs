@@ -76,11 +76,9 @@ pub fn abbreviate_home(input: &str, home: &str) -> String {
 /// `normalizePath` for non-win32 platforms is the identity function.
 /// From reference/packages/tui/src/util/path.ts (`normalizePath`)
 pub fn normalize_path(input: &str, platform: &str) -> String {
-    if platform != "win32" {
-        input.to_string()
-    } else {
-        input.to_string()
-    }
+    // TODO(integration): win32 normalize + realpath (reference path.ts).
+    let _ = platform;
+    input.to_string()
 }
 
 #[cfg(test)]

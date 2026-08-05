@@ -155,7 +155,7 @@ pub enum AssistantContent {
         time: Option<MessageTimeCompleted>,
     },
     #[serde(rename = "tool")]
-    Tool(AssistantTool),
+    Tool(Box<AssistantTool>),
 }
 
 /// Common `time` for messages: `{ created, completed? }`.
@@ -258,7 +258,7 @@ pub enum SessionMessage {
         time: MessageTimeCompleted,
         agent: String,
         model: ModelRef,
-        content: Vec<AssistantContent>,
+        content: Box<Vec<AssistantContent>>,
         #[serde(default)]
         snapshot: Option<AssistantSnapshot>,
         #[serde(default)]
@@ -268,7 +268,7 @@ pub enum SessionMessage {
         #[serde(default)]
         tokens: Option<Tokens>,
         #[serde(default)]
-        error: Option<SessionUnknownError>,
+        error: Box<Option<SessionUnknownError>>,
     },
     #[serde(rename = "compaction")]
     Compaction {

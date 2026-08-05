@@ -172,7 +172,7 @@ impl Subscription {
                 }
                 _ => SessionUpdate::AgentMessageChunk(with_message_id(chunk, message.info.id())),
             };
-            self.send_update(&message.info.session_id(), update).await;
+            self.send_update(message.info.session_id(), update).await;
         }
     }
 
@@ -231,9 +231,9 @@ impl Subscription {
                 part_id: properties.part_id.clone(),
             })
             .await;
-        let known_role_and_type = known.as_ref().map_or(false, |metadata| {
-            metadata.role.is_some() && metadata.part_type.is_some()
-        });
+        let known_role_and_type = known
+            .as_ref()
+            .is_some_and(|metadata| metadata.role.is_some() && metadata.part_type.is_some());
         let metadata = if known_role_and_type {
             known
         } else {
@@ -520,45 +520,8 @@ impl Part {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::sdk::{AssistantMessage, CacheTokens, Message, TextPart, Tokens};
+    use crate::sdk::TextPart;
     use serde_json::Map;
-
-    fn message_response() -> SessionMessageResponse {
-        SessionMessageResponse {
-            info: Message::Assistant(AssistantMessage {
-                id: "m1".into(),
-                session_id: "s1".into(),
-                role: "assistant".into(),
-                provider_id: "anthropic".into(),
-                model_id: "claude".into(),
-                mode: Some("build".into()),
-                agent: Some("build".into()),
-                cost: 0.5,
-                tokens: Tokens {
-                    input: 1,
-                    output: 1,
-                    reasoning: 0,
-                    cache: CacheTokens { read: 0, write: 0 },
-                },
-                variant: None,
-                error: None,
-                path: Some(crate::sdk::MessagePath {
-                    cwd: "/cwd".into(),
-                    root: "/".into(),
-                }),
-                model: None,
-            }),
-            parts: vec![Part::Text(TextPart {
-                id: "p1".into(),
-                session_id: "s1".into(),
-                message_id: "m1".into(),
-                text: "hello".into(),
-                synthetic: None,
-                ignored: None,
-                metadata: None,
-            })],
-        }
-    }
 
     #[test]
     fn replay_part_conversion() {
@@ -579,7 +542,7 @@ mod tests {
 
     #[test]
     fn part_accessors() {
-        let part = Part::Tool(ToolPart {
+        let part = Part::Tool(Box::new(ToolPart {
             id: "p1".into(),
             session_id: "s1".into(),
             message_id: "m1".into(),
@@ -590,7 +553,7 @@ mod tests {
                 raw: String::new(),
             }),
             metadata: None,
-        });
+        }));
         assert_eq!(part.part_type(), "tool");
         assert_eq!(part.call_id(), Some("c1"));
         assert_eq!(part.session_id(), Some("s1"));

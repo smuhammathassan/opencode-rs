@@ -39,30 +39,29 @@ fn backoff(attempt: u64) -> u64 {
 /// From reference `retry.ts:delay`.
 pub fn delay(attempt: u64, error: Option<&Error>) -> u64 {
     if let Some(Error::ApiError {
-        response_headers, ..
+        response_headers: Some(headers),
+        ..
     }) = error
     {
-        if let Some(headers) = response_headers {
-            if let Some(retry_after_ms) = headers.get("retry-after-ms").and_then(|v| v.as_str()) {
-                if let Ok(parsed_ms) = retry_after_ms.parse::<f64>() {
-                    if parsed_ms.is_finite() {
-                        return cap(parsed_ms.max(0.0) as u64);
-                    }
+        if let Some(retry_after_ms) = headers.get("retry-after-ms").and_then(|v| v.as_str()) {
+            if let Ok(parsed_ms) = retry_after_ms.parse::<f64>() {
+                if parsed_ms.is_finite() {
+                    return cap(parsed_ms.max(0.0) as u64);
                 }
             }
-            if let Some(retry_after) = headers.get("retry-after").and_then(|v| v.as_str()) {
-                if let Ok(parsed_seconds) = retry_after.parse::<f64>() {
-                    if parsed_seconds.is_finite() {
-                        return cap((parsed_seconds * 1000.0).ceil() as u64);
-                    }
-                }
-                let parsed_date = http_date_seconds_since_epoch(retry_after);
-                if parsed_date > 0 {
-                    return cap(parsed_date);
-                }
-            }
-            return cap(backoff(attempt));
         }
+        if let Some(retry_after) = headers.get("retry-after").and_then(|v| v.as_str()) {
+            if let Ok(parsed_seconds) = retry_after.parse::<f64>() {
+                if parsed_seconds.is_finite() {
+                    return cap((parsed_seconds * 1000.0).ceil() as u64);
+                }
+            }
+            let parsed_date = http_date_seconds_since_epoch(retry_after);
+            if parsed_date > 0 {
+                return cap(parsed_date);
+            }
+        }
+        return cap(backoff(attempt));
     }
     cap(backoff(attempt).min(RETRY_MAX_DELAY_NO_HEADERS))
 }
@@ -215,44 +214,41 @@ pub fn retryable(error: &Error, provider: &str) -> Option<Retryable> {
             });
         }
         let json = parse_json(msg);
-        if let Some(json) = json {
-            if let serde_json::Value::Object(map) = &json {
-                let code = map.get("code").and_then(|v| v.as_str()).unwrap_or("");
-                if let Some(error) = map.get("error") {
-                    if map.get("type").and_then(|v| v.as_str()) == Some("error")
-                        && error.get("type").and_then(|v| v.as_str()) == Some("too_many_requests")
-                    {
-                        return Some(Retryable {
-                            message: "Too Many Requests".to_string(),
-                            action: None,
-                        });
-                    }
-                }
-                if code.contains("exhausted") || code.contains("unavailable") {
+        if let Some(serde_json::Value::Object(map)) = json {
+            let code = map.get("code").and_then(|v| v.as_str()).unwrap_or("");
+            if let Some(error) = map.get("error") {
+                if map.get("type").and_then(|v| v.as_str()) == Some("error")
+                    && error.get("type").and_then(|v| v.as_str()) == Some("too_many_requests")
+                {
                     return Some(Retryable {
-                        message: "Provider is overloaded".to_string(),
+                        message: "Too Many Requests".to_string(),
                         action: None,
                     });
                 }
-                if let Some(error) = map.get("error") {
-                    if map.get("type").and_then(|v| v.as_str()) == Some("error")
-                        && error
-                            .get("code")
-                            .and_then(|v| v.as_str())
-                            .is_some_and(|code| code.contains("rate_limit"))
-                    {
-                        return Some(Retryable {
-                            message: "Rate Limited".to_string(),
-                            action: None,
-                        });
-                    }
+            }
+            if code.contains("exhausted") || code.contains("unavailable") {
+                return Some(Retryable {
+                    message: "Provider is overloaded".to_string(),
+                    action: None,
+                });
+            }
+            if let Some(error) = map.get("error") {
+                if map.get("type").and_then(|v| v.as_str()) == Some("error")
+                    && error
+                        .get("code")
+                        .and_then(|v| v.as_str())
+                        .is_some_and(|code| code.contains("rate_limit"))
+                {
+                    return Some(Retryable {
+                        message: "Rate Limited".to_string(),
+                        action: None,
+                    });
                 }
             }
         }
     }
     None
 }
-
 fn str_value(parsed: Option<&serde_json::Value>, path: &[&str]) -> String {
     let mut current = parsed;
     for key in path {

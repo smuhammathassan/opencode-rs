@@ -375,12 +375,10 @@ pub fn shell_matches(template: &str) -> Vec<String> {
 /// Substitute shell command outputs back into the template (reference `command`).
 pub fn substitute_shell(template: &str, outputs: &[String]) -> String {
     let re = regex::Regex::new(BASH_REGEX).expect("bash regex is valid");
-    let mut index = 0;
     let mut result = template.to_string();
-    for capture in re.captures_iter(template) {
+    for (index, capture) in re.captures_iter(template).enumerate() {
         let whole = capture.get(0).expect("whole");
         let output = outputs.get(index).cloned().unwrap_or_default();
-        index += 1;
         result = result.replacen(whole.as_str(), &output, 1);
     }
     result
@@ -503,7 +501,7 @@ pub fn create_user_message(
     }
 
     service.trigger_chat_message(&input.session_id, info, &parts)?;
-    service.update_message(&Info::User(info.clone()))?;
+    service.update_message(&Info::User(Box::new(info.clone())))?;
     for part in &parts {
         service.update_part(part)?;
     }
@@ -717,7 +715,7 @@ mod tests {
         struct Svc;
         impl PromptService for Svc {
             fn get_session(&self, _: &str) -> Result<Info, String> {
-                Ok(Info::User(User {
+                Ok(Info::User(Box::new(User {
                     id: "msg_old".into(),
                     session_id: "ses1".into(),
                     role: "user".into(),
@@ -732,7 +730,7 @@ mod tests {
                     },
                     system: None,
                     tools: None,
-                }))
+                })))
             }
             fn set_agent_model(
                 &self,

@@ -106,11 +106,13 @@ pub fn prompt_lines(
     for (row, line) in text_lines.iter().enumerate() {
         let mut spans: StyledLine = vec![("┃".to_string(), Style::default().fg(border_color))];
         spans.push(("  ".to_string(), Style::default()));
-        if line.is_empty() && !rendered_any && placeholder.is_some() {
-            spans.push((
-                placeholder.unwrap().to_string(),
-                Style::default().fg(theme.text_muted),
-            ));
+        if line.is_empty() && !rendered_any {
+            if let Some(placeholder) = placeholder {
+                spans.push((
+                    placeholder.to_string(),
+                    Style::default().fg(theme.text_muted),
+                ));
+            }
             if cursor_pos.map(|(_, c)| c == 0).unwrap_or(true) && row == 0 {
                 visual_cursor = Some((0, 3));
             }
@@ -150,7 +152,7 @@ mod tests {
         let (lines, cursor) = layout(text, 6, 4, &[], &Theme::dark());
         assert_eq!(lines.len(), 2);
         assert_eq!(cursor, Some((0, 4)));
-        let (lines, cursor) = layout(text, 6, 7, &[], &Theme::dark());
+        let (_lines, cursor) = layout(text, 6, 7, &[], &Theme::dark());
         assert_eq!(cursor, Some((1, 1)));
     }
 

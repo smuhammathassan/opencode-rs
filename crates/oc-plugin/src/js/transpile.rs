@@ -460,12 +460,10 @@ fn strip_types(tokens: &[Token]) -> Result<Vec<Token>, TranspileError> {
         }
         if token.is_ident("type") {
             // `type X = ...` declaration, but not `typeof`.
-            if let Some(next) = tokens.get(i + 1) {
-                if let Token::Ident(id) = next {
-                    if id != "of" {
-                        i = skip_ts_declaration(tokens, i)?;
-                        continue;
-                    }
+            if let Some(Token::Ident(id)) = tokens.get(i + 1) {
+                if id != "of" {
+                    i = skip_ts_declaration(tokens, i)?;
+                    continue;
                 }
             }
         }
@@ -553,9 +551,6 @@ fn strip_types(tokens: &[Token]) -> Result<Vec<Token>, TranspileError> {
                         // type annotation on a parameter
                         let (_skipped, next) = skip_inline_type(&out, j + 1)?;
                         j = next;
-                    } else if t.is_punct(",") && depth == 0 {
-                        result.push(t.clone());
-                        j += 1;
                     } else {
                         result.push(t.clone());
                         j += 1;
@@ -757,24 +752,14 @@ fn skip_inline_type(tokens: &[Token], at: usize) -> Result<(bool, usize), Transp
         match t {
             Token::Punct(p) => match p.as_str() {
                 "<" | "(" | "{" | "[" => depth += 1,
-                ">" | ")" | "}" | "]" => {
-                    if depth == 0 {
-                        return Ok((true, i));
-                    }
-                    depth -= 1;
-                }
-                "," | "=" | ";" => {
-                    if depth == 0 {
-                        return Ok((true, i));
-                    }
-                }
+                ">" | ")" | "}" | "]" if depth == 0 => return Ok((true, i)),
+                ">" | ")" | "}" | "]" => depth -= 1,
+                "," | "=" | ";" if depth == 0 => return Ok((true, i)),
+                "," | "=" | ";" => {}
                 _ => {}
             },
-            Token::Ident(id) => {
-                if id == "=>" {
-                    return Ok((true, i));
-                }
-            }
+            Token::Ident(id) if id == "=>" => return Ok((true, i)),
+            Token::Ident(_) => {}
             _ => {}
         }
         i += 1;
@@ -790,8 +775,8 @@ fn skip_ts_declaration(tokens: &[Token], at: usize) -> Result<usize, TranspileEr
     let mut angle_depth = 0i32;
     let mut seen_brace = false;
     while i < tokens.len() {
-        match &tokens[i] {
-            Token::Punct(p) => match p.as_str() {
+        if let Token::Punct(p) = &tokens[i] {
+            match p.as_str() {
                 "{" => {
                     seen_brace = true;
                     brace_depth += 1;
@@ -810,14 +795,12 @@ fn skip_ts_declaration(tokens: &[Token], at: usize) -> Result<usize, TranspileEr
                 ">" => {
                     angle_depth -= 1;
                 }
-                ";" => {
-                    if !seen_brace && paren_depth == 0 && angle_depth <= 0 {
-                        return Ok(i + 1);
-                    }
+                ";" if !seen_brace && paren_depth == 0 && angle_depth <= 0 => {
+                    return Ok(i + 1);
                 }
+                ";" => {}
                 _ => {}
-            },
-            _ => {}
+            }
         }
         i += 1;
     }
@@ -859,10 +842,8 @@ fn is_paren_param_list(tokens: &[Token], at: usize) -> bool {
                 return true;
             }
             // `function NAME (`
-            if at >= 2 {
-                if matches!(&tokens[at - 2], Token::Ident(id2) if id2 == "function") {
-                    return true;
-                }
+            if at >= 2 && matches!(&tokens[at - 2], Token::Ident(id2) if id2 == "function") {
+                return true;
             }
             false
         }
@@ -1127,7 +1108,7 @@ fn render_export(tokens: &[Token], at: usize) -> Result<(String, usize), Transpi
             let text = text.trim_end();
             let text = text
                 .strip_suffix(';')
-                .unwrap_or(&text)
+                .unwrap_or(text)
                 .trim_end()
                 .to_string();
             let mut code = format!("__oc_define(\"default\", {text});");

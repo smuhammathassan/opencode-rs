@@ -350,10 +350,14 @@ pub struct RetryInfo {
 /// A retry policy: given a failure and a 0-based attempt, decide the wait and
 /// notify the status callback. `None` means "do not retry".
 /// /// From reference/packages/opencode/src/session/retry.ts (`policy`)
+type ParseFn = Arc<dyn Fn(&dyn std::error::Error) -> Err + Send + Sync + 'static>;
+type RetryNotifyFn =
+    Arc<dyn Fn(RetryInfo) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync + 'static>;
+
 pub struct RetryPolicy {
     provider: String,
-    parse: Arc<dyn Fn(&dyn std::error::Error) -> Err + Send + Sync + 'static>,
-    set: Arc<dyn Fn(RetryInfo) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync + 'static>,
+    parse: ParseFn,
+    set: RetryNotifyFn,
 }
 
 impl RetryPolicy {
@@ -568,8 +572,7 @@ mod tests {
                 })
             },
         );
-        let error: Box<dyn std::error::Error> =
-            Box::new(std::io::Error::new(std::io::ErrorKind::Other, "rate limit"));
+        let error: Box<dyn std::error::Error> = Box::new(std::io::Error::other("rate limit"));
         let wait = policy.on_failure(error.as_ref(), 2, 1_000_000).await;
         assert!(wait.is_some());
     }

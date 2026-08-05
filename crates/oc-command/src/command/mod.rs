@@ -299,8 +299,8 @@ fn config_entry_name_from_path(relative: &Path, prefixes: &[&str]) -> String {
     let normalized = relative.to_string_lossy().replace('\\', "/");
     let mut candidate: Option<String> = None;
     for prefix in prefixes {
-        if normalized.starts_with(prefix) {
-            candidate = Some(normalized[prefix.len()..].to_string());
+        if let Some(rest) = normalized.strip_prefix(prefix) {
+            candidate = Some(rest.to_string());
             break;
         }
     }

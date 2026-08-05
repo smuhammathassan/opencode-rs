@@ -70,7 +70,7 @@ impl ModelsDev {
             let name = obj
                 .get("name")
                 .and_then(Value::as_str)
-                .unwrap_or(&id)
+                .unwrap_or(id)
                 .to_string();
             let env = obj
                 .get("env")

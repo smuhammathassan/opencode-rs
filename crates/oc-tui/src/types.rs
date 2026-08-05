@@ -899,36 +899,18 @@ pub struct FileSystemEntry {
     pub ignored: bool,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExperimentalCapabilities {
     pub background_subagents: bool,
 }
 
-impl Default for ExperimentalCapabilities {
-    fn default() -> Self {
-        ExperimentalCapabilities {
-            background_subagents: false,
-        }
-    }
-}
-
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 pub struct ConsoleState {
     pub console_managed_providers: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub active_org_name: Option<String>,
     pub switchable_org_count: u64,
-}
-
-impl Default for ConsoleState {
-    fn default() -> Self {
-        Self {
-            console_managed_providers: Vec::new(),
-            active_org_name: None,
-            switchable_org_count: 0,
-        }
-    }
 }
 
 /// Loose mirror of the config GET response; only fields the TUI reads.

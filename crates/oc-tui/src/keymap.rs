@@ -392,12 +392,10 @@ impl KeyStroke {
         match (&self.code, &actual_code) {
             (KeyCode::Char(expected), KeyCode::Char(actual_char)) => {
                 if self.ctrl && self.shift {
-                    expected.to_ascii_lowercase() == actual_char.to_ascii_lowercase()
-                        || *expected == *actual_char
+                    expected.eq_ignore_ascii_case(actual_char) || *expected == *actual_char
                 } else if self.ctrl {
                     // Ctrl+letter may surface as control codes or as uppercase.
-                    *expected == *actual_char
-                        || expected.to_ascii_lowercase() == actual_char.to_ascii_lowercase()
+                    *expected == *actual_char || expected.eq_ignore_ascii_case(actual_char)
                 } else {
                     expected == actual_char
                 }

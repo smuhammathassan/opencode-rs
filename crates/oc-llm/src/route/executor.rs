@@ -246,7 +246,7 @@ fn status_reason(
         return LlmErrorReason::ContentPolicy {
             message: message.to_string(),
             provider_metadata: None,
-            http: Some(http),
+            http: Some(Box::new(http)),
         };
     }
     match status.as_u16() {
@@ -254,13 +254,13 @@ fn status_reason(
             message: message.to_string(),
             kind: AuthKind::Invalid,
             provider_metadata: None,
-            http: Some(http),
+            http: Some(Box::new(http)),
         },
         403 => LlmErrorReason::Authentication {
             message: message.to_string(),
             kind: AuthKind::InsufficientPermissions,
             provider_metadata: None,
-            http: Some(http),
+            http: Some(Box::new(http)),
         },
         429 => {
             if regex::Regex::new(r"(?i)insufficient[-_\s]?quota|quota[-_\s]?exceeded")
@@ -270,15 +270,15 @@ fn status_reason(
                 LlmErrorReason::QuotaExceeded {
                     message: message.to_string(),
                     provider_metadata: None,
-                    http: Some(http),
+                    http: Some(Box::new(http)),
                 }
             } else {
                 LlmErrorReason::RateLimit {
                     message: message.to_string(),
                     retry_after_ms,
-                    rate_limit,
+                    rate_limit: rate_limit.map(Box::new),
                     provider_metadata: None,
-                    http: Some(http),
+                    http: Some(Box::new(http)),
                 }
             }
         }
@@ -291,7 +291,7 @@ fn status_reason(
                 None
             },
             provider_metadata: None,
-            http: Some(http),
+            http: Some(Box::new(http)),
         },
         _ if status.as_u16() >= 500 || retryable_status(status) => {
             LlmErrorReason::ProviderInternal {
@@ -299,14 +299,14 @@ fn status_reason(
                 status: status.as_u16() as i64,
                 retry_after_ms,
                 provider_metadata: None,
-                http: Some(http),
+                http: Some(Box::new(http)),
             }
         }
         _ => LlmErrorReason::UnknownProvider {
             message: message.to_string(),
             status: Some(status.as_u16() as i64),
             provider_metadata: None,
-            http: Some(http),
+            http: Some(Box::new(http)),
         },
     }
 }
@@ -373,17 +373,19 @@ pub fn status_error(
 }
 
 fn transport_error(message: String, kind: Option<String>, url: Option<String>) -> LlmError {
-    let http = url.as_ref().map(|url| HttpContext {
-        request: Some(HttpRequestDetails {
-            method: "POST".to_string(),
-            url: redact_url(url),
-            headers: BTreeMap::new(),
-        }),
-        response: None,
-        body: None,
-        body_truncated: None,
-        request_id: None,
-        rate_limit: None,
+    let http = url.as_ref().map(|url| {
+        Box::new(HttpContext {
+            request: Some(HttpRequestDetails {
+                method: "POST".to_string(),
+                url: redact_url(url),
+                headers: BTreeMap::new(),
+            }),
+            response: None,
+            body: None,
+            body_truncated: None,
+            request_id: None,
+            rate_limit: None,
+        })
     });
     LlmError::new(
         "RequestExecutor",
@@ -391,7 +393,7 @@ fn transport_error(message: String, kind: Option<String>, url: Option<String>) -
         LlmErrorReason::Transport {
             message,
             kind,
-            url: url.map(|u| redact_url(&u)),
+            url: url.map(|u| Box::new(redact_url(&u))),
             http,
         },
     )

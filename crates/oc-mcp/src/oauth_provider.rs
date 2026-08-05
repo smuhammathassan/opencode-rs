@@ -144,9 +144,12 @@ pub trait OAuthClientProvider: Send + Sync {
     fn invalidate_credentials(&self, ty: CredentialsType) -> BoxFuture<'_, Result<()>>;
 }
 
+/// A redirect handler called when the OAuth callback page loads.
+pub type RedirectHandler = Arc<dyn Fn(&Url) -> BoxFuture<'_, Result<()>> + Send + Sync>;
+
 #[derive(Clone)]
 pub struct McpOAuthCallbacks {
-    pub on_redirect: Arc<dyn Fn(&Url) -> BoxFuture<'_, Result<()>> + Send + Sync>,
+    pub on_redirect: RedirectHandler,
 }
 
 impl Default for McpOAuthCallbacks {

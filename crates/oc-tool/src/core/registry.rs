@@ -176,9 +176,11 @@ pub struct ExecuteInput {
     pub call: ToolCall,
 }
 
+pub type MaterializeSettle = Box<dyn Fn(&mut ExecuteInput, &mut CoreContext) -> Settlement>;
+
 pub struct Materialization {
     pub definitions: Vec<ToolDefinition>,
-    pub settle: Box<dyn Fn(&mut ExecuteInput, &mut CoreContext) -> Settlement>,
+    pub settle: MaterializeSettle,
 }
 
 #[derive(Debug, Clone)]
@@ -289,7 +291,7 @@ mod tests {
     #[test]
     fn registers_and_materializes() {
         let mut registry = CoreToolRegistry::with_applications();
-        registry
+        let _ = registry
             .register(vec![("echo".to_string(), echo_tool())])
             .unwrap();
         let materialization = registry.materialize(&[]);
@@ -333,7 +335,7 @@ mod tests {
     #[test]
     fn settle_executes_tool_and_projects() {
         let mut registry = CoreToolRegistry::with_applications();
-        registry
+        let _ = registry
             .register(vec![("echo".to_string(), echo_tool())])
             .unwrap();
         let materialization = registry.materialize(&[]);

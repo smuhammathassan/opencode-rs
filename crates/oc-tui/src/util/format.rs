@@ -72,7 +72,7 @@ pub fn collapse_tool_output(output: &str, max_lines: usize, max_chars: usize) ->
     }
 
     let mut out = preview;
-    out.push_str("…");
+    out.push('…');
     CollapsedOutput {
         output: out,
         overflow: true,
