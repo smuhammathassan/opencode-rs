@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[[bin]]
+name = "opencode"
+path = "src/main.rs"
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -31,3 +35,11 @@ oc-command = { version = "0.1", path = "../oc-command" }
 oc-project = { version = "0.1", path = "../oc-project" }
 oc-sync = { version = "0.1", path = "../oc-sync" }
 tokio = { workspace = true }
+clap = { version = "4.6.5", features = ["derive"] }
+reqwest = { workspace = true }
+chrono = { workspace = true }
+directories = { workspace = true }
+base64 = "0.23.1"
+bytes = "1.12.1"
+mime_guess = "2.0.5"
+url.workspace = true
