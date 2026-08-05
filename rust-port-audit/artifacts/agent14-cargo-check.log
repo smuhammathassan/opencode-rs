@@ -1,0 +1,265 @@
+    Checking cfg-if v1.0.4
+    Checking memchr v2.8.3
+    Checking log v0.4.33
+    Checking itoa v1.0.18
+    Checking pin-project-lite v0.2.17
+    Checking libc v0.2.189
+    Checking once_cell v1.21.4
+    Checking futures-core v0.3.33
+    Checking serde_core v1.0.229
+    Checking smallvec v1.15.2
+    Checking futures-sink v0.3.33
+    Checking futures-task v0.3.33
+    Checking futures-io v0.3.33
+    Checking slab v0.4.12
+    Checking tracing-core v0.1.36
+    Checking bytes v1.12.1
+    Checking futures-channel v0.3.33
+    Checking equivalent v1.0.2
+    Checking scopeguard v1.2.0
+    Checking hashbrown v0.17.1
+    Checking zerofrom v0.1.8
+    Checking lock_api v0.4.14
+    Checking futures-util v0.3.33
+    Checking tracing v0.1.44
+    Checking stable_deref_trait v1.2.1
+    Checking yoke v0.8.3
+    Checking ryu v1.0.23
+    Checking http v1.5.0
+    Checking zmij v1.0.23
+    Checking bitflags v2.13.1
+    Checking zerovec v0.11.6
+    Checking litemap v0.8.2
+    Checking tower-service v0.3.3
+    Checking errno v0.3.14
+    Checking mio v1.2.2
+    Checking parking_lot_core v0.9.12
+    Checking socket2 v0.6.5
+    Checking signal-hook-registry v1.4.8
+    Checking parking_lot v0.12.5
+    Checking getrandom v0.2.17
+    Checking writeable v0.6.3
+    Checking percent-encoding v2.3.2
+    Checking tinystr v0.8.3
+    Checking tokio v1.53.1
+    Checking potential_utf v0.1.5
+    Checking httparse v1.10.1
+    Checking http-body v1.1.0
+    Checking zerotrie v0.2.4
+    Checking utf8_iter v1.0.4
+    Checking icu_locale_core v2.2.0
+    Checking thiserror v2.0.19
+    Checking sync_wrapper v1.0.2
+    Checking icu_collections v2.2.0
+    Checking zeroize v1.9.0
+    Checking tower-layer v0.3.3
+    Checking try-lock v0.2.5
+    Checking rustls-pki-types v1.15.1
+    Checking want v0.3.1
+    Checking icu_normalizer_data v2.2.0
+    Checking icu_properties_data v2.2.0
+    Checking form_urlencoded v1.2.2
+    Checking atomic-waker v1.1.2
+    Checking untrusted v0.9.0
+    Checking httpdate v1.0.3
+    Checking mime v0.3.17
+    Checking anyhow v1.0.104
+    Checking ring v0.17.14
+    Checking icu_provider v2.2.0
+    Checking serde v1.0.229
+    Checking indexmap v2.14.0
+    Checking http-body-util v0.1.4
+    Checking ipnet v2.12.1
+    Checking icu_normalizer v2.2.0
+    Checking icu_properties v2.2.0
+    Checking base64 v0.22.1
+   Compiling unicase v2.9.0
+    Checking subtle v2.6.1
+    Checking serde_urlencoded v0.7.1
+   Compiling mime_guess v2.0.5
+    Checking futures-executor v0.3.33
+    Checking webpki-roots v1.0.9
+    Checking serde_json v1.0.151
+    Checking futures v0.3.33
+    Checking aho-corasick v1.1.5
+    Checking regex-syntax v0.8.11
+    Checking zerocopy v0.8.55
+    Checking rustls-webpki v0.103.13
+    Checking idna_adapter v1.2.2
+    Checking idna v1.1.0
+    Checking oc-schema v0.1.0 (/root/opencode-rs/crates/oc-schema)
+    Checking rustls v0.23.43
+    Checking num-traits v0.2.19
+    Checking url v2.5.8
+    Checking iana-time-zone v0.1.65
+    Checking option-ext v0.2.0
+    Checking dirs-sys v0.4.1
+   Compiling ucd-trie v0.1.7
+    Checking chrono v0.4.45
+    Checking regex-automata v0.4.18
+    Checking directories v5.0.1
+    Checking typenum v1.20.1
+   Compiling pest v2.8.8
+    Checking generic-array v0.14.7
+    Checking hyper v1.11.0
+    Checking tower v0.5.3
+    Checking tokio-util v0.7.19
+    Checking tower-http v0.6.11
+    Checking serde_spanned v0.6.9
+   Compiling pest_meta v2.8.8
+    Checking toml_datetime v0.6.11
+    Checking hyper-util v0.1.20
+    Checking tokio-rustls v0.26.4
+    Checking serde_path_to_error v0.1.20
+    Checking toml_write v0.1.2
+    Checking winnow v0.7.15
+    Checking libsqlite3-sys v0.30.1
+    Checking regex v1.13.1
+    Checking ahash v0.8.12
+   Compiling pest_generator v2.8.8
+    Checking hashbrown v0.14.5
+    Checking crypto-common v0.1.7
+    Checking block-buffer v0.10.4
+    Checking fallible-iterator v0.3.0
+    Checking hyper-rustls v0.27.9
+    Checking fallible-streaming-iterator v0.1.9
+    Checking hashlink v0.9.1
+    Checking digest v0.10.7
+    Checking reqwest v0.12.28
+    Checking rusqlite v0.32.1
+    Checking cpufeatures v0.2.17
+   Compiling pest_derive v2.8.8
+    Checking glob v0.3.4
+    Checking getrandom v0.4.3
+    Checking sha1 v0.10.7
+    Checking toml_edit v0.22.27
+    Checking sha2 v0.10.9
+    Checking linux-raw-sys v0.12.1
+   Compiling same-file v1.0.6
+    Checking json5 v0.4.1
+   Compiling walkdir v2.5.0
+    Checking rustix v1.1.4
+    Checking uuid v1.24.0
+   Compiling copy_dir v0.1.3
+    Checking adler2 v2.0.1
+   Compiling libquickjs-sys v0.1.0
+    Checking oc-util v0.1.0 (/root/opencode-rs/crates/oc-util)
+    Checking simd-adler32 v0.3.10
+    Checking crc32fast v1.5.0
+    Checking filetime v0.2.29
+    Checking miniz_oxide v0.8.9
+    Checking semver v1.0.28
+    Checking ppv-lite86 v0.2.21
+    Checking rand_core v0.6.4
+    Checking fastrand v2.5.0
+    Checking flate2 v1.1.9
+    Checking rand_chacha v0.3.1
+    Checking thiserror v1.0.69
+    Checking libyml v0.0.5
+    Checking rand v0.8.7
+    Checking bstr v1.13.0
+    Checking toml v0.8.23
+    Checking xattr v1.6.1
+    Checking tempfile v3.27.0
+    Checking tar v0.4.46
+    Checking data-encoding v2.11.1
+    Checking byteorder v1.5.0
+    Checking utf-8 v0.7.6
+    Checking serde_yml v0.0.12
+    Checking globset v0.4.20
+    Checking axum-core v0.4.5
+    Checking matchit v0.7.3
+    Checking tokio-stream v0.1.19
+    Checking tungstenite v0.24.0
+   Compiling strsim v0.11.1
+    Checking utf8parse v0.2.2
+    Checking anstyle-parse v1.0.0
+    Checking anstyle v1.0.14
+   Compiling darling_core v0.24.0
+    Checking tokio-tungstenite v0.24.0
+    Checking is_terminal_polyfill v1.70.2
+    Checking anstyle-query v1.1.5
+    Checking colorchoice v1.0.5
+    Checking signal-hook v0.3.18
+    Checking anstream v1.0.0
+    Checking foldhash v0.1.5
+    Checking lazy_static v1.5.0
+    Checking clap_lex v1.1.0
+    Checking allocator-api2 v0.2.21
+    Checking linux-raw-sys v0.4.15
+    Checking either v1.17.0
+    Checking clap_builder v4.6.5
+    Checking itertools v0.13.0
+    Checking rustix v0.38.44
+    Checking hashbrown v0.15.5
+    Checking sharded-slab v0.1.7
+    Checking axum v0.7.9
+    Checking signal-hook-mio v0.2.5
+    Checking castaway v0.2.4
+    Checking matchers v0.2.0
+    Checking axum-core v0.5.6
+    Checking tracing-log v0.2.0
+    Checking thread_local v1.1.10
+    Checking unicode-width v0.1.14
+    Checking static_assertions v1.1.0
+    Checking unicode-segmentation v1.13.3
+    Checking nu-ansi-term v0.50.3
+    Checking matchit v0.8.4
+    Checking tracing-subscriber v0.3.23
+    Checking compact_str v0.8.2
+    Checking unicode-truncate v1.1.0
+    Checking clap v4.6.5
+    Checking strum v0.26.3
+    Checking crossterm v0.28.1
+    Checking lru v0.12.5
+    Checking unicode-width v0.2.0
+    Checking axum v0.8.9
+    Checking cassowary v0.3.0
+    Checking base64 v0.23.1
+   Compiling darling_macro v0.24.0
+   Compiling darling v0.24.0
+   Compiling instability v0.3.13
+    Checking ratatui v0.29.0
+    Checking oc-database v0.1.0 (/root/opencode-rs/crates/oc-database)
+    Checking oc-config v0.1.0 (/root/opencode-rs/crates/oc-config)
+crates/oc-schema/tests/golden_events.rs:5:5: warning: unused import: `oc_schema::event`
+warning: `oc-schema` (test "golden_events") generated 1 warning (run `cargo fix --test "golden_events" -p oc-schema` to apply 1 suggestion)
+crates/oc-schema/tests/golden_v1.rs:9:39: warning: unused import: `ToolStateRunning`
+warning: `oc-schema` (test "golden_v1") generated 1 warning (run `cargo fix --test "golden_v1" -p oc-schema` to apply 1 suggestion)
+    Checking oc-core v0.1.0 (/root/opencode-rs/crates/oc-core)
+crates/oc-config/tests/load.rs:8:23: warning: unused imports: `LoadOptions` and `load_instance_state`
+warning: `oc-config` (test "load") generated 1 warning (run `cargo fix --test "load" -p oc-config` to apply 1 suggestion)
+    Checking oc-provider v0.1.0 (/root/opencode-rs/crates/oc-provider)
+    Checking oc-mcp v0.1.0 (/root/opencode-rs/crates/oc-mcp)
+    Checking oc-client v0.1.0 (/root/opencode-rs/crates/oc-client)
+    Checking oc-project v0.1.0 (/root/opencode-rs/crates/oc-project)
+crates/oc-project/tests/common/mod.rs:64:8: warning: function `data_dir` is never used
+warning: `oc-project` (test "project") generated 1 warning
+    Checking oc-llm v0.1.0 (/root/opencode-rs/crates/oc-llm)
+    Checking oc-sync v0.1.0 (/root/opencode-rs/crates/oc-sync)
+    Checking oc-plugin v0.1.0 (/root/opencode-rs/crates/oc-plugin)
+crates/oc-plugin/src/js/runtime.rs:806:13: warning: variable does not need to be mutable
+    Checking oc-tool v0.1.0 (/root/opencode-rs/crates/oc-tool)
+warning: `oc-plugin` (lib test) generated 1 warning (run `cargo fix --lib -p oc-plugin --tests` to apply 1 suggestion)
+    Checking oc-session v0.1.0 (/root/opencode-rs/crates/oc-session)
+crates/oc-tool/tests/golden.rs:24:4: warning: function `schema_of` is never used
+warning: `oc-tool` (test "golden") generated 1 warning
+crates/oc-tool/src/core/registry.rs:292:9: warning: unused boxed `FnOnce` trait object that must be used
+crates/oc-tool/src/core/registry.rs:336:9: warning: unused boxed `FnOnce` trait object that must be used
+warning: `oc-tool` (lib test) generated 2 warnings
+    Checking oc-acp v0.1.0 (/root/opencode-rs/crates/oc-acp)
+    Checking oc-command v0.1.0 (/root/opencode-rs/crates/oc-command)
+    Checking oc-session-runner v0.1.0 (/root/opencode-rs/crates/oc-session-runner)
+    Checking oc-tui v0.1.0 (/root/opencode-rs/crates/oc-tui)
+crates/oc-command/tests/question.rs:69:18: warning: unused variable: `request`: help: if this is intentional, prefix it with an underscore: `_request`
+warning: `oc-command` (test "question") generated 1 warning (run `cargo fix --test "question" -p oc-command` to apply 1 suggestion)
+crates/oc-tui/tests/rendering.rs:158:9: warning: unused variable: `prompt`: help: if this is intentional, prefix it with an underscore: `_prompt`
+warning: `oc-tui` (test "rendering") generated 1 warning (run `cargo fix --test "rendering" -p oc-tui` to apply 1 suggestion)
+crates/oc-tui/src/components/prompt.rs:153:14: warning: unused variable: `lines`: help: if this is intentional, prefix it with an underscore: `_lines`
+crates/oc-tui/src/local.rs:232:13: warning: unused variable: `sync`: help: if this is intentional, prefix it with an underscore: `_sync`
+    Checking oc-server v0.1.0 (/root/opencode-rs/crates/oc-server)
+crates/oc-acp/src/event.rs:526:8: warning: function `message_response` is never used
+warning: `oc-acp` (lib test) generated 1 warning
+warning: `oc-tui` (lib test) generated 2 warnings (run `cargo fix --lib -p oc-tui --tests` to apply 2 suggestions)
+    Checking oc-cli v0.1.0 (/root/opencode-rs/crates/oc-cli)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 1m 24s

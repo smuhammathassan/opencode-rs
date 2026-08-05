@@ -1,0 +1,539 @@
+[
+ {
+  "scenario": {
+   "args": [
+    "debug"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "opencode debug\n\ndebugging and troubleshooting tools\n\nCommands:\n  opencode debug config        show resolved configuration\n  opencode debug lsp           LSP debugging utilities\n  opencode debug rg            ripgrep debugging utilities\n  opencode debug file          file system debugging utilities\n  opencode debug scrap         list all known projects\n  opencode debug skill         list all available skills\n  opencode debug snapshot      snapshot debugging utilities\n  opencode debug startup       print startup timing\n  opencode debug agent <name>  show agent configuration details\n  opencode debug v2            debug v2 catalog and built-in plugins\n  opencode debug info          show debug information\n  opencode debug paths         show global paths (data, config, cache, state)\n  opencode debug wait          wait indefinitely (for debugging)\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1565
+  },
+  "rust": {
+   "args": [
+    "debug"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mUnexpected error\n\na debug subcommand is required\n",
+   "time_ms": 15
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "config"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "config"
+   ],
+   "exit": 0,
+   "stdout": "{\n  \"$schema\": \"https://opencode.ai/config.json\",\n  \"mcp\": {\n    \"myserver\": {\n      \"type\": \"remote\",\n      \"url\": \"https://x.example/sse\"\n    }\n  },\n  \"agent\": {},\n  \"mode\": {},\n  \"plugin\": [],\n  \"command\": {},\n  \"username\": \"unknown\"\n}\n",
+   "stderr": "",
+   "time_ms": 2855
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "config"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mconfig resolution is not yet wired in this build (TODO(integration): oc-config)\n",
+   "time_ms": 6
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "lsp",
+    "--help"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "lsp",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode debug lsp\n\nLSP debugging utilities\n\nCommands:\n  opencode debug lsp diagnostics <file>      get diagnostics for a file\n  opencode debug lsp symbols <query>         search workspace symbols\n  opencode debug lsp document-symbols <uri>  get symbols from a document\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1163
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "lsp",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "LSP debugging utilities\n\nUsage: opencode debug lsp [OPTIONS] <COMMAND>\n\nCommands:\n  diagnostics       get diagnostics for a file\n  symbols           search workspace symbols\n  document-symbols  get symbols from a document\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "rg",
+    "--help"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "rg",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode debug rg\n\nripgrep debugging utilities\n\nCommands:\n  opencode debug rg files             list files using ripgrep\n  opencode debug rg search <pattern>  search file contents using ripgrep\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1251
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "rg",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "ripgrep debugging utilities\n\nUsage: opencode debug rg [OPTIONS] <COMMAND>\n\nCommands:\n  files   list files using ripgrep\n  search  search file contents using ripgrep\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "file",
+    "--help"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "file",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode debug file\n\nfile system debugging utilities\n\nCommands:\n  opencode debug file read <path>     read file contents as JSON\n  opencode debug file list <path>     list files in a directory\n  opencode debug file search <query>  search files by query\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1205
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "file",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "file system debugging utilities\n\nUsage: opencode debug file [OPTIONS] <COMMAND>\n\nCommands:\n  search  search files by query\n  read    read file contents as JSON\n  list    list files in a directory\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "scrap"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "scrap"
+   ],
+   "exit": 0,
+   "stdout": "[\n  {\n    \"id\": \"global\",\n    \"worktree\": \"/\",\n    \"time\": {\n      \"created\": 1785920057944,\n      \"updated\": 1785920808544\n    },\n    \"sandboxes\": []\n  }\n]\n",
+   "stderr": "",
+   "time_ms": 1205
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "scrap"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mproject listing is not yet wired in this build (TODO(integration): oc-project)\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "skill"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "skill"
+   ],
+   "exit": 0,
+   "stdout": "[\n  {\n    \"name\": \"customize-opencode\",\n    \"description\": \"Use ONLY when the user is editing or creating opencode's own configuration: opencode.json, opencode.jsonc, files under .opencode/, or files under ~/.config/opencode/. Also use when creating or fixing opencode agents, subagents, skills, plugins, MCP servers, or permission rules. Do not use for the user's own application code, or for any project that is not configuring opencode itself.\",\n    \"location\": \"<built-in>\",\n    \"content\": \"<!--\\n  Built-in skill. Name and description are registered in code at\\n  packages/core/src/plugin/skill.ts\\n  and CUSTOMIZE_OPENCODE_SKILL_DESCRIPTION). The body below becomes the\\n  skill's content.\\n-->\\n\\n# Customizing opencode\\n\\nopencode validates its own config strictly and refuses to start when a field\\nis wrong. The shapes below cover the common surface area, but they are a\\n**summary, not the source of truth**.\\n\\n## Full schema reference\\n\\nThe authoritative list of every config option \u2014 with field types, enums,\\ndefaults, and descriptions \u2014 lives in the published JSON Schema:\\n\\n**<https://opencode.ai/config.json>**\\n\\nIf a field is not documented in this skill, or you need to confirm an exact\\nshape before writing config, **fetch that URL and read the schema directly**\\nrather than guessing. opencode hard-fails on invalid config, so the cost of a\\nwrong shape is a broken startup.\\n\\nIndependently, every `opencode.json` should declare\\n`\\\"$schema\\\": \\\"https://opencode.ai/config.json\\\"` so the user's editor catches\\nmistakes as they type.\\n\\n## Applying changes\\n\\nConfig is loaded once when opencode starts and is not hot-reloaded. After\\nsaving changes to `opencode.json`, an agent file, a skill, a plugin, or any\\nother config-time file, **tell the user to quit and restart opencode** for\\nthe changes to take effect. The running session will keep using the\\nalready-loaded config until then.\\n\\n## Where files live\\n\\n| Scope                         | Path                                                                                                                      |\\n| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |\\n| Project config                | `./opencode.json`, `./opencode.jsonc`, or `.opencode/opencode.json` (opencode walks up from the cwd to the worktree root) |\\n| Global config                 | `~/.config/opencode/opencode.json` (NOT `~/.opencode/`)                                                                   |\\n| Project agents                | `.opencode/agent/<name>.md` or `.opencode/agents/<name>.md`                                                               |\\n| Global agents                 | `~/.config/opencode/agent(s)/<name>.md`                                                                                   |\\n| Project commands              | `.opencode/command/<name>.md` or `.opencode/commands/<name>.md`                                                           |\\n| Global commands               | `~/.config/opencode/command(s)/<name>.md`                                                                                 |\\n| Project skills                | `.opencode/skill(s)/<name>/SKILL.md`                                                                                      |\\n| Global skills                 | `~/.config/opencode/skill(s)/<name>/SKILL.md`                                                                             |\\n| External skills (auto-loaded) | `~/.claude/skills/<name>/SKILL.md`, `~/.agents/skills/<name>/SKILL.md`                                                    |\\n\\nConfigs from each scope are deep-merged. Project overrides global. Unknown\\ntop-level keys in `opencode.json` are rejected with `ConfigInvalidError`.\\n\\n## opencode.json\\n\\nEvery field is optional.\\n\\n```json\\n{\\n  \\\"$schema\\\": \\\"https://opencode.ai/config.json\\\",\\n  \\\"username\\\": \\\"string\\\",\\n  \\\"model\\\": \\\"provider/model-id\\\",\\n  \\\"small_model\\\": \\\"provider/model-id\\\",\\n  \\\"default_agent\\\": \\\"agent-name\\\",\\n  \\\"shell\\\": \\\"/bin/zsh\\\",\\n  \\\"logLevel\\\": \\\"DEBUG\\\" | \\\"INFO\\\" | \\\"WARN\\\" | \\\"ERROR\\\",\\n  \\\"share\\\": \\\"manual\\\" | \\\"auto\\\" | \\\"disabled\\\",\\n  \\\"autoupdate\\\": true | false | \\\"notify\\\",\\n  \\\"snapshot\\\": true,\\n  \\\"instructions\\\": [\\\"AGENTS.md\\\", \\\"docs/style.md\\\"],\\n\\n  \\\"skills\\\": {\\n    \\\"paths\\\": [\\\".opencode/skills\\\", \\\"/abs/path/to/skills\\\"],\\n    \\\"urls\\\": [\\\"https://example.com/.well-known/skills/\\\"]\\n  },\\n\\n  \\\"references\\\": {\\n    \\\"docs\\\": {\\n      \\\"path\\\": \\\"../docs\\\",\\n      \\\"description\\\": \\\"Use for product behavior and documentation conventions\\\"\\n    },\\n    \\\"sdk\\\": {\\n      \\\"repository\\\": \\\"owner/sdk\\\",\\n      \\\"branch\\\": \\\"main\\\",\\n      \\\"description\\\": \\\"Use for SDK implementation details\\\",\\n      \\\"hidden\\\": true\\n    }\\n  },\\n\\n  \\\"agent\\\": {\\n    \\\"my-agent\\\": {\\n      \\\"model\\\": \\\"anthropic/claude-sonnet-4-6\\\",\\n      \\\"mode\\\": \\\"subagent\\\",\\n      \\\"description\\\": \\\"...\\\",\\n      \\\"permission\\\": { \\\"edit\\\": \\\"deny\\\" }\\n    }\\n  },\\n\\n  \\\"command\\\": {\\n    \\\"deploy\\\": { \\\"description\\\": \\\"...\\\", \\\"template\\\": \\\"...\\\" }\\n  },\\n\\n  \\\"provider\\\": {\\n    \\\"anthropic\\\": { \\\"options\\\": { \\\"apiKey\\\": \\\"...\\\" } }\\n  },\\n  \\\"disabled_providers\\\": [\\\"openai\\\"],\\n  \\\"enabled_providers\\\": [\\\"anthropic\\\"],\\n\\n  \\\"mcp\\\": {\\n    \\\"playwright\\\": {\\n      \\\"type\\\": \\\"local\\\",\\n      \\\"command\\\": [\\\"npx\\\", \\\"-y\\\", \\\"@playwright/mcp\\\"],\\n      \\\"enabled\\\": true,\\n      \\\"environment\\\": {}\\n    },\\n    \\\"remote-thing\\\": {\\n      \\\"type\\\": \\\"remote\\\",\\n      \\\"url\\\": \\\"https://...\\\",\\n      \\\"headers\\\": { \\\"Authorization\\\": \\\"Bearer ...\\\" }\\n    }\\n  },\\n\\n  \\\"plugin\\\": [\\n    \\\"opencode-gemini-auth\\\",\\n    \\\"opencode-foo@1.2.3\\\",\\n    \\\"./local-plugin.ts\\\",\\n    [\\\"opencode-bar\\\", { \\\"option\\\": \\\"value\\\" }]\\n  ],\\n\\n  \\\"permission\\\": {\\n    \\\"edit\\\": \\\"deny\\\",\\n    \\\"bash\\\": { \\\"git *\\\": \\\"allow\\\", \\\"*\\\": \\\"ask\\\" }\\n  },\\n\\n  \\\"formatter\\\": false,\\n  \\\"lsp\\\": false,\\n\\n  \\\"experimental\\\": {\\n    \\\"primary_tools\\\": [\\\"edit\\\"],\\n    \\\"mcp_timeout\\\": 30000\\n  },\\n\\n  \\\"tool_output\\\": { \\\"max_lines\\\": 200, \\\"max_bytes\\\": 8192 },\\n\\n  \\\"compaction\\\": { \\\"auto\\\": true, \\\"tail_turns\\\": 15 }\\n}\\n```\\n\\nShape notes worth being explicit about:\\n\\n- `model` always carries a provider prefix: `\\\"anthropic/claude-sonnet-4-6\\\"`.\\n- `skills` is an object with `paths` and/or `urls`, not an array.\\n- `references` is an object keyed by alias. Each value is a local path, Git repository, or string shorthand.\\n- `agent` is an object keyed by agent name, not an array.\\n- `command` is an object keyed by command name, not an array.\\n- `plugin` is an array of strings or `[name, options]` tuples, not an object.\\n- `mcp[name].command` is an array of strings, never a single string. `type` is required.\\n- `permission` is either a string action or an object keyed by tool name.\\n\\n## Skills\\n\\nopencode's skill loader scans for `**/SKILL.md` inside skill directories. The\\nfile is named `SKILL.md` exactly, and lives in its own folder named after the\\nskill:\\n\\n```\\n.opencode/skills/my-skill/SKILL.md\\n```\\n\\nFrontmatter:\\n\\n```markdown\\n---\\nname: my-skill\\ndescription: One sentence covering what this skill does AND when to trigger it. Front-load the literal keywords or filenames the user is likely to say.\\n---\\n\\n# My Skill\\n\\n(skill body in markdown: instructions, examples, references)\\n```\\n\\n- `name` is required, lowercase hyphen-separated, up to 64 chars, and matches the folder name.\\n- `description` is effectively required: skills without one are filtered out and never surfaced to the model. Cover both _what_ the skill does and _when_ to use it. Write in third person (\\\"Use when...\\\", not \\\"I help with...\\\"). Front-load concrete trigger keywords and filenames; gate with \\\"Use ONLY when...\\\" if the skill should stay quiet on adjacent topics.\\n- Optional: `license`, `compatibility`, `metadata` (string-string map).\\n\\nRegister skills from non-default locations via `skills.paths` (scanned\\nrecursively for `**/SKILL.md`) and `skills.urls` (each URL serves a list of\\nskills).\\n\\n## References\\n\\nReferences make local directories and Git repositories outside the active\\nproject available as supporting context. Configure them under `references`,\\nkeyed by the alias used in `@` autocomplete:\\n\\n```json\\n{\\n  \\\"references\\\": {\\n    \\\"docs\\\": {\\n      \\\"path\\\": \\\"../product-docs\\\",\\n      \\\"description\\\": \\\"Use for product behavior and terminology\\\"\\n    },\\n    \\\"effect\\\": {\\n      \\\"repository\\\": \\\"Effect-TS/effect\\\",\\n      \\\"branch\\\": \\\"main\\\",\\n      \\\"description\\\": \\\"Use for Effect implementation details\\\"\\n    }\\n  }\\n}\\n```\\n\\nLocal `path` values may be relative to the declaring config, absolute, or use\\n`~/`. Git `repository` values accept Git URLs, host/path references, and GitHub\\n`owner/repo` shorthand; `branch` is optional. Both forms support optional\\n`description` and `hidden` fields.\\n\\n- Only references with a `description` are advertised to agents in system context.\\n- `hidden: true` removes a reference from TUI `@` autocomplete only. It remains available to agents and by direct path.\\n- Reference directories are automatically allowed through the external-directory boundary; normal read/edit/tool permissions still apply.\\n- String shorthand is supported: use `\\\"docs\\\": \\\"../docs\\\"` for local paths or `\\\"effect\\\": \\\"Effect-TS/effect\\\"` for Git repositories.\\n\\n## Agents\\n\\nTwo ways to define an agent. Use the file form for anything non-trivial.\\n\\n### Inline (in `opencode.json`)\\n\\n```json\\n{\\n  \\\"agent\\\": {\\n    \\\"my-reviewer\\\": {\\n      \\\"description\\\": \\\"Reviews PRs for style violations.\\\",\\n      \\\"mode\\\": \\\"subagent\\\",\\n      \\\"model\\\": \\\"anthropic/claude-sonnet-4-6\\\",\\n      \\\"permission\\\": { \\\"edit\\\": \\\"deny\\\", \\\"bash\\\": \\\"ask\\\" },\\n      \\\"prompt\\\": \\\"You are a strict PR reviewer...\\\"\\n    }\\n  }\\n}\\n```\\n\\n### File\\n\\n```\\n.opencode/agent/my-reviewer.md      OR     .opencode/agents/my-reviewer.md\\n```\\n\\n```markdown\\n---\\ndescription: Reviews PRs for style violations.\\nmode: subagent\\nmodel: anthropic/claude-sonnet-4-6\\npermission:\\n  edit: deny\\n  bash: ask\\n---\\n\\nYou are a strict PR reviewer. Focus on...\\n```\\n\\nThe file body becomes the agent's `prompt`. Do not also put `prompt:` in the\\nfrontmatter.\\n\\n`mode` is one of `\\\"primary\\\"`, `\\\"subagent\\\"`, `\\\"all\\\"`.\\n\\nAllowed top-level frontmatter fields: `name, model, variant, description, mode,\\nhidden, color, steps, options, permission, disable, temperature, top_p`. Any\\nunknown field is silently routed into `options`.\\n\\nTo disable a built-in agent: `agent: { build: { disable: true } }`, or in a\\nfile, `disable: true` in frontmatter.\\n\\n`default_agent` must point to a non-hidden, primary-mode agent.\\n\\n### Built-in agents\\n\\nopencode ships with `build`, `plan`, `general`, `explore`. Hidden internal agents:\\n`compaction`, `title`, `summary`. To override a built-in's fields, define the\\nsame key in `agent: { <name>: { ... } }`.\\n\\n## Commands\\n\\nopencode's command loader scans for `**/*.md` inside command directories. The\\nfile is named after the command, and lives directly inside the `command` folder:\\n\\n```\\n.opencode/command/deploy.md\\n```\\n\\nFrontmatter:\\n\\n```markdown\\n---\\ndescription: One sentence describing what the command does.\\nagent: build\\nmodel: anthropic/claude-sonnet-4-6\\n---\\n\\n(command body in markdown: the prompt opencode runs, with $ARGUMENTS for the user's input)\\n```\\n\\n- `template` is the command body \u2014 everything below the frontmatter \u2014 and is required: it is the prompt opencode runs when the command is invoked. Do not also put a `template:` key in the frontmatter.\\n- `$ARGUMENTS` is replaced with everything the user typed after the command; `$1`, `$2`, \u2026 pull individual positional arguments.\\n- Optional: `description`, `agent`, `model`, `variant`, `subtask`.\\n\\n## Plugins\\n\\n`plugin:` is an array. Each entry is one of:\\n\\n```json\\n\\\"plugin\\\": [\\n  \\\"opencode-gemini-auth\\\",            // npm spec, latest\\n  \\\"opencode-foo@1.2.3\\\",              // npm spec, pinned\\n  \\\"./local-plugin.ts\\\",               // file path, relative to the declaring config\\n  \\\"file:///abs/path/plugin.js\\\",      // file URL\\n  [\\\"opencode-bar\\\", { \\\"key\\\": \\\"val\\\" }] // tuple form with options\\n]\\n```\\n\\nAuto-discovered plugins (no config entry needed): any `*.ts` or `*.js` file in\\n`.opencode/plugin/` or `.opencode/plugins/`.\\n\\nA plugin module exports `default` (or any named export) of type\\n`Plugin = (input: PluginInput, options?) => Promise<Hooks>`. The export is a\\nfunction, not a plain object literal, and the function returns an object\\n(return `{}` if there is nothing to register).\\n\\n```ts\\nimport type { Plugin } from \\\"@opencode-ai/plugin\\\"\\n\\nexport default (async ({ client, project, directory, $ }) => {\\n  return {\\n    config: (cfg) => {\\n      // cfg is the live merged config; mutate fields here.\\n    },\\n    \\\"tool.execute.before\\\": async (input, output) => {\\n      // mutate output.args before the tool runs\\n    },\\n  }\\n}) satisfies Plugin\\n```\\n\\nHook surface (mutate `output` in place; return `void`):\\n\\n- `event(input)`: every bus event\\n- `config(cfg)`: once on init with the merged config\\n- `chat.message`, `chat.params`, `chat.headers`\\n- `tool.execute.before`, `tool.execute.after`\\n- `tool.definition`\\n- `command.execute.before`\\n- `shell.env`\\n- `permission.ask`\\n- `experimental.chat.messages.transform`, `experimental.chat.system.transform`,\\n  `experimental.session.compacting`, `experimental.compaction.autocontinue`,\\n  `experimental.text.complete`\\n\\nSpecial object-shaped (not callbacks): `tool: { my_tool: { ... } }`,\\n`auth: { ... }`, `provider: { ... }`.\\n\\n## MCP servers\\n\\n`mcp:` is an object keyed by server name. Each server is discriminated by\\n`type`:\\n\\n```json\\n{\\n  \\\"mcp\\\": {\\n    \\\"playwright\\\": {\\n      \\\"type\\\": \\\"local\\\",\\n      \\\"command\\\": [\\\"npx\\\", \\\"-y\\\", \\\"@playwright/mcp\\\"],\\n      \\\"enabled\\\": true,\\n      \\\"environment\\\": { \\\"BROWSER\\\": \\\"chromium\\\" }\\n    },\\n    \\\"github\\\": {\\n      \\\"type\\\": \\\"remote\\\",\\n      \\\"url\\\": \\\"https://...\\\",\\n      \\\"enabled\\\": true,\\n      \\\"headers\\\": { \\\"Authorization\\\": \\\"Bearer {env:GITHUB_TOKEN}\\\" }\\n    },\\n    \\\"old-server\\\": { \\\"enabled\\\": false }\\n  }\\n}\\n```\\n\\n`command` is an array of strings. `environment` sets environment variables for\\na local MCP server. `type` is required. Use `enabled: false` to\\ndisable a server inherited from a parent config. String values such as header\\ntokens support `{env:VAR}` interpolation (and `{file:path}`); the shell-style\\n`${VAR}` is not substituted.\\n\\n## Permissions\\n\\n```json\\n\\\"permission\\\": {\\n  \\\"edit\\\": \\\"deny\\\",\\n  \\\"bash\\\": { \\\"git *\\\": \\\"allow\\\", \\\"rm *\\\": \\\"deny\\\", \\\"*\\\": \\\"ask\\\" },\\n  \\\"external_directory\\\": { \\\"~/secrets/**\\\": \\\"deny\\\", \\\"*\\\": \\\"allow\\\" }\\n}\\n```\\n\\nActions: `\\\"allow\\\"`, `\\\"ask\\\"`, `\\\"deny\\\"`.\\n\\nPer-tool value forms: `\\\"allow\\\"` shorthand (treated as `{\\\"*\\\": \\\"allow\\\"}`), or an\\nobject `{ pattern: action }`. Within an object, **insertion order matters**.\\nopencode evaluates the LAST matching rule, so put broad rules first and narrow\\nrules last.\\n\\n`permission: \\\"allow\\\"` (a string at the top level) is shorthand for \\\"allow\\neverything\\\" and is rarely what the user wants.\\n\\nKnown permission keys: `read, edit, glob, grep, list, bash, task,\\nexternal_directory, todowrite, question, webfetch, websearch, lsp, doom_loop,\\nskill`. Some of these (`todowrite,\\nquestion, webfetch, websearch, doom_loop`) only accept a flat\\naction, not a per-pattern object.\\n\\n`external_directory` patterns are filesystem paths (use `~/`, absolute paths,\\nor globs like `~/projects/**`).\\n\\nPer-agent `permission:` overrides top-level `permission:`. Plan Mode lives on\\nthe `plan` agent's permission ruleset (`edit: deny *`).\\n\\n## Escape hatches\\n\\nWhen a user's config is broken and opencode won't start, these env vars help:\\n\\n- `OPENCODE_DISABLE_PROJECT_CONFIG=1`: skip the project's local `opencode.json`\\n  and start from globals only. Run from the project directory, opencode loads,\\n  the user edits the broken file, then they restart without the flag.\\n- `OPENCODE_CONFIG=/path/to/file.json`: load an additional explicit config.\\n- `OPENCODE_CONFIG_CONTENT='{\\\"$schema\\\":\\\"https://opencode.ai/config.json\\\"}'`:\\n  inject inline JSON as a final local-scope merge.\\n- `OPENCODE_DISABLE_DEFAULT_PLUGINS=1`: skip default plugins.\\n- `OPENCODE_PURE=1`: skip external plugins entirely.\\n- `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`,\\n  `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS=1`: skip the external skill scans under\\n  `~/.claude/` and `~/.agents/`.\\n\\n## When proposing edits\\n\\n- Validate against the schema before writing. If you are unsure of a field's\\n  exact shape, or the field is not covered in this skill, fetch\\n  `https://opencode.ai/config.json` and read the schema rather than guessing.\\n- Preserve `$schema` and any existing fields the user did not ask to change.\\n- For agent, command, skill, and plugin definitions, prefer creating new files\\n  in the correct location over inlining everything in `opencode.json`.\\n- If the user's existing config is malformed, point them at the env-var escape\\n  hatches above so they can edit from inside opencode without breaking their\\n  session.\\n- After saving any config change, remind the user to quit and restart opencode\\n  \u2014 running sessions keep using the already-loaded config.\\n\"\n  }\n]\n",
+   "stderr": "",
+   "time_ms": 1829
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "skill"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mskill listing is not yet wired in this build (TODO(integration): oc-command)\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "snapshot",
+    "--help"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "snapshot",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode debug snapshot\n\nsnapshot debugging utilities\n\nCommands:\n  opencode debug snapshot track         track current snapshot state\n  opencode debug snapshot patch <hash>  show patch for a snapshot hash\n  opencode debug snapshot diff <hash>   show diff for a snapshot hash\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1332
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "snapshot",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "snapshot debugging utilities\n\nUsage: opencode debug snapshot [OPTIONS] <COMMAND>\n\nCommands:\n  track  track current snapshot state\n  patch  show patch for a snapshot hash\n  diff   show diff for a snapshot hash\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "snapshot",
+    "track"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "snapshot",
+    "track"
+   ],
+   "exit": 0,
+   "stdout": "undefined\n",
+   "stderr": "",
+   "time_ms": 2226
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "snapshot",
+    "track"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0msnapshot debugging is not yet wired in this build (TODO(integration): oc-project)\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "startup"
+   ],
+   "timeout": 60
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "startup"
+   ],
+   "exit": 0,
+   "stdout": "1445.676302\n",
+   "stderr": "",
+   "time_ms": 1477
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "startup"
+   ],
+   "exit": 0,
+   "stdout": "0.000\n",
+   "stderr": "",
+   "time_ms": 6
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "agent",
+    "build",
+    "--help"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "agent",
+    "build",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode debug agent <name>\n\nshow agent configuration details\n\nPositionals:\n  name  Agent name                                                               [string] [required]\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]\n      --tool        Tool id to execute                                                      [string]\n      --params      Tool params as JSON or a JS object literal                              [string]",
+   "time_ms": 1362
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "agent",
+    "build",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "show agent configuration details\n\nUsage: opencode debug agent [OPTIONS] <NAME>\n\nArguments:\n  <NAME>  Agent name\n\nOptions:\n      --tool <TOOL>            Tool id to execute\n  -v, --version                show version number\n      --params <PARAMS>        Tool params as JSON or a JS object literal\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "v2"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "v2"
+   ],
+   "exit": 0,
+   "stdout": "{\n  \"providers\": [],\n  \"default\": {\n    \"_id\": \"Effect\",\n    \"op\": \"OnSuccess\",\n    \"args\": {\n      \"_id\": \"Effect\",\n      \"op\": \"WithFiber\"\n    }\n  },\n  \"small\": {}\n}\n",
+   "stderr": "",
+   "time_ms": 2347
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "v2"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mcatalog debugging is not yet wired in this build (TODO(integration): oc-provider)\n",
+   "time_ms": 8
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "paths"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "paths"
+   ],
+   "exit": 0,
+   "stdout": "home       /tmp/opencode/agent03/home\ndata       /tmp/opencode/agent03/home/.local/share/opencode\nbin        /tmp/opencode/agent03/home/.cache/opencode/bin\nlog        /tmp/opencode/agent03/home/.local/share/opencode/log\nrepos      /tmp/opencode/agent03/home/.local/share/opencode/repos\ncache      /tmp/opencode/agent03/home/.cache/opencode\nconfig     /tmp/opencode/agent03/home/.config/opencode\nstate      /tmp/opencode/agent03/home/.local/state/opencode\ntmp        /tmp/opencode\n",
+   "stderr": "",
+   "time_ms": 1396
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "paths"
+   ],
+   "exit": 0,
+   "stdout": "data       /tmp/opencode/agent03/home/.local/share/opencode\nbin        /tmp/opencode/agent03/home/.cache/opencode/bin\nlog        /tmp/opencode/agent03/home/.local/share/opencode/log\nrepos      /tmp/opencode/agent03/home/.local/share/opencode/repos\ncache      /tmp/opencode/agent03/home/.cache/opencode\nconfig     /tmp/opencode/agent03/home/.config/opencode\nstate      /tmp/opencode/agent03/home/.local/state/opencode\ntmp        /tmp/opencode\nhome       /tmp/opencode/agent03/home\n",
+   "stderr": "",
+   "time_ms": 8
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "info"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "info"
+   ],
+   "exit": 0,
+   "stdout": "opencode version: 1.18.13\nos: Linux 6.8.0-90-generic x64\nterminal: dumb\nplugins:\nnone\n",
+   "stderr": "",
+   "time_ms": 2229
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "info"
+   ],
+   "exit": 0,
+   "stdout": "opencode version: 1.18.13\nos: linux Ubuntu 24.04.4 LTS x86_64\nterminal: dumb\nplugins:\nnone\n",
+   "stderr": "",
+   "time_ms": 6
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "debug",
+    "wait"
+   ],
+   "timeout": 8
+  },
+  "ref": {
+   "args": [
+    "debug",
+    "wait"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "",
+   "stderr": "",
+   "time_ms": 8000
+  },
+  "rust": {
+   "args": [
+    "debug",
+    "wait"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "",
+   "stderr": "",
+   "time_ms": 8000
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "web"
+   ],
+   "timeout": 15
+  },
+  "ref": {
+   "args": [
+    "web"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "",
+   "stderr": "\u001b[93m\u001b[1m!  OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n\u001b[0m\n  \u2800                                \u2584     \n  \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n  \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n  \u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\u001b[0m\n\u001b[94m\u001b[1m  Web interface:     \u001b[0m http://127.0.0.1:4096/\n662 |     var file = this.spawnfile = options.file, spawnargs;\n663 |     if (options.args === @undefined)\n664 |       spawnargs = this.spawnargs = [];\n665 |     else\n666 |       validateArray(options.args, \"options.args\"), spawnargs = this.spawnargs = options.args;\n667 |       if (this.#handle = Bun.spawn({\n                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              ^\nerror: Executable not found in $PATH: \"xdg-open\"\n      path: \"xdg-open\",\n     errno: -2,\n   syscall: \"spawn xdg-open\",\n spawnargs: [ \"http://127.0.0.1:4096/\" ],\n      code: \"ENOENT\"\n\n      at spawn (node:child_process:667:35)\n      at spawn (node:child_process:14:39)\n      at <anonymous> (/$bunfs/root/chunk-xwzjdf62.js:2:3353)\n",
+   "time_ms": 15000
+  },
+  "rust": {
+   "args": [
+    "web"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u001b[93m\u001b[1m !   \u001b[0m OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\n\u001b[0m\n  \u2800                                \u2584     \n  \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n  \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n  \u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\u001b[0m\n\u001b[94m\u001b[1m   Web interface:     \u001b[0m http://127.0.0.1:33587\n\u001b[90m   (web interface not yet wired)\n",
+   "time_ms": 20
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "serve"
+   ],
+   "timeout": 8
+  },
+  "ref": {
+   "args": [
+    "serve"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\nopencode server listening on http://127.0.0.1:4096\n",
+   "stderr": "",
+   "time_ms": 8000
+  },
+  "rust": {
+   "args": [
+    "serve"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\nopencode server listening on http://127.0.0.1:43211\n",
+   "stderr": "",
+   "time_ms": 8000
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "serve",
+    "--port",
+    "4096"
+   ],
+   "timeout": 8
+  },
+  "ref": {
+   "args": [
+    "serve",
+    "--port",
+    "4096"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\nopencode server listening on http://127.0.0.1:4096\n",
+   "stderr": "",
+   "time_ms": 8000
+  },
+  "rust": {
+   "args": [
+    "serve",
+    "--port",
+    "4096"
+   ],
+   "exit": "TIMEOUT",
+   "stdout": "Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.\nopencode server listening on http://127.0.0.1:4096\n",
+   "stderr": "",
+   "time_ms": 8000
+  }
+ }
+]

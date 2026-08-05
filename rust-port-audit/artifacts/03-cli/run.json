@@ -1,0 +1,441 @@
+[
+ {
+  "scenario": {
+   "args": [
+    "run"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0mYou must provide a message or a command\n",
+   "time_ms": 3593
+  },
+  "rust": {
+   "args": [
+    "run"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mYou must provide a message or a command\n",
+   "time_ms": 16
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "hello"
+   ],
+   "timeout": 45
+  },
+  "ref": {
+   "args": [
+    "run",
+    "hello"
+   ],
+   "exit": 0,
+   "stdout": "Hello! How can I help you today?\n",
+   "stderr": "\u001b[0m\n> build \u00b7 big-pickle\n\u001b[0m\n",
+   "time_ms": 7438
+  },
+  "rust": {
+   "args": [
+    "run",
+    "hello"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mthe in-process opencode server is not wired yet in this build (TODO(integration): oc-server)\nTry `opencode run --attach <url>` to connect to a running opencode server.\n",
+   "time_ms": 44
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "hello"
+   ],
+   "timeout": 45
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "hello"
+   ],
+   "exit": 0,
+   "stdout": "{\"type\":\"step_start\",\"timestamp\":1785920372157,\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"part\":{\"id\":\"prt_fd1263db6001IgQNgirwY1fJh3\",\"messageID\":\"msg_fd1263759001JFJV2IogUfoJ8O\",\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"type\":\"step-start\"}}\n{\"type\":\"text\",\"timestamp\":1785920372714,\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"part\":{\"id\":\"prt_fd1263f66001FL8HetMbMyWvjE\",\"messageID\":\"msg_fd1263759001JFJV2IogUfoJ8O\",\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"type\":\"text\",\"text\":\"Hello! How can I help you today?\",\"time\":{\"start\":1785920372582,\"end\":1785920372664}}}\n{\"type\":\"step_finish\",\"timestamp\":1785920372714,\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"part\":{\"id\":\"prt_fd1263fc4001XwFurIlZc778QX\",\"reason\":\"stop\",\"messageID\":\"msg_fd1263759001JFJV2IogUfoJ8O\",\"sessionID\":\"ses_02ed9ccc3ffe3TA5hKt8HzI6Q0\",\"type\":\"step-finish\",\"tokens\":{\"total\":7856,\"input\":38,\"output\":10,\"reasoning\":0,\"cache\":{\"write\":0,\"read\":7808}},\"cost\":0}}\n",
+   "stderr": "",
+   "time_ms": 6412
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "hello"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mthe in-process opencode server is not wired yet in this build (TODO(integration): oc-server)\nTry `opencode run --attach <url>` to connect to a running opencode server.\n",
+   "time_ms": 17
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "hello",
+    "world"
+   ],
+   "timeout": 45
+  },
+  "ref": {
+   "args": [
+    "run",
+    "hello",
+    "world"
+   ],
+   "exit": 0,
+   "stdout": "Hello! What can I help you with?\n",
+   "stderr": "\u001b[0m\n> build \u00b7 big-pickle\n\u001b[0m\n",
+   "time_ms": 6785
+  },
+  "rust": {
+   "args": [
+    "run",
+    "hello",
+    "world"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mthe in-process opencode server is not wired yet in this build (TODO(integration): oc-server)\nTry `opencode run --attach <url>` to connect to a running opencode server.\n",
+   "time_ms": 12
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--fork"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--fork"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0mYou must provide a message or a command\n",
+   "time_ms": 2486
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--fork"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mYou must provide a message or a command\n",
+   "time_ms": 14
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--mini"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--mini"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--mini must be used without the run subcommand\n",
+   "time_ms": 2525
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--mini"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--mini must be used without the run subcommand\n",
+   "time_ms": 17
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--demo"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--demo"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--demo requires --mini\n",
+   "time_ms": 3148
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--demo"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--demo requires --mini\n",
+   "time_ms": 12
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "0"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "0"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--replay-limit requires --mini\n",
+   "time_ms": 3256
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "0"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--replay-limit requires --mini\n",
+   "time_ms": 19
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "5"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "5"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--replay-limit requires --mini\n",
+   "time_ms": 2180
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "5"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--replay-limit requires --mini\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "-1"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "-1"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--replay-limit requires --mini\n",
+   "time_ms": 2663
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--replay-limit",
+    "-1"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "error: unexpected argument '-1' found\n\n  tip: to pass '-1' as a value, use '-- -1'\n\nUsage: opencode run [OPTIONS] [message]...\n\nFor more information, try '--help'.\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--mini",
+    "--command",
+    "ls"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--mini",
+    "--command",
+    "ls"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--mini cannot be used with --command\n",
+   "time_ms": 2937
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--mini",
+    "--command",
+    "ls"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--mini cannot be used with --command\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "--mini"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "--mini"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0m--mini must be used without the run subcommand\n",
+   "time_ms": 3415
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--format",
+    "json",
+    "--mini"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0m--mini must be used without the run subcommand\n",
+   "time_ms": 15
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--format",
+    "bogus"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--format",
+    "bogus"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "opencode run [message..]\n\nrun opencode with a message\n\nPositionals:\n  message  message to send                                                     [array] [default: []]\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --command      the command to run, use message for args                               [string]\n  -c, --continue     continue the last session                                             [boolean]\n  -s, --session      session id to continue                                                 [string]\n      --fork         fork the session before continuing (requires --continue or --session) [boolean]\n      --share        share the session                                                     [boolean]\n  -m, --model        model to use in the format of provider/model                           [string]\n      --agent        agent to use                                                           [string]\n      --format       format: default (formatted) or json (raw JSON events)\n                                          [string] [choices: \"default\", \"json\"] [default: \"default\"]\n  -f, --file         file(s) to attach to message                                            [array]\n      --title        title for the session (uses truncated prompt if no value provided)     [string]\n      --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]\n  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]\n  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --dir          directory to run in, path on remote server if attaching                [string]\n      --port         port for the local server (defaults to random port if no value provided)\n                                                                                            [number]\n      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n                                                                                            [string]\n      --thinking     show thinking blocks                                                  [boolean]\n  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]\n      --auto         auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]",
+   "time_ms": 1965
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--format",
+    "bogus"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "error: invalid value 'bogus' for '--format <FORMAT>'\n  [possible values: default, json]\n\nFor more information, try '--help'.\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--",
+    "hello"
+   ],
+   "timeout": 30
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--",
+    "hello"
+   ],
+   "exit": 0,
+   "stdout": "Hello! How can I help you today?\n",
+   "stderr": "\u001b[0m\n> build \u00b7 big-pickle\n\u001b[0m\n",
+   "time_ms": 16091
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--",
+    "hello"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mthe in-process opencode server is not wired yet in this build (TODO(integration): oc-server)\nTry `opencode run --attach <url>` to connect to a running opencode server.\n",
+   "time_ms": 31
+  }
+ }
+]

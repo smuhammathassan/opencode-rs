@@ -1,0 +1,7 @@
+[env-token-subst] MATCH ref=0 rust=0
+[env-token-missing] MATCH ref=0 rust=0
+[file-token-subst] MATCH ref=0 rust=0
+[file-token-relative-to-config] MATCH ref=0 rust=0
+[file-token-missing] MATCH ref=1 rust=1
+[file-token-home] MATCH ref=1 rust=1
+[file-token-in-comment] MATCH ref=0 rust=0

@@ -1,0 +1,2467 @@
+    Blocking waiting for file lock on build directory
+warning: function `data_dir` is never used
+  --> crates/oc-project/tests/common/mod.rs:64:8
+   |
+64 | pub fn data_dir() -> PathBuf {
+   |        ^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-project` (test "project") generated 1 warning
+warning: unused variable: `lines`
+   --> crates/oc-tui/src/components/prompt.rs:153:14
+    |
+153 |         let (lines, cursor) = layout(text, 6, 7, &[], &Theme::dark());
+    |              ^^^^^ help: if this is intentional, prefix it with an underscore: `_lines`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `sync`
+   --> crates/oc-tui/src/local.rs:232:13
+    |
+232 |         let sync = sync_with_provider();
+    |             ^^^^ help: if this is intentional, prefix it with an underscore: `_sync`
+
+warning: `oc-tui` (lib test) generated 2 warnings (run `cargo fix --lib -p oc-tui --tests` to apply 2 suggestions)
+warning: unused variable: `prompt`
+   --> crates/oc-tui/tests/rendering.rs:158:9
+    |
+158 |     let prompt = PromptState::default();
+    |         ^^^^^^ help: if this is intentional, prefix it with an underscore: `_prompt`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `request`
+  --> crates/oc-command/tests/question.rs:69:18
+   |
+69 |     let (handle, request) = svc.ask("sess-1", vec![info("a?"), info("b?")], None);
+   |                  ^^^^^^^ help: if this is intentional, prefix it with an underscore: `_request`
+   |
+   = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-tui` (test "rendering") generated 1 warning (run `cargo fix --test "rendering" -p oc-tui` to apply 1 suggestion)
+warning: `oc-command` (test "question") generated 1 warning (run `cargo fix --test "question" -p oc-command` to apply 1 suggestion)
+warning: function `message_response` is never used
+   --> crates/oc-acp/src/event.rs:526:8
+    |
+526 |     fn message_response() -> SessionMessageResponse {
+    |        ^^^^^^^^^^^^^^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-acp` (lib test) generated 1 warning
+warning: function `schema_of` is never used
+  --> crates/oc-tool/tests/golden.rs:24:4
+   |
+24 | fn schema_of(schema: &Schema) -> serde_json::Value {
+   |    ^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-tool` (test "golden") generated 1 warning
+warning: unused boxed `FnOnce` trait object that must be used
+   --> crates/oc-tool/src/core/registry.rs:292:9
+    |
+292 | /         registry
+293 | |             .register(vec![("echo".to_string(), echo_tool())])
+294 | |             .unwrap();
+    | |_____________________^
+    |
+    = note: closures are lazy and do nothing unless called
+    = note: `#[warn(unused_must_use)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused boxed `FnOnce` trait object that must be used
+   --> crates/oc-tool/src/core/registry.rs:336:9
+    |
+336 | /         registry
+337 | |             .register(vec![("echo".to_string(), echo_tool())])
+338 | |             .unwrap();
+    | |_____________________^
+    |
+    = note: closures are lazy and do nothing unless called
+
+warning: unused imports: `LoadOptions` and `load_instance_state`
+ --> crates/oc-config/tests/load.rs:8:23
+  |
+8 | use oc_config::load::{load_instance_state, LoadOptions};
+  |                       ^^^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-tool` (lib test) generated 2 warnings
+warning: `oc-config` (test "load") generated 1 warning (run `cargo fix --test "load" -p oc-config` to apply 1 suggestion)
+warning: variable does not need to be mutable
+   --> crates/oc-plugin/src/js/runtime.rs:806:13
+    |
+806 |         let mut runtime = Runtime::new().unwrap();
+    |             ----^^^^^^^
+    |             |
+    |             help: remove this `mut`
+    |
+    = note: `#[warn(unused_mut)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-plugin` (lib test) generated 1 warning (run `cargo fix --lib -p oc-plugin --tests` to apply 1 suggestion)
+warning: unused import: `ToolStateRunning`
+ --> crates/oc-schema/tests/golden_v1.rs:9:39
+  |
+9 |     ToolStateError, ToolStatePending, ToolStateRunning, User, WithParts,
+  |                                       ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `oc_schema::event`
+ --> crates/oc-schema/tests/golden_events.rs:5:5
+  |
+5 | use oc_schema::event;
+  |     ^^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: `oc-schema` (test "golden_v1") generated 1 warning (run `cargo fix --test "golden_v1" -p oc-schema` to apply 1 suggestion)
+warning: `oc-schema` (test "golden_events") generated 1 warning (run `cargo fix --test "golden_events" -p oc-schema` to apply 1 suggestion)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 51.85s
+     Running unittests src/lib.rs (target/debug/deps/oc_acp-28c38a273625955c)
+
+running 57 tests
+test config_option::tests::parse_simple_model ... ok
+test config_option::tests::parse_unlisted_model ... ok
+test config_option::tests::format_variant_name_test ... ok
+test config_option::tests::parse_variant_model ... ok
+test config_option::tests::parse_without_provider ... ok
+test config_option::tests::build_config_options_shape ... ok
+test content::tests::file_url_part_to_resource_link_chunk ... ok
+test agent::tests::error_mapping ... ok
+test content::tests::text_content_to_text_part ... ok
+test content::tests::resource_link_file_to_file_part ... ok
+test content::tests::text_with_synthetic_audience ... ok
+test content::tests::data_url_image_to_image_chunk ... ok
+test error::tests::auth_required_without_provider ... ok
+test directory::tests::provider_sort_priority ... ok
+test error::tests::internal_error_with_service ... ok
+test error::tests::method_not_found_error ... ok
+test directory::tests::build_snapshot ... ok
+test event::tests::replay_part_conversion ... ok
+test error::tests::session_not_found_error ... ok
+test jsonrpc::tests::encodes_notification ... ok
+test jsonrpc::tests::encodes_request ... ok
+test permission::tests::apply_patch_mismatch_returns_none ... ok
+test permission::tests::apply_simple_patch ... ok
+test permission::tests::apply_patch_with_insert ... ok
+test jsonrpc::tests::decodes_request_and_notification ... ok
+test permission::tests::file_metadata_parses_files ... ok
+test permission::tests::selected_reply_handles_outcomes ... ok
+test service::tests::auth_required_detection ... ok
+test service::tests::default_model_falls_back_to_configured ... ok
+test service::tests::detect_slash_command_variants ... ok
+test service::tests::from_unknown_error_maps ... ok
+test service::tests::parse_model_handles_provider_and_model ... ok
+test service::tests::mcp_config_remote_and_local ... ok
+test service::tests::to_iso_matches_javascript ... ok
+test service::tests::stable_stringify_sorts_keys ... ok
+test session::tests::part_metadata_key_format ... ok
+test session::tests::list_sorted_by_created_at ... ok
+test session::tests::store_and_get ... ok
+test session::tests::record_and_lookup_part_metadata ... ok
+test event::tests::part_accessors ... ok
+test tool::tests::tool_kind_mapping ... ok
+test tool::tests::shell_workdir_resolution ... ok
+test tool::tests::completed_tool_content_with_diff ... ok
+test session::tests::update_and_remove ... ok
+test jsonrpc::tests::encodes_response ... ok
+test types::tests::mcp_server_decode ... ok
+test types::tests::initialize_request_decode ... ok
+test types::tests::session_update_agent_message_chunk_golden ... ok
+test types::tests::prompt_response_golden ... ok
+test types::tests::session_update_tool_call_golden ... ok
+test types::tests::session_update_tool_call_update_golden ... ok
+test types::tests::set_session_config_option_value_decode ... ok
+test usage::tests::latest_assistant_and_cost ... ok
+test types::tests::session_update_usage_golden ... ok
+test types::tests::request_permission_outcome_decode ... ok
+test types::tests::session_update_available_commands_golden ... ok
+test usage::tests::build_usage_omits_zero ... ok
+
+test result: ok. 57 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/wire_golden.rs (target/debug/deps/wire_golden-89a15bddaaa986cf)
+
+running 8 tests
+test error_maps_to_request_error ... ok
+test initialize_response_golden ... ok
+test cancel_aborts_backing_session ... ok
+test initialize_terminal_auth_golden ... ok
+test prompt_golden_with_usage ... ok
+test new_session_golden ... ok
+test set_config_option_invalid_value ... ok
+test new_session_sends_available_commands ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_cli-9b6d63c6685267a9)
+
+running 21 tests
+test cli::cmd::import_cmd::tests::parses_share_urls ... ok
+test cli::cmd::run::tool::tests::titlecase_capitalizes_words ... ok
+test cli::auth::tests::ignores_malformed_entries ... ok
+test cli::cmd::run::client::tests::url_encodes_slashes ... ok
+test cli::cmd::run::tool::tests::unknown_tool_falls_back ... ok
+test cli::cmd::run::types::tests::pick_model_splits_provider_and_model ... ok
+test cli::cmd::run::client::tests::unwraps_data_envelope ... ok
+test cli::cmd::run::types::tests::parses_stream_text_part ... ok
+test cli::cmd::run::types::tests::parses_tool_part_event ... ok
+test cli::cmd::run::tool::tests::task_running_uses_bullet ... ok
+test cli::cmd::run::types::tests::resolve_run_input_prefers_value_and_appends_piped ... ok
+test cli::models_dev::tests::empty_on_missing_file ... ok
+test cli::cmd::stats::tests::renders_overview_section ... ok
+test cli::models_dev::tests::parses_models_dev_database ... ok
+test cli::auth::tests::round_trips_credentials ... ok
+test cli::network::tests::config_values_win_over_defaults ... ok
+test cli::cmd::run::tool::tests::bash_completed_renders_output_block ... ok
+test cli::cmd::stats::tests::formats_thousands ... ok
+test cli::network::tests::mdns_defaults_hostname_to_0_0_0_0 ... ok
+test cli::network::tests::resolves_defaults_without_config ... ok
+test cli::cmd::run::tool::tests::glob_counts_matches ... ok
+
+test result: ok. 21 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running unittests src/main.rs (target/debug/deps/opencode-6e40711fe7806502)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_client-10b02f020fd4302b)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/contract.rs (target/debug/deps/contract-5f74a65ef32f00df)
+
+running 8 tests
+test omit_endpoints_match_the_reference_contract ... ok
+test location_deep_object_round_trip ... ok
+test unknown_event_type_falls_back_to_raw ... ok
+test session_message_tagged_union_decodes ... ok
+test session_durable_event_decodes_from_fixture ... ok
+test endpoint_names_match_the_reference_contract ... ok
+test group_names_match_the_reference_contract ... ok
+test shared_dtos_decode_plain_objects ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/http.rs (target/debug/deps/http-26473cba141413ab)
+
+running 17 tests
+test credentials_update_uses_patch_and_body ... ok
+test custom_request_headers_are_sent ... ok
+test location_query_encodes_as_deep_object ... ok
+test permission_saved_list_filters_by_project ... ok
+test permissions_send_flattened_create_body ... ok
+test files_list_and_find_encode_query_params ... ok
+test integrations_connect_oauth_serializes_body ... ok
+test middleware_errors_remain_declared_client_errors ... ok
+test ptys_create_and_update_serialize_bodies ... ok
+test provider_get_encodes_path_and_location ... ok
+test questions_reply_and_reject ... ok
+test project_copies_create_and_remove ... ok
+test location_scoped_list_endpoints_send_location_query ... ok
+test sessions_history_decodes_session_not_found ... ok
+test undeclared_status_becomes_unexpected_status ... ok
+test retry_policy_retries_5xx_responses ... ok
+test session_methods_use_the_public_http_contract ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/sse.rs (target/debug/deps/sse-c0e7932d56dc4625)
+
+running 5 tests
+test events_subscribe_terminates_on_malformed_sse_data ... ok
+test sse_rejects_non_event_stream_content_type ... ok
+test events_subscribe_splits_events_across_chunks ... ok
+test session_events_passes_after_query ... ok
+test events_subscribe_streams_and_decodes_server_events ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_command-2b90cbf7e17b381b)
+
+running 1 test
+test skill::discovery::tests::parses_index_schema ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/command.rs (target/debug/deps/command-d6b2a4fe09c6ad19)
+
+running 34 tests
+test defaults_are_registered ... ok
+test config_commands_override_defaults ... ok
+test config_commands_with_invalid_template_are_errors ... ok
+test builtin_skill_has_no_base_dir ... ok
+test config_commands_are_registered ... ok
+test hints_are_empty_without_placeholders ... ok
+test hints_extracts_numbered_and_arguments_placeholders ... ok
+test expand_shell_preserves_non_matching_text ... ok
+test expand_shell_replaces_commands_with_output ... ok
+test expand_shell_failed_command_yields_empty_string ... ok
+test info_serializes_matching_schema_order ... ok
+test init_and_review_templates_and_hints_match_reference ... ok
+test command_without_frontmatter_loads_with_template_only ... ok
+test hints_sorts_lexicographically_and_dedupes ... ok
+test init_template_is_replaced_with_worktree_path ... ok
+test info_serializes_exact_json_in_schema_field_order ... ok
+test list_contains_all_registered ... ok
+test render_appends_arguments_when_no_placeholders ... ok
+test render_handles_image_attachments_as_one_token ... ok
+test render_does_not_append_arguments_when_arguments_empty ... ok
+test loads_nested_command_with_relative_path_name ... ok
+test render_last_positional_takes_the_rest ... ok
+test render_missing_arguments_become_empty ... ok
+test render_substitutes_numbered_arguments ... ok
+test render_trims_quotes_from_arguments ... ok
+test render_trims_result ... ok
+test render_substitutes_arguments_placeholder ... ok
+test frontmatter_name_overrides_path_derived_name ... ok
+test skill_info_serialization_matches_reference_schema ... ok
+test skills_are_registered_as_commands_with_base_dir ... ok
+test skills_do_not_override_existing_commands ... ok
+test loads_commands_from_command_and_commands_dirs ... ok
+test invalid_command_config_aborts_load ... ok
+test unparseable_frontmatter_is_skipped ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/frontmatter.rs (target/debug/deps/frontmatter-58318c682c838a66)
+
+running 18 tests
+test extended_delimiter_is_not_frontmatter ... ok
+test empty_input_returns_empty_object ... ok
+test empty_frontmatter_returns_empty_object ... ok
+test no_frontmatter_returns_empty_data_and_full_content ... ok
+test frontmatter_without_closing_delimiter_empties_content ... ok
+test boolean_and_string_types ... ok
+test comment_only_frontmatter_returns_empty_object ... ok
+test golden_serialization_matches ... ok
+test sanitize_leaves_already_valid_frontmatter_unchanged ... ok
+test parses_simple_yaml_frontmatter ... ok
+test quoted_values_with_colons_parse ... ok
+test parses_crlf_frontmatter ... ok
+test sanitize_skips_comment_and_indented_lines ... ok
+test bare_scalar_frontmatter_is_parsed_as_string ... ok
+test language_line_after_delimiter_is_consumed_as_language ... ok
+test sanitize_fallback_handles_unquoted_colons ... ok
+test invalid_flow_yaml_is_an_error ... ok
+test strips_only_one_newline_after_closing_delimiter ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running tests/question.rs (target/debug/deps/question-d3116475803cef7e)
+
+running 10 tests
+test ask_registers_a_pending_request ... ok
+test list_returns_pending_requests ... ok
+test multiple_asks_can_be_resolved_independently ... ok
+test ids_are_unique_and_well_formed ... ok
+test rejected_error_message_matches_reference ... ok
+test reply_for_unknown_request_is_not_found ... ok
+test reject_resolves_ask_with_rejected_error ... ok
+test reply_resolves_ask_with_answers ... ok
+test reject_for_unknown_request_is_not_found ... ok
+test tool_is_preserved_in_request ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/skill.rs (target/debug/deps/skill-55d0f057518da7a5)
+
+running 18 tests
+test builtin_skill_present_without_disk_override ... ok
+test disable_external_skills_skips_claude_and_agents ... ok
+test discovers_project_external_skills_walking_up ... ok
+test fmt_lists_skills_non_verbose ... ok
+test fmt_lists_skills_verbose_with_escaped_location ... ok
+test fmt_returns_none_message_when_no_described_skills ... ok
+test disable_claude_code_skills_keeps_agents ... ok
+test dirs_returns_discovered_directories ... ok
+test missing_skill_path_logs_warning_and_continues ... ok
+test global_skills_dirs_walk_up_from_home_only ... ok
+test builtin_customize_opencode_is_available_and_overridable ... ok
+test pulled_dirs_are_scanned ... ok
+test discovers_singular_and_plural_project_skills ... ok
+test available_is_sorted_by_name ... ok
+test discovers_global_and_external_skills ... ok
+test require_returns_not_found_with_available_list ... ok
+test skills_paths_are_scanned ... ok
+test skill_without_valid_frontmatter_is_skipped ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_config-0010675b28eac7a5)
+
+running 7 tests
+test load::tests::plugin_dedupe_keeps_last ... ok
+test managed::tests::strips_mdm_metadata_keys ... ok
+test load::tests::schema_insertion ... ok
+test load::tests::package_names ... ok
+test glob::tests::expands_braces ... ok
+test glob::tests::matches_segments ... ok
+test entry_name::tests::strips_prefixes_and_extensions ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/extra.rs (target/debug/deps/extra-8e553cb9c26aaffc)
+
+running 15 tests
+test markdown_parses_frontmatter_and_body ... ok
+test markdown_parses_lists_and_nested_maps ... ok
+test resolve_plugin_spec_keeps_package_specs ... ok
+test markdown_sanitize_handles_unquoted_colons ... ok
+test markdown_returns_none_for_unparsable_frontmatter ... ok
+test config_from_text_without_filesystem ... ok
+test load_errors_on_invalid_top_level_key ... ok
+test variable_missing_file_empty_mode ... ok
+test variable_missing_file_errors ... ok
+test variable_substitution_skips_commented_lines ... ok
+test load_errors_on_invalid_json ... ok
+test full_load_serialization_golden ... ok
+test resolve_plugin_spec_preserves_options ... ok
+test resolve_plugin_spec_resolves_directories ... ok
+test resolve_plugin_spec_resolves_relative_files ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.11s
+
+     Running tests/golden.rs (target/debug/deps/golden-41ff3969296da21e)
+
+running 18 tests
+test agent_tools_migrate_to_permission ... ok
+test accepts_theme_color ... ok
+test jsonc_comments_and_trailing_commas ... ok
+test golden_exact_serialization ... ok
+test invalid_jsonc_errors ... ok
+test config_parse_type_accessors ... ok
+test agent_unknown_keys_move_to_options ... ok
+test agent_steps_falls_back_to_max_steps ... ok
+test permission_scalar_normalizes_to_star ... ok
+test golden_full_config ... ok
+test rejects_unknown_top_level_permission_action ... ok
+test rejects_invalid_agent_color ... ok
+test golden_v2_types_round_trip ... ok
+test lsp_requires_extensions_for_custom_servers ... ok
+test mode_and_agent_share_agent_schema ... ok
+test unknown_top_level_keys_error ... ok
+test lsp_accepts_builtin_without_extensions ... ok
+test permission_preserves_key_order ... ok
+
+test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/load.rs (target/debug/deps/load-74a63de84a62cffe)
+
+running 29 tests
+test agent_markdown_permission_preserves_key_order ... ok
+test autoshare_migrates_to_share ... ok
+test config_content_flag ... ok
+test compaction_defaults_preserved ... ok
+test discovers_agents_from_opencode_directory ... ok
+test disable_autocompact_and_prune_flags ... ok
+test disable_project_config_skips_project_files ... ok
+test discovers_commands_from_opencode_directory ... ok
+test discovers_local_plugins_as_file_urls ... ok
+test environment_variable_substitution ... ok
+test file_inclusion_substitution ... ok
+test global_config_is_loaded ... ok
+test instructions_are_concatenated_and_deduplicated ... ok
+test managed_config_overrides_user_config ... ok
+test jsonc_overrides_json_in_same_directory ... ok
+test legacy_toml_config_is_migrated ... ok
+test legacy_tui_keys_are_stripped ... ok
+test load_instance_state_directories_include_opencode_dirs ... ok
+test loads_with_defaults_and_seeds_global_config ... ok
+test local_opencode_overrides_project ... ok
+test invalid_permission_flag_is_ignored ... ok
+test mcp_deep_merges_preserving_base_properties ... ok
+test mode_field_migrates_to_agent_with_primary_mode ... ok
+test permission_flag_overrides ... ok
+test plugins_merge_and_dedupe_keeping_last ... ok
+test project_overrides_global ... ok
+test schema_added_to_project_config_preserves_env_var ... ok
+test tools_field_migrates_to_permission ... ok
+test username_comes_from_config_when_set ... ok
+
+test result: ok. 29 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.87s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_core-207f3f757d93504c)
+
+running 53 tests
+test account::tests::poll_result_json ... ok
+test account::tests::account_info_json ... ok
+test agent::tests::empty_agent_json ... ok
+test agent::tests::default_picks_first_selectable ... ok
+test background_job::tests::promote_marks_background ... ok
+test background_job::tests::start_and_wait ... ok
+test background_job::tests::error_job ... ok
+test agent::tests::select_falls_back_to_build ... ok
+test bus::tests::publish_and_listen_all ... ok
+test bus::tests::replay_divergence_detected ... ok
+test bus::tests::replay_idempotent_when_identical ... ok
+test bus::tests::durable_commit_and_read_back ... ok
+test catalog::tests::project_model_native_inherits_provider_url ... ok
+test catalog::tests::provider_available_filters_disabled ... ok
+test bus::tests::durable_stream_historical_and_live ... ok
+test command::tests::info_json_shape ... ok
+test credential::tests::value_json_shapes ... ok
+test bus::tests::publish_and_subscribe_typed ... ok
+test event::tests::encode_data_missing_field_errors ... ok
+test credential::tests::update_and_remove ... ok
+test credential::tests::create_replaces_integration_credential ... ok
+test file::tests::diff_json_shape ... ok
+test file_mutation::tests::bom_split_and_join ... ok
+test event::tests::encode_data_orders_fields_and_drops_excess ... ok
+test event::tests::payload_json_shape ... ok
+test file_mutation::tests::utf8_bom_detection ... ok
+test catalog::tests::small_model_regex ... ok
+test fs_util::tests::contains_checks_relative ... ok
+test event::tests::payload_json_with_durable_and_location ... ok
+test id::tests::ascending_with_given_prefix_passes_through ... ok
+test id::tests::ascending_rejects_bad_prefix ... ok
+test id::tests::timestamp_wraps_at_48_bits_like_reference ... ok
+test id::tests::unknown_prefix_key ... ok
+test id::tests::generated_id_has_prefix ... ok
+test id::tests::timestamp_roundtrip ... ok
+test identifier::tests::ascending_time_bytes ... ok
+test installation::tests::local_build_by_default ... ok
+test identifier::tests::ascending_wrapper_uses_prefix_format ... ok
+test project::tests::normalizes_scp_remote ... ok
+test project::tests::path_root_of_absolute ... ok
+test identifier::tests::counter_increments_within_millisecond ... ok
+test util::hash::tests::sha1_known_vector ... ok
+test project::tests::rejects_file_and_empty ... ok
+test project::tests::normalizes_https_remote ... ok
+test util::hash::tests::sha256_known_vector ... ok
+test provider::tests::provider_info_json ... ok
+test identifier::tests::descending_complements_time ... ok
+test background_job::tests::wait_timeout ... ok
+test util::wildcard::tests::escapes_regex_chars ... ok
+test util::wildcard::tests::question_mark ... ok
+test util::wildcard::tests::star_wildcards ... ok
+test util::wildcard::tests::trailing_space_star_optional ... ok
+test background_job::tests::extend_chains_segments ... ok
+
+test result: ok. 53 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/git.rs (target/debug/deps/git-3c675842180cf703)
+
+running 3 tests
+test index_ignored_paths ... ok
+test discover_and_history ... ok
+test capture_discard_changes ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.17s
+
+     Running tests/golden.rs (target/debug/deps/golden-cbfff283f1bce43e)
+
+running 7 tests
+test definition_registry_resolves_durable ... ok
+test event_payload_serializes_like_reference ... ok
+test descending_id_is_complemented ... ok
+test id_format_is_prefix_underscore_26 ... ok
+test durable_event_payload_field_order ... ok
+test id_timestamp_matches_reference ... ok
+test versioned_type_matches_reference ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_database-0aefc12f1cc61509)
+
+running 6 tests
+test database::tests::path_resolution ... ok
+test path::tests::posix_paths_pass_through ... ok
+test sqlite::tests::run_all_get_and_execute ... ok
+test sqlite::tests::transaction_rolls_back ... ok
+test sqlite::tests::export_round_trips ... ok
+test database::tests::open_and_crud ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/data_access.rs (target/debug/deps/data_access-cbc01efba1b4bc6a)
+
+running 1 test
+test session_message_part_round_trip ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/migrations.rs (target/debug/deps/migrations-c8fc629d25d66979)
+
+running 13 tests
+test accepts_the_temporary_replacement_session_metadata_migration_id ... ok
+test backfills_existing_context_epoch_rows_to_the_build_agent ... ok
+test normalizes_windows_storage_paths_and_leaves_posix_paths_untouched ... ok
+test does_not_replay_a_migrated_session_metadata_column ... ok
+test imports_existing_drizzle_migration_state ... ok
+test resets_beta_history_and_rebuilds_event_sourced_session_input_storage ... ok
+test skips_drizzle_import_when_migration_table_already_has_state ... ok
+test runs_session_usage_backfill_in_order_with_schema_changes ... ok
+test keeps_legacy_credential_fields_nullable ... ok
+test resets_incompatible_projected_session_messages_before_adding_sequence_order ... ok
+test rejects_a_non_empty_database_without_a_session_table ... ok
+test applies_tracked_migrations_to_an_empty_database ... ok
+test serializes_concurrent_embedded_initialization_for_one_database_path ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.10s
+
+     Running tests/schema_golden.rs (target/debug/deps/schema_golden-9710dde5e66ee962)
+
+running 1 test
+test schema_matches_reference_ddl ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_llm-97c4291a0b95cdc2)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running tests/golden.rs (target/debug/deps/golden-3a1050288d7aae4d)
+
+running 8 tests
+test route_model_requires_base_url ... ok
+test gemini_body ... ok
+test openai_chat_reasoning_content ... ok
+test anthropic_messages_body ... ok
+test openai_responses_body ... ok
+test openai_chat_body ... ok
+test openai_chat_system_update_wrapper ... ok
+test openai_chat_tool_messages ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/misc.rs (target/debug/deps/misc-885cff8397ffd6c1)
+
+running 10 tests
+test cache_policy_none_skips ... ok
+test cache_policy_object_ttl ... ok
+test cache_policy_auto_marks_hints ... ok
+test cache_policy_skips_openai ... ok
+test tool_to_definitions_names ... ok
+test aws_event_stream_framing_decodes ... ok
+test tool_dispatch_unknown_tool ... ok
+test tool_dispatch_failure ... ok
+test tool_dispatch_success ... ok
+test is_context_overflow_detection ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.38s
+
+     Running tests/stream.rs (target/debug/deps/stream-c3626ee367dffcf7)
+
+running 10 tests
+test gemini_streams_text ... ok
+test anthropic_messages_streams_tool_use ... ok
+test openai_chat_does_not_finalize_without_finish_reason ... ok
+test anthropic_messages_streams_text ... ok
+test gemini_streams_tool_call ... ok
+test openai_chat_streams_text ... ok
+test openai_chat_reasoning_deltas ... ok
+test openai_chat_streams_tool_call ... ok
+test openai_responses_streams_text ... ok
+test openai_responses_streams_tool_call ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_mcp-d45eb2ec490beeed)
+
+running 50 tests
+test catalog::tests::fetch_keys_escape_resource_client ... ok
+test catalog::tests::convert_input_schema_matches_reference ... ok
+test catalog::tests::sanitize_matches_reference ... ok
+test catalog::tests::tool_name_matches_reference ... ok
+test client::tests::progress_token_params_are_number_ids ... ok
+test catalog::tests::convert_input_schema_defaults_properties ... ok
+test auth::tests::get_for_url_matches_exact_url ... ok
+test auth::tests::corrupt_file_decodes_to_empty ... ok
+test auth::tests::set_get_roundtrip ... ok
+test auth::tests::update_and_clear_fields ... ok
+test crypto::tests::base64url_known_vectors ... ok
+test jsonrpc::tests::notification_serializes_exactly ... ok
+test config::tests::local_roundtrips ... ok
+test config::tests::remote_with_oauth_object_roundtrips ... ok
+test jsonrpc::tests::parses_server_response_with_string_id ... ok
+test config::tests::remote_with_oauth_false_roundtrips ... ok
+test config::tests::enabled_flag ... ok
+test crypto::tests::sha256_known_vectors ... ok
+test jsonrpc::tests::request_with_params_serializes_exactly ... ok
+test jsonrpc::tests::roundtrip_all_kinds ... ok
+test crypto::tests::pkce_challenge_matches_rfc_7636_example ... ok
+test jsonrpc::tests::request_without_params_omits_params ... ok
+test oauth::tests::config_from_none_is_default ... ok
+test oauth::tests::determine_scope_augments_offline_access ... ok
+test crypto::tests::code_verifier_is_43_chars_and_safe ... ok
+test oauth::tests::build_authorization_url_parameters ... ok
+test oauth::tests::determine_scope_uses_resource_scopes ... ok
+test oauth_callback::tests::url_decode_handles_encoding ... ok
+test oauth_callback::tests::cancel_pending_rejects ... ok
+test oauth::tests::extract_www_authenticate_parses_params ... ok
+test oauth_callback::tests::reject_on_error_param ... ok
+test oauth_callback::tests::resolves_pending_on_callback ... ok
+test oauth_callback::tests::rejects_unknown_state ... ok
+test oauth_provider::tests::client_metadata_matches_reference ... ok
+test oauth_callback::tests::rejects_missing_state ... ok
+test oauth_provider::tests::parse_redirect_uri_custom ... ok
+test transport::tests::sse_parser_handles_chunked_and_default_event ... ok
+test transport::tests::sse_parser_handles_message_and_endpoint_events ... ok
+test oauth_provider::tests::parse_redirect_uri_defaults ... ok
+test types::tests::initialize_result_parses ... ok
+test types::tests::call_tool_result_preserves_is_error ... ok
+test transport::tests::sse_parser_ignores_comments_and_empty_events ... ok
+test types::tests::call_tool_result_defaults_is_error_false ... ok
+test types::tests::call_tool_params_serializes_exactly ... ok
+test types::tests::tool_roundtrips_with_output_schema ... ok
+test types::tests::list_results_parse_next_cursor ... ok
+test transport::http::tests::parses_sse_message ... ok
+test util::tests::path_to_file_url_absolute ... ok
+test types::tests::tool_without_output_schema_parses ... ok
+test types::tests::text_content_block_serializes_exactly ... ok
+
+test result: ok. 50 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+
+     Running tests/http_oauth.rs (target/debug/deps/http_oauth-7e064b50d8ce9af4)
+
+running 3 tests
+test streamable_http_transport_roundtrip ... ok
+test oauth_flow_discovers_registers_and_exchanges ... ok
+test mcp_service_start_auth_and_finish_auth ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.72s
+
+     Running tests/stdio.rs (target/debug/deps/stdio-07205e7d02cf8079)
+
+running 3 tests
+test mcp_service_connects_configured_servers ... ok
+test stdio_client_initialize_list_and_call ... ok
+test stdio_wire_messages_match_reference ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.12s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_plugin-379636d68baeb353)
+
+running 46 tests
+test install::tests::manifest_detects_targets ... ok
+test install::tests::patches_plugin_config_add ... ok
+test install::tests::patches_plugin_config_with_options ... ok
+test js::runtime::tests::eval_and_call ... ok
+test js::runtime::tests::object_readback ... ok
+test js::runtime::tests::callbacks_survive_runtime_move ... ok
+test js::runtime::tests::promise_jobs_resolve ... ok
+test js::transpile::tests::handles_reference_example ... ok
+test js::runtime::tests::globals_roundtrip ... ok
+test js::transpile::tests::applies_asi_after_return ... ok
+test js::transpile::tests::keeps_arrow_bodies_intact ... ok
+test js::transpile::tests::strips_interfaces ... ok
+test js::transpile::tests::transforms_export_const ... ok
+test js::transpile::tests::transforms_import_alias ... ok
+test js::transpile::tests::transforms_imports ... ok
+test jsonc::tests::adds_plugin_to_existing_list ... ok
+test jsonc::tests::adds_plugin_when_missing ... ok
+test jsonc::tests::dedupes_by_package_name ... ok
+test jsonc::tests::parses_jsonc_with_comments ... ok
+test jsonc::tests::replaces_with_force ... ok
+test loader::tests::detects_deprecated ... ok
+test loader::tests::detects_path_specs ... ok
+test js::transpile::tests::strips_type_annotations ... ok
+test loader::tests::extracts_import_specs ... ok
+test js::transpile::tests::applies_asi_on_newline_statements ... ok
+test loader::tests::parses_specifiers ... ok
+test loader::tests::reports_failed_plugins ... ok
+test js::transpile::tests::transforms_default_export_function ... ok
+test loader::tests::sanitizes_packages ... ok
+test js::transpile::tests::erases_import_type ... ok
+test js::transpile::tests::handles_reference_example_workspace ... ok
+test meta::tests::file_fingerprint_uses_modified ... ok
+test npm::tests::detects_git_specs ... ok
+test loader::tests::resolves_file_plugin ... ok
+test meta::tests::store_serializes_exact_shape ... ok
+test meta::tests::set_theme_persists ... ok
+test npm::tests::picks_versions ... ok
+test shared::tests::compatibility_gate ... ok
+test js::runtime::tests::json_bridge_callback ... ok
+test shared::tests::resolves_path_plugin_target ... ok
+test shared::tests::reads_package_and_entrypoint ... ok
+test meta::tests::touch_tracks_state_lifecycle ... ok
+test shared::tests::reads_plugin_id ... ok
+test npm::tests::parses_registry_url ... ok
+test npm::tests::unpacks_tarball ... ok
+test npm::tests::clones_git_plugin_from_local_repo ... ok
+
+test result: ok. 46 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.19s
+
+     Running tests/integration.rs (target/debug/deps/integration-3e148a891a62ba32)
+
+running 6 tests
+test module_resolver_resolves_relative_imports ... ok
+test v2_promise_plugin_transform ... ok
+test loads_reference_example_workspace_plugin ... ok
+test executes_reference_example_tool ... ok
+test triggers_hooks ... ok
+test loads_reference_example_plugin ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_project-1b5edf9e5a64a631)
+
+running 39 tests
+test project::instance_context::tests::path_inside_directory ... ok
+test project::instance_context::tests::worktree_check_covers_linked_directories ... ok
+test project::project::tests::from_row_omits_empty_icon ... ok
+test project::project_v2::tests::url_parses_scp_remotes_with_user ... ok
+test project::project::tests::from_row_maps_all_columns ... ok
+test project::project_v2::tests::url_parses_https_remotes ... ok
+test project::project_v2::tests::url_rejects_file_and_empty ... ok
+test project::instance_context::tests::path_outside_directory_but_inside_worktree_is_allowed ... ok
+test project::instance_context::tests::root_worktree_never_matches ... ok
+test project::vcs::tests::file_from_diff_path_strips_a_and_b_prefixes ... ok
+test project::vcs::tests::parse_quoted_path_unescapes ... ok
+test project::vcs::tests::empty_patch_renders_headers ... ok
+test schema::tests::snapshot_patch_golden ... ok
+test schema::tests::tagged_errors_serialize_with_tag ... ok
+test project::vcs::tests::split_git_patch_drops_last_chunk_when_truncated ... ok
+test schema::tests::vcs_file_status_golden ... ok
+test project::vcs::tests::parse_path_token_handles_quotes_and_tabs ... ok
+test project::vcs::tests::file_from_git_header_handles_plain_and_quoted ... ok
+test schema::tests::project_icon_uses_override_key ... ok
+test project::vcs::tests::split_git_patch_splits_on_diff_headers ... ok
+test schema::tests::project_info_serializes_omitting_absent_optionals ... ok
+test util::diff::tests::context_lines_are_included ... ok
+test util::diff::tests::empty_diff_renders_headers_only ... ok
+test util::diff::tests::insertion_renders_single_hunk ... ok
+test util::diff::tests::large_context_merges_into_one_hunk ... ok
+test snapshot::tests::args_prefixes_git_dir_and_work_tree ... ok
+test util::pathutil::tests::contains_matches_reference_semantics ... ok
+test schema::tests::worktree_create_input_golden ... ok
+test schema::tests::worktree_info_golden ... ok
+test snapshot::tests::nul_terminated_encoding_matches_reference ... ok
+test snapshot::tests::gitdir_follows_snapshot_path_rule ... ok
+test util::diff::tests::deletion_renders ... ok
+test worktree::tests::parse_worktree_list_parses_porcelain ... ok
+test worktree::tests::failed_removes_parses_warnings ... ok
+test util::pathutil::tests::resolve_handles_relative ... ok
+test util::pathutil::tests::relative_matches_reference ... ok
+test worktree::tests::worktree_name_path_rule ... ok
+test project::vcs::tests::file_from_patch_chunk_prefers_new_file ... ok
+test worktree::tests::slugify_matches_reference ... ok
+
+test result: ok. 39 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/project.rs (target/debug/deps/project-80b3b7b4bf923660)
+
+running 2 tests
+test from_directory_resolves_global_and_git_projects ... ok
+test from_directory_stamps_initialized_time_via_init_command ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running tests/snapshot.rs (target/debug/deps/snapshot-ab8f1c1b54990e59)
+
+running 1 test
+[2m2026-08-05T08:55:15.039683Z[0m [32m INFO[0m [2moc_project::project::project[0m[2m:[0m fromDirectory
+[2m2026-08-05T08:55:15.046598Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298779520), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.046718Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.046753Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783488), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.046790Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE
+[2m2026-08-05T08:55:15.046821Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.049683Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.049822Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.049918Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.051772Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.051825Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784256), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.051855Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298779520), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.051890Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785024), interests=READABLE
+[2m2026-08-05T08:55:15.051917Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.058209Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.058350Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.058437Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.059183Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785408), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.059270Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.059339Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.059381Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783488), interests=READABLE
+[2m2026-08-05T08:55:15.059408Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.063109Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.063198Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.063266Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.065299Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.065353Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785408), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.065380Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785024), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.065415Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298779520), interests=READABLE
+[2m2026-08-05T08:55:15.065441Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.067281Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.067366Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.067460Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.067982Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298880384), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.068048Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784256), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.068101Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785408), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.068134Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298785024), interests=READABLE
+[2m2026-08-05T08:55:15.068157Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.074195Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.074297Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.074354Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.075255Z[0m [32m INFO[0m [2moc_project::project::bootstrap[0m[2m:[0m bootstrapping
+[2m2026-08-05T08:55:15.082144Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.082222Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784256), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.082248Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.082287Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298880384), interests=READABLE
+[2m2026-08-05T08:55:15.082320Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.082821Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.082869Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.082911Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.084132Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783488), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.084171Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.084188Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298861440), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.084209Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298779520), interests=READABLE
+[2m2026-08-05T08:55:15.084226Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.091111Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.091157Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783488), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.091174Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298880384), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.091195Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE
+[2m2026-08-05T08:55:15.091211Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.091332Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.091370Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.091434Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.097116Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298879232), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.097162Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298878848), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.097179Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.097201Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE
+[2m2026-08-05T08:55:15.097217Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.097327Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.097374Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.097422Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.099321Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.099358Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298879232), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.099384Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298779520), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.099415Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE
+[2m2026-08-05T08:55:15.099442Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.099538Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.099575Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.099611Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.100252Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.100287Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.100304Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.100324Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298893952), interests=READABLE
+[2m2026-08-05T08:55:15.100340Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.103929Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.104003Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.104101Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.113180Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.113303Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.113374Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.137251Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.137374Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.137395Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.137425Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE
+[2m2026-08-05T08:55:15.137447Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.137730Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.137776Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.137842Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.139788Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298878848), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.139852Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.139871Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.139894Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE
+[2m2026-08-05T08:55:15.139914Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.155227Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.155381Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.155474Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.157392Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783872), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.157435Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.157462Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.157484Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE
+[2m2026-08-05T08:55:15.157587Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.178526Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.178827Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.179004Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.193140Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298890112), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.193304Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298878848), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.193340Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.193368Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE
+[2m2026-08-05T08:55:15.193387Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.197632Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.197723Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.197770Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.199232Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298878848), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.199270Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.199286Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.199307Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298890112), interests=READABLE
+[2m2026-08-05T08:55:15.199322Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.203122Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.203205Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.203273Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.208471Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.208515Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.208546Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.208579Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE
+[2m2026-08-05T08:55:15.208596Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.241818Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.241935Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.241983Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.242448Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784640), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.242485Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.242502Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.242521Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE
+[2m2026-08-05T08:55:15.242536Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.248135Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.248207Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.248247Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.255770Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298890112), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.255862Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.255929Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.255975Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE
+[2m2026-08-05T08:55:15.256062Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.256303Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.256382Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.256458Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.258389Z[0m [32m INFO[0m [2moc_project::snapshot[0m[2m:[0m initialized
+[2m2026-08-05T08:55:15.261898Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.261961Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.262003Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.262078Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298890112), interests=READABLE
+[2m2026-08-05T08:55:15.262099Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.262206Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.262243Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.262274Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.270408Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.270451Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.270467Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.270488Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298890112), interests=READABLE
+[2m2026-08-05T08:55:15.270503Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.273434Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.273605Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.273711Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.275350Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.275385Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.275401Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.275420Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE
+[2m2026-08-05T08:55:15.275435Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.277627Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.277705Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.277781Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.279246Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.279287Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.279305Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.279325Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.279350Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.313390Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.313618Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.313714Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.313828Z[0m [32m INFO[0m [2moc_project::snapshot[0m[2m:[0m tracking 52b0d1ec99d0748b20ca95a4de38102540621700
+[2m2026-08-05T08:55:15.374230Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.374312Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.374332Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.374359Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE
+[2m2026-08-05T08:55:15.374379Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.374856Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.374951Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.375111Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.377400Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784256), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.377439Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.377458Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.377479Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.377554Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.378892Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.378975Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.379089Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.380681Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.380737Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.380781Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.380809Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298784256), interests=READABLE
+[2m2026-08-05T08:55:15.380827Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.384867Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.384948Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.385077Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.387146Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.387180Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.387199Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.387219Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298894720), interests=READABLE
+[2m2026-08-05T08:55:15.387330Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.387691Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.387763Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.387851Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.390372Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.390407Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.390424Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.390443Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.390459Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.390547Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.390583Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.390613Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.393085Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.393137Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.393157Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.393179Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE
+[2m2026-08-05T08:55:15.393278Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.394882Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.394963Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.395086Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.398222Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398257Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398275Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398298Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE
+[2m2026-08-05T08:55:15.398335Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.398456Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.398498Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.398530Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.398585Z[0m [32m INFO[0m [2moc_project::snapshot[0m[2m:[0m tracking 22d1fae03e65ea36bc8b19ba15bc7a5436f9c4c1
+[2m2026-08-05T08:55:15.398899Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398927Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398945Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.398965Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE
+[2m2026-08-05T08:55:15.398982Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.401975Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.402052Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.402093Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.405190Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.405236Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.405268Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.405298Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE
+[2m2026-08-05T08:55:15.405323Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.405435Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.405559Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.405609Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.407699Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.407734Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.407751Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.407771Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE
+[2m2026-08-05T08:55:15.407867Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.409867Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.409957Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.410075Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.411994Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.412470Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.412522Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298783104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.412560Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.412660Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.455970Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.456172Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.456286Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.463441Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.463509Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.463555Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.463593Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE
+[2m2026-08-05T08:55:15.463611Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.470572Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.470788Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.470960Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.475139Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.475194Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.475212Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.475236Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE
+[2m2026-08-05T08:55:15.475264Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.475759Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.475888Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.476052Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.479105Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298969344), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.479169Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.479205Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.479230Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.479247Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.479819Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.479954Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.480185Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.484236Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.484325Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.484370Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.484418Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298969344), interests=READABLE
+[2m2026-08-05T08:55:15.484449Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.486044Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.486103Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.486166Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.489352Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.489393Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298895104), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.489412Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.489435Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE
+[2m2026-08-05T08:55:15.489617Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.492115Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.492203Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.492258Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.492408Z[0m [32m INFO[0m [2moc_project::snapshot[0m[2m:[0m restore 52b0d1ec99d0748b20ca95a4de38102540621700
+[2m2026-08-05T08:55:15.493796Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298882688), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.493833Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.493855Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.493893Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.493927Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.498260Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.498356Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.498402Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.501742Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298969344), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.501827Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298889728), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.501861Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298886016), interests=READABLE | WRITABLE
+[2m2026-08-05T08:55:15.501889Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m registering event source with poller: token=Token(129306298871680), interests=READABLE
+[2m2026-08-05T08:55:15.501906Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.504952Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.505007Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+[2m2026-08-05T08:55:15.505065Z[0m [35mTRACE[0m [2mmio::poll[0m[2m:[0m deregistering event source from poller
+test snapshot_track_diff_and_restore ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.53s
+
+     Running tests/worktree.rs (target/debug/deps/worktree-7a55295f07d09275)
+
+running 1 test
+test worktree_path_rule_and_lifecycle ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.28s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_provider-5a29f10a20c9c19c)
+
+running 129 tests
+test credential::tests::create_replaces_per_integration ... ok
+test auth::tests::set_and_remove_roundtrip ... ok
+test auth::tests::set_normalizes_trailing_slashes ... ok
+test auth::tests::set_cleans_up_pre_existing_trailing_slash_entry ... ok
+test credential::tests::id_prefix ... ok
+test provider::error::tests::parse_api_call_error_413_context_overflow ... ok
+test provider::error::tests::parse_api_call_error_extracts_message_field ... ok
+test auth::tests::file_store_roundtrip ... ok
+test credential::tests::roundtrip ... ok
+test auth::tests::info_serializes_with_type_discriminator ... ok
+test provider::error::tests::parse_api_call_error_empty_message_uses_status_text ... ok
+test provider::error::tests::parse_api_call_error_html_401_gateway ... ok
+test auth::tests::remove_deletes_both_normalized_and_trailing_slash_keys ... ok
+test provider::error::tests::parse_api_call_error_status_text_returns_message ... ok
+test provider::error::tests::parse_api_call_error_openai_404_retryable ... ok
+test provider::error::tests::parse_stream_error_nested_message ... ok
+test provider::error::tests::parse_api_call_error_html_403_forbidden ... ok
+test credential::tests::value_serializes_with_type_discriminator ... ok
+test provider::error::tests::parse_stream_error_context_overflow ... ok
+test provider::error::tests::parse_api_call_error_context_overflow_by_code ... ok
+test provider::error::tests::parse_stream_error_unknown_code ... ok
+test provider::transform::tests::google_thinking_config::sets_thinking_config_with_reasoning ... ok
+test provider::transform::tests::gpt5_reasoning_effort::gpt5_chat_no_reasoning_effort ... ok
+test provider::transform::tests::gpt5_reasoning_effort::gpt5_6_medium_for_responses ... ok
+test provider::transform::tests::gateway_options::gateway_defaults_under_gateway_key ... ok
+test provider::transform::tests::google_thinking_config::no_thinking_config_for_vertex_without_reasoning ... ok
+test provider::transform::tests::google_thinking_config::no_thinking_config_without_reasoning ... ok
+test provider::transform::tests::gpt5_text_verbosity::bedrock_mantle_gpt5_5_uses_openai_responses_defaults ... ok
+test provider::transform::tests::gpt5_text_verbosity::chat_models_have_no_text_verbosity ... ok
+test provider::transform::tests::gpt5_reasoning_effort::gpt5_5_no_effort_for_completions ... ok
+test provider::transform::tests::gpt5_text_verbosity::gpt5_1_has_text_verbosity_low ... ok
+test provider::transform::tests::gpt5_text_verbosity::gpt5_2_has_text_verbosity_low ... ok
+test provider::transform::tests::message_tests::azure_keeps_azure_key_and_does_not_remap_to_openai ... ok
+test provider::transform::tests::message_tests::anthropic_filters_empty_text_parts ... ok
+test provider::transform::tests::message_tests::azure_cognitive_services_remaps_to_azure_key ... ok
+test provider::transform::tests::message_tests::bedrock_remaps_to_bedrock_key ... ok
+test provider::transform::tests::gpt5_text_verbosity::openai_compatible_omits_responses_only_reasoning_summary ... ok
+test provider::transform::tests::message_tests::anthropic_filters_empty_content ... ok
+test provider::transform::tests::message_tests::anthropic_removes_message_when_all_parts_empty ... ok
+test provider::transform::tests::message_tests::empty_image_replaced_with_error_text ... ok
+test provider::transform::tests::message_tests::non_deepseek_leaves_reasoning_unchanged ... ok
+test provider::transform::tests::message_tests::preserves_openai_item_id_when_store_true ... ok
+test provider::transform::tests::minimax_m3_thinking::openai_compatible_uses_native_default ... ok
+test provider::transform::tests::message_tests::strips_openai_item_id_when_store_false ... ok
+test provider::transform::tests::message_tests::copilot_remaps_to_copilot_key ... ok
+test provider::transform::tests::message_tests::valid_image_kept ... ok
+test provider::transform::tests::message_tests::deepseek_reasoning_content_in_provider_options ... ok
+test provider::transform::tests::message_tests::does_not_filter_for_non_anthropic ... ok
+test provider::transform::tests::message_tests::mistral_tool_call_ids_normalized ... ok
+test provider::transform::tests::minimax_m3_thinking::anthropic_sdk_uses_adaptive_thinking ... ok
+test provider::transform::tests::provider_options_tests::gateway_key_fallback_when_unscoped ... ok
+test provider::transform::tests::provider_options_tests::gateway_model_provider_slug ... ok
+test provider::transform::tests::provider_options_tests::mantle_maps_to_openai_namespace ... ok
+test provider::transform::tests::provider_options_tests::forces_reasoning_for_mantle_with_explicit_effort ... ok
+test provider::transform::tests::provider_options_tests::forces_reasoning_for_custom_openai_models_with_explicit_effort ... ok
+test provider::transform::tests::provider_options_tests::forces_reasoning_for_explicit_effort_when_not_reasoning_capable ... ok
+test provider::transform::tests::provider_options_tests::canonical_sdk_key_for_custom_xai ... ok
+test provider::transform::tests::provider_options_tests::maps_amazon_slug_to_bedrock ... ok
+test provider::transform::tests::provider_options_tests::forces_reasoning_for_openai_reasoning_capable ... ok
+test provider::transform::tests::provider_options_tests::forces_reasoning_for_azure_with_explicit_effort ... ok
+test provider::transform::tests::sampling_tests::sanitize_surrogates_passes_valid_utf8 ... ok
+test provider::transform::tests::sampling_tests::max_output_tokens_caps ... ok
+test provider::transform::tests::provider_options_tests::overrides_force_reasoning_false ... ok
+test provider::transform::tests::provider_options_tests::gateway_key_fallback_when_no_provider_slug ... ok
+test provider::transform::tests::sampling_tests::top_k_defaults ... ok
+test provider::transform::tests::sampling_tests::top_p_defaults ... ok
+test provider::transform::tests::schema_tests::does_not_sanitize_non_openai_providers ... ok
+test provider::transform::tests::provider_options_tests::uses_sdk_key_for_non_gateway_models ... ok
+test provider::transform::tests::schema_tests::gemini_collapses_all_null_type_array ... ok
+test provider::transform::tests::schema_tests::gemini_keeps_combiner_nodes_untouched ... ok
+test provider::transform::tests::provider_options_tests::splits_gateway_routing_from_provider_options ... ok
+test provider::transform::tests::sampling_tests::temperature_defaults ... ok
+test provider::transform::tests::schema_tests::gemini_adds_missing_array_items ... ok
+test provider::transform::tests::schema_tests::gemini_removes_properties_from_non_object_types ... ok
+test provider::transform::tests::schema_tests::gemini_nested_arrays_get_default_item_type ... ok
+test provider::transform::tests::schema_tests::gemini_splits_type_arrays_into_any_of ... ok
+test provider::transform::tests::schema_tests::gemini_lifts_null_into_nullable ... ok
+test provider::transform::tests::schema_tests::openai_supported_schema_subset ... ok
+test provider::transform::tests::schema_tests::gemini_rewrites_type_arrays_for_copilot ... ok
+test provider::transform::tests::set_cache_key::no_prompt_cache_key_for_openai_compatible_by_provider_name ... ok
+test provider::transform::tests::schema_tests::openai_keeps_local_refs_and_sanitizes_definitions ... ok
+test provider::transform::tests::set_cache_key::azure_gpt5_5_keeps_cache_key ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_not_set_when_explicitly_false ... ok
+test provider::transform::tests::schema_tests::moonshot_converts_tuple_items_to_single_schema ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_for_openai_sdk_regardless_of_provider_id ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_set_when_explicitly_true ... ok
+test provider::transform::tests::schema_tests::moonshot_removes_ref_siblings ... ok
+test provider::transform::tests::set_cache_key::snake_case_key_for_deepinfra_and_cerebras ... ok
+test provider::transform::tests::set_cache_key::openai_disabled_keeps_store_false ... ok
+test provider::transform::tests::set_cache_key::store_false_for_openai ... ok
+test provider::transform::tests::set_cache_key::store_false_for_xai ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_for_mistral ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_not_set_without_provider_options ... ok
+test provider::transform::tests::set_cache_key::xai_disabled ... ok
+test provider::transform::tests::set_cache_key::prompt_cache_key_for_openai_by_default ... ok
+test provider::transform::tests::set_cache_key::no_undocumented_openrouter_cache_key ... ok
+test provider::transform::tests::set_cache_key::xai_sdk_by_default ... ok
+test provider::transform::tests::small_options_tests::openai_merges_store_false_with_first_variant ... ok
+test provider::transform::tests::small_options_tests::openrouter_google_reasoning_disabled ... ok
+test provider::transform::tests::small_options_tests::venice_uses_first_variant_or_disable_thinking ... ok
+test provider::transform::tests::set_cache_key::store_false_for_azure ... ok
+test provider::transform::tests::variants_tests::azure_o1_mini_empty ... ok
+test provider::transform::tests::variants_tests::cerebras_efforts ... ok
+test provider::transform::tests::variants_tests::copilot_gpt5_2_includes_xhigh ... ok
+test provider::transform::tests::variants_tests::bedrock_nova_reasoning_config ... ok
+test provider::transform::tests::variants_tests::copilot_gemini_empty ... ok
+test provider::transform::tests::variants_tests::deepseek_chat_returns_empty ... ok
+test provider::transform::tests::variants_tests::empty_when_not_reasoning ... ok
+test provider::transform::tests::variants_tests::copilot_standard_efforts ... ok
+test provider::transform::tests::variants_tests::cohere_and_perplexity_empty ... ok
+test provider::transform::tests::variants_tests::google_thinking_variants_25 ... ok
+test provider::transform::tests::variants_tests::google_thinking_level_variants ... ok
+test provider::transform::tests::variants_tests::groq_efforts ... ok
+test provider::transform::tests::variants_tests::bedrock_anthropic_reasoning_config ... ok
+test provider::transform::tests::variants_tests::anthropic_copilot_opus_4_7_only_medium ... ok
+test provider::transform::tests::variants_tests::anthropic_adaptive_efforts_for_modern_models ... ok
+test provider::transform::tests::variants_tests::anthropic_high_max_with_thinking ... ok
+test provider::transform::tests::variants_tests::gateway_anthropic_adaptive ... ok
+test provider::transform::tests::variants_tests::mistral_reasoning_ids_only ... ok
+test provider::transform::tests::variants_tests::openai_compatible_deepseek_v4_has_max ... ok
+test provider::transform::tests::variants_tests::openai_compatible_north_mini_code ... ok
+test provider::transform::tests::variants_tests::openai_gpt5_pro_only_high ... ok
+test provider::transform::tests::zai_thinking::sets_thinking_config ... ok
+test provider::transform::tests::variants_tests::openai_xhigh_effort_after_release_date ... ok
+test provider::transform::tests::variants_tests::gateway_openai_efforts ... ok
+test provider::transform::tests::variants_tests::openrouter_uses_openai_efforts_for_gpt ... ok
+test provider::transform::tests::variants_tests::openai_gpt5_standard_efforts ... ok
+test provider::transform::tests::variants_tests::openai_none_effort_after_release_date ... ok
+test provider::transform::tests::variants_tests::openai_gpt50_lookalike_untreated ... ok
+
+test result: ok. 129 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/auth_flow.rs (target/debug/deps/auth_flow-97cdaf1b8fb3da58)
+
+running 13 tests
+test authorize_non_oauth_returns_none ... ok
+test callback_without_pending_returns_oauth_missing ... ok
+test login_api_key_flow_stores_credential ... ok
+test login_url_failed_command_does_not_store ... ok
+test methods_returns_plugin_methods ... ok
+test authorize_returns_url_and_method ... ok
+test resolve_plugin_providers_filters_known_and_disabled ... ok
+test authorize_runs_text_prompt_validation ... ok
+test callback_stores_oauth_credentials ... ok
+test callback_failed_result_returns_oauth_callback_failed ... ok
+test callback_code_method_without_code_returns_code_missing ... ok
+test login_unknown_provider_errors ... ok
+test login_url_stores_wellknown_credential ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/registry.rs (target/debug/deps/registry-2e1b48bb3f3e5c12)
+
+running 15 tests
+test default_model_ids_uses_sorted_first ... ok
+test cost_conversion_defaults ... ok
+test models_dev_normalization_fills_defaults ... ok
+test models_dev_reasoning_options_drive_variants ... ok
+test parse_model_handles_slashes ... ok
+test build_registry_respects_disabled_providers ... ok
+test experimental_modes_expand_models ... ok
+test sort_prioritizes_preferred_models ... ok
+test build_registry_config_provider_merges_models ... ok
+test snapshot_converts_to_provider_info ... ok
+test build_registry_custom_source_patch_preserves_models ... ok
+test build_registry_applies_custom_loader_options ... ok
+test build_registry_merges_env_and_api_keys ... ok
+test snapshot_has_expected_providers ... ok
+test build_registry_filters_alpha_and_deprecated ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.16s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_schema-71675112582abbeb)
+
+running 11 tests
+test identifier::tests::ids_are_ascending_with_timestamp ... ok
+test event::tests::durable_map_keys ... ok
+test event::tests::latest_keeps_newer_durable_version ... ok
+test agent::tests::color_accepts_hex_and_literals ... ok
+test identifier::tests::descending_is_not_ascending ... ok
+test workspace_id::tests::creates_wrk_ids ... ok
+test session_id::tests::creates_ses_ids ... ok
+test schema::tests::finite_roundtrips ... ok
+test workspace_id::tests::accepts_or_rejects_given_ids ... ok
+test identifier::tests::ids_have_expected_shape ... ok
+test schema::tests::finite_serialization_matches_ecmascript ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/golden_core.rs (target/debug/deps/golden_core-63450f48c2b31906)
+
+running 27 tests
+test agent_empty ... ok
+test agent_info_full ... ok
+test filesystem_entry_and_match ... ok
+test credential_union ... ok
+test llm_tool_content ... ok
+test location_ref ... ok
+test model_api_union ... ok
+test model_empty ... ok
+test provider_api_union ... ok
+test provider_empty ... ok
+test provider_info_full ... ok
+test pty_info_and_inputs ... ok
+test pty_ticket ... ok
+test question_info_and_reply ... ok
+test command_info ... ok
+test file_diff_info ... ok
+test connection_union ... ok
+test location_info ... ok
+test prompt_and_attachments ... ok
+test model_cost ... ok
+test question_request ... ok
+test session_info ... ok
+test session_input_admitted ... ok
+test revert_state ... ok
+test revert_file_diff ... ok
+test skill_sources ... ok
+test session_list_anchor ... ok
+
+test result: ok. 27 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/golden_events.rs (target/debug/deps/golden_events-8db7a96a270925a6)
+
+running 28 tests
+test catalog_updated ... ok
+test integration_events ... ok
+test lsp_updated ... ok
+test installation_events ... ok
+test metadata_roundtrip ... ok
+test permission_request_and_events ... ok
+test ide_installed ... ok
+test integration_attempt_status ... ok
+test filesystem_and_watcher_events ... ok
+test integration_method_union ... ok
+test mcp_events ... ok
+test models_dev_refreshed ... ok
+test pty_events ... ok
+test project_info_and_event ... ok
+test permission_saved_info ... ok
+test project_copy_inputs ... ok
+test project_directories_updated ... ok
+test server_events ... ok
+test question_events ... ok
+test plugin_added ... ok
+test reference_updated_and_info ... ok
+test tui_events ... ok
+test session_compacted ... ok
+test vcs_branch_updated ... ok
+test worktree_events ... ok
+test session_status_events ... ok
+test workspace_events ... ok
+test session_todo_events ... ok
+
+test result: ok. 28 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/golden_manifest.rs (target/debug/deps/golden_manifest-f5d66ae69a7a247a)
+
+running 8 tests
+test event_definition_statics ... ok
+test latest_prefers_newer_durable_version ... ok
+test durable_manifest_keys ... ok
+test versioned_type_format ... ok
+test definitions_inventory_is_ordered_and_complete ... ok
+test durable_map_rejects_duplicate_keys ... ok
+test event_latest_rejects_duplicate_non_durable ... ok
+test server_definitions_is_a_prefix_subset ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/golden_messages.rs (target/debug/deps/golden_messages-a71a87be4e3dc57f)
+
+running 22 tests
+test message_roundtrip ... ok
+test message_shell ... ok
+test message_synthetic ... ok
+test message_compaction ... ok
+test message_agent_switched ... ok
+test assistant_content_variants ... ok
+test flattened_tool_events_roundtrip ... ok
+test session_event_prompted ... ok
+test message_system ... ok
+test message_user ... ok
+test message_user_with_files ... ok
+test message_model_switched ... ok
+test session_event_text_delta ... ok
+test model_info_roundtrip ... ok
+test session_event_tool_called ... ok
+test message_assistant ... ok
+test session_id_creation_shape ... ok
+test session_info_roundtrip ... ok
+test session_event_step_ended ... ok
+test session_event_roundtrip ... ok
+test session_event_retried ... ok
+test tool_state_variants ... ok
+
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running tests/golden_v1.rs (target/debug/deps/golden_v1-dd0a87408205b760)
+
+running 24 tests
+test v1_output_format ... ok
+test v1_assistant_message ... ok
+test v1_part_delta ... ok
+test v1_compaction_part ... ok
+test v1_file_part_with_symbol_source ... ok
+test v1_agent_part ... ok
+test v1_part_inputs ... ok
+test legacy_command_executed ... ok
+test v1_error_union ... ok
+test v1_session_info ... ok
+test v1_retry_part ... ok
+test v1_question_events ... ok
+test v1_snapshot_and_patch_parts ... ok
+test v1_session_error_event ... ok
+test v1_session_events ... ok
+test v1_permission_events ... ok
+test v1_subtask_part ... ok
+test v1_text_part ... ok
+test v1_step_parts ... ok
+test v1_permission_ask_and_reply ... ok
+test v1_tool_part_and_states ... ok
+test v1_user_message ... ok
+test v1_reasoning_part ... ok
+test v1_with_parts ... ok
+
+test result: ok. 24 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_server-581fa1762b5133e6)
+
+running 34 tests
+test auth::tests::authorized_matches_exact_credentials ... ok
+test auth::tests::credentials_from_request_prefers_query_token ... ok
+test auth::tests::basic_header_roundtrip ... ok
+test auth::tests::empty_password_disables_auth ... ok
+test event::tests::event_ids_are_unique_and_prefixed ... ok
+test cors::tests::allows_same_host ... ok
+test location::tests::resolves_from_headers ... ok
+test cors::tests::allows_loopback_and_native_schemes ... ok
+test auth::tests::malformed_credentials_decode_empty ... ok
+test middleware::tests::truncates_long_reasons ... ok
+test event::tests::bus_fans_out_to_subscribers ... ok
+test middleware::tests::ticketed_pty_connect_skips_auth ... ok
+test proxy_util::tests::parses_protocol_header ... ok
+test openapi::tests::paths_use_openapi_params ... ok
+test location::tests::resolves_from_query ... ok
+test proxy_util::tests::rewrites_ws_target ... ok
+test schema::tests::admitted_serializes_reference_names ... ok
+test proxy_util::tests::strips_hop_by_hop ... ok
+test route::tests::axum_path_conversion ... ok
+test schema::tests::location_response_shape ... ok
+test schema::tests::session_info_serializes_reference_names ... ok
+test cors::tests::allows_configured_origins ... ok
+test cors::tests::allows_opencode_origin ... ok
+test shared::fence::tests::parses_fence_header ... ok
+test shared::pty_ticket::tests::pty_connect_ticket_matching ... ok
+test shared::fence::tests::diffs_sequences ... ok
+test route::tests::route_ids_are_unique ... ok
+test shared::workspace_routing::tests::route_classification ... ok
+test shared::workspace_routing::tests::session_id_extraction ... ok
+test sse::tests::connected_event_frame_matches_reference ... ok
+test state::tests::state_bootstraps ... ok
+test sse::tests::frame_uses_event_and_data_lines ... ok
+test openapi::tests::document_has_expected_shape ... ok
+test server::tests::listen_binds_and_stops ... ok
+
+test result: ok. 34 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running tests/api.rs (target/debug/deps/api-43b0686aef3ed4e3)
+
+running 15 tests
+test config_get_returns_config ... ok
+test auth_token_query_bypasses ... ok
+test global_health_has_version ... ok
+test cors_preflight_allows_localhost_origin ... ok
+test auth_requires_credentials ... ok
+test event_stream_emits_connected_first ... ok
+test create_session_matches_reference_shape ... ok
+test health_returns_healthy_true ... ok
+test missing_message_is_404_tagged ... ok
+test unknown_route_is_404 ... ok
+test prompt_returns_admitted_input ... ok
+test message_roundtrip ... ok
+test prompt_for_missing_session_is_404 ... ok
+test session_list_returns_cursor ... ok
+test doc_serves_openapi ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/route_table.rs (target/debug/deps/route_table-d8b14db419b9231e)
+
+running 3 tests
+test key_route_ids_are_expected ... ok
+test route_ids_are_stable_and_unique ... ok
+test route_table_matches_reference ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_session-b027e146c2ac99f3)
+
+running 93 tests
+test compaction_core::tests::build_prompt_anchors_previous_summary ... ok
+test compaction_core::tests::serialize_user_includes_attachments ... ok
+test compaction::tests::summary_text_joins_text_parts ... ok
+test compaction::tests::turns_skip_compaction_messages ... ok
+test compaction::tests::completed_compactions_only_for_summary_assistant ... ok
+test compaction::tests::create_compaction_message_builds_user_and_part ... ok
+test compaction_core::tests::select_splits_head_and_recent ... ok
+test identifier::tests::ascending_ids_sort_chronologically ... ok
+test compaction_core::tests::build_prompt_without_previous_summary ... ok
+test history::tests::message_rows_filter_by_compaction_and_baseline ... ok
+test compaction_core::tests::settings_merge_matches_reference ... ok
+test identifier::tests::prefix_matches_reference_table ... ok
+test identifier::tests::same_timestamp_counter_bumps ... ok
+test history::tests::decode_row_reinjects_id_and_type ... ok
+test input::tests::equivalent_compares_prompt_json_and_delivery ... ok
+test instruction::tests::extract_collects_loaded_read_paths ... ok
+test input::tests::admitted_serializes_with_promoted_seq_omitted ... ok
+test instruction::tests::system_instructions_skip_remote_in_paths ... ok
+test identifier::tests::given_id_is_validated ... ok
+test identifier::tests::descending_ids_reverse_order ... ok
+test identifier::tests::high_timestamp_wraps_48_bits_without_panicking ... ok
+test message::tests::tool_invocation_is_state_tagged ... ok
+test message_updater::tests::prompted_appends_user_message ... ok
+test message_updater::tests::step_started_then_text_delta_accumulates ... ok
+test message_v2::tests::cursor_round_trips ... ok
+test message_v2::tests::to_model_output_string ... ok
+test message_v2::tests::filter_compacted_passthrough_when_no_compaction ... ok
+test message_v2::tests::from_error_abort ... ok
+test message_v2::tests::is_media_matches_images_and_pdf ... ok
+test message_v2::tests::latest_finds_newest_by_id ... ok
+test message_v2::tests::truncate_tool_output_notes_omitted_chars ... ok
+test overflow::tests::overflow_when_count_at_or_above_usable ... ok
+test overflow::tests::zero_context_never_overflows ... ok
+test permission::tests::evaluate_falls_back_to_ask ... ok
+test processor::tests::summary_message_rejects_tool_calls ... ok
+test processor::tests::text_stream_produces_text_part ... ok
+test overflow::tests::auto_false_disables_overflow ... ok
+test prompt::tests::is_orphaned_interrupted_tool_detection ... ok
+test prompt::tests::file_regex_ignores_email_like_references ... ok
+test prompt::tests::arguments_appended_when_no_placeholders ... ok
+test permission::tests::disabled_skips_non_wildcard_patterns ... ok
+test reminders::tests::build_after_plan_gets_build_switch ... ok
+test prompt::tests::create_user_message_persists_and_switches_agent ... ok
+test reminders::tests::plan_agent_gets_plan_reminder ... ok
+test retry::tests::backoff_capped_without_headers ... ok
+test retry::tests::free_tier_upsell ... ok
+test retry::tests::non_retryable_4xx_is_not_retried ... ok
+test retry::tests::overloaded_message_rewritten ... ok
+test retry::tests::go_usage_limit_message ... ok
+test retry::tests::retry_after_header_used ... ok
+test retry::tests::server_error_always_retried ... ok
+test revert::tests::cleanup_removes_messages_after_revert_point ... ok
+test revert::tests::revert_points_at_last_user_without_part_id ... ok
+test prompt::tests::last_placeholder_joins_remaining_args ... ok
+test prompt::tests::mcp_resource_size_calculation ... ok
+test retry::tests::context_overflow_is_not_retried ... ok
+test permission::tests::wildcard_star_matches_any ... ok
+test prompt::tests::placeholder_substitution_matches_reference ... ok
+test run_state::tests::ensure_running_runs_once_when_idle ... ok
+test service::tests::iso_timestamp_matches_js_to_iso_string ... ok
+test session::tests::usage_counts_zero_when_nothing_reported ... ok
+test service::tests::create_next_defaults_title_and_ids ... ok
+test session::tests::usage_subtracts_cache_from_input ... ok
+test service::tests::get_returns_not_found_message ... ok
+test status::tests::idle_is_default ... ok
+test status::tests::retry_info_serializes ... ok
+test summary::tests::compute_diff_uses_step_snapshots ... ok
+test summary::tests::unquotes_escaped_names ... ok
+test summary::tests::unquotes_plain_strings ... ok
+test system::tests::environment_block_matches_reference ... ok
+test system::tests::environment_sorts_references ... ok
+test system::tests::provider_anthropic ... ok
+test system::tests::provider_defaults_for_unknown ... ok
+test system::tests::provider_selects_gpt_beast_prompt ... ok
+test todo::tests::info_serializes_with_reference_fields ... ok
+test tools::tests::base64_size_matches_reference ... ok
+test tools::tests::format_content_flattens_text_and_attachments ... ok
+test tools::tests::format_mcp_resource_swaps_client_for_server ... ok
+test tools::tests::read_args_required_fields ... ok
+test util::tests::base64_round_trip ... ok
+test util::tests::base64url_round_trip ... ok
+test util::tests::decode_data_url_plain ... ok
+test util::tests::http_date_rfc1123 ... ok
+test util::tests::token_estimate ... ok
+test status::tests::busy_then_idle_removes_entry ... ok
+test summary::tests::diff_unquotes_git_paths ... ok
+test v1::tests::named_error_uses_adjacent_tag ... ok
+test v1::tests::assistant_serializes_full_shape ... ok
+test v1::tests::text_part_round_trips_with_optional_fields ... ok
+test prompt::tests::resolve_prompt_parts_resolves_files_agents_and_text ... ok
+test session::tests::fork_title_increments ... ok
+test session::tests::default_titles_match_reference ... ok
+test run_state::tests::start_shell_rejects_when_busy ... ok
+
+test result: ok. 93 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/golden.rs (target/debug/deps/golden-359f1a6d85ad19cc)
+
+running 7 tests
+test session_info_json_matches_reference_shape ... ok
+test skills_block_omitted_when_denied ... ok
+test default_model_prompt_is_default ... ok
+test system_prompt_assembles_env_instructions_mcp_skills_in_order ... ok
+test system_prompt_environment_block_is_verbatim ... ok
+test mcp_block_omitted_when_all_tools_denied ... ok
+test default_title_uses_iso_string ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+     Running tests/roundtrip.rs (target/debug/deps/roundtrip-221d7871c62b3ef7)
+
+running 8 tests
+test v2_compaction_message_round_trip ... ok
+test message_part_round_trip ... ok
+test v1_text_part_round_trip ... ok
+test v1_user_message_round_trip ... ok
+test v2_assistant_message_round_trip ... ok
+test v1_session_info_round_trip ... ok
+test v2_message_round_trip ... ok
+test v1_tool_part_round_trip ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_session_runner-578a208a34c2afc6)
+
+running 44 tests
+test retry::tests::delay_caps_retry_after_to_max ... ok
+test retry::tests::delay_honors_retry_after_seconds_header ... ok
+test retry::tests::delay_backs_off_exponentially_without_headers ... ok
+test retry::tests::exhausted_code_is_overloaded ... ok
+test retry::tests::delay_caps_without_headers ... ok
+test retry::tests::free_usage_limit_upsells ... ok
+test retry::tests::any_5xx_is_retried_even_when_not_marked ... ok
+test retry::tests::delay_honors_retry_after_ms_header ... ok
+test retry::tests::context_overflow_is_not_retryable ... ok
+test retry::tests::unknown_plain_error_is_not_retried ... ok
+test runner::llm::tests::non_hex_id_prompt_key_is_unchanged ... ok
+test retry::tests::non_retryable_4xx_is_not_retried ... ok
+test retry::tests::retryable_4xx_is_retried ... ok
+test retry::tests::overloaded_message_is_mapped ... ok
+test retry::tests::too_many_requests_json_is_mapped ... ok
+test retry::tests::plain_rate_limit_pattern_is_retried ... ok
+test retry::tests::policy_reports_and_returns_delay ... ok
+test runner::llm::tests::ses_hex_id_prompt_key_strips_prefix ... ok
+test runner::max_steps::tests::prompt_matches_reference_exactly ... ok
+test runner::model::tests::variant_overrides_body ... ok
+test runner::model::tests::supported_native_providers ... ok
+test runner::model::tests::unknown_variant_is_an_error ... ok
+test runner::model::tests::default_variant_resolves_to_base ... ok
+test runner::publish_llm_event::tests::fail_unsettled_tools_hosted_only_skips_local ... ok
+test runner::publish_llm_event::tests::text_stream_emits_expected_events ... ok
+test runner::publish_llm_event::tests::step_finish_records_settlement ... ok
+test runner::publish_llm_event::tests::tool_call_then_result_success ... ok
+test runner::publish_llm_event::tests::provider_error_fails_assistant ... ok
+test runner::to_llm_message::tests::empty_text_is_filtered ... ok
+test runner::to_llm_message::tests::compaction_lowers_to_checkpoint ... ok
+test runner::to_llm_message::tests::system_and_shell_lower ... ok
+test runner::to_llm_message::tests::tool_results_are_separate_tool_messages ... ok
+test runner::to_llm_message::tests::pending_tool_input_is_parsed_json ... ok
+test runner::to_llm_message::tests::reasoning_becomes_text_for_different_model ... ok
+test runner::to_llm_message::tests::has_tool_calls_detects_tool_parts ... ok
+test session::event::tests::absent_optional_fields_are_omitted ... ok
+test session::util::tests::descending_and_ascending_differ ... ok
+test runner::publish_llm_event::tests::tool_call_then_result_error_marks_failed ... ok
+test runner::to_llm_message::tests::text_reuses_same_model_reasoning_metadata ... ok
+test session::event::tests::tool_success_json_matches_reference_shape ... ok
+test runner::to_llm_message::tests::user_message_with_agents_metadata ... ok
+test session::util::tests::ascending_id_is_26_chars ... ok
+test session::event::tests::step_started_json_matches_reference_shape ... ok
+test session::util::tests::ascending_ids_are_unique ... ok
+
+test result: ok. 44 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+     Running tests/coordinator.rs (target/debug/deps/coordinator-9c10236b10f912da)
+
+running 5 tests
+test serializes_same_key_and_joins_waiters ... ok
+test different_keys_run_concurrently ... ok
+test failed_drain_with_wake_hands_off_to_successor ... ok
+test wake_after_success_restarts_drain ... ok
+test interrupt_stops_drain_cooperatively ... ok
+
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.51s
+
+     Running tests/runner_loop.rs (target/debug/deps/runner_loop-21fe0c1de3109fca)
+
+running 2 tests
+test no_eligible_work_is_a_noop ... ok
+test tool_call_continuation_round_trip ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_sync-b790514467abb0a3)
+
+running 88 tests
+test control_plane::adapters::tests::builtin_has_worktree_adapter ... ok
+test control_plane::adapters::tests::custom_adapter_overrides_builtin_per_project ... ok
+test control_plane::adapters::tests::unknown_adapter_errors ... ok
+test control_plane::adapters::worktree::tests::list_requires_instance_context ... ok
+test control_plane::adapters::worktree::tests::configure_overrides_name_and_directory ... ok
+test control_plane::adapters::worktree::tests::target_resolves_local_directory ... ok
+test control_plane::adapters::tests::list_adapters_returns_entries ... ok
+test control_plane::global_bus::tests::emit_attaches_id_to_sync_payload ... ok
+test control_plane::dev::tests::dev_data_serializes ... ok
+test control_plane::move_session::tests::noop_when_directory_unchanged ... ok
+test control_plane::global_bus::tests::emit_attaches_fresh_id_to_plain_payload ... ok
+test control_plane::global_bus::tests::emit_keeps_existing_id ... ok
+test control_plane::move_session::tests::project_mismatch_is_rejected ... ok
+test control_plane::sse::tests::id_persists_across_events_until_overridden ... ok
+test control_plane::move_session::tests::missing_session_is_not_found ... ok
+test control_plane::sse::tests::non_json_payload_falls_back_to_sse_message ... ok
+test control_plane::move_session::tests::relative_path_computation ... ok
+test control_plane::move_session::tests::publishes_moved_event_on_success ... ok
+test control_plane::sse::tests::multiline_data_joins_with_newline ... ok
+test control_plane::slug::tests::slug_format ... ok
+test control_plane::sse::tests::flush_without_trailing_newline ... ok
+test control_plane::sse::tests::retry_defaults_to_1000_and_ignores_invalid ... ok
+test control_plane::sse::tests::unknown_fields_are_ignored ... ok
+test control_plane::sync_api::tests::replay_response_parses ... ok
+test control_plane::sync_api::tests::replay_payload_serializes_with_camel_case_fields ... ok
+test control_plane::sse::tests::parses_multiple_events ... ok
+test control_plane::dev::tests::debug_target_is_remote ... ok
+test control_plane::sse::tests::stream_parses_and_calls_on_event ... ok
+test control_plane::sync_api::tests::session_payload_serializes_with_camel_case ... ok
+test control_plane::sse::tests::parses_single_json_event ... ok
+test control_plane::sse::tests::non_json_with_id_and_custom_retry ... ok
+test control_plane::sync_api::tests::history_payload_is_object_of_seq_numbers ... ok
+test control_plane::util::tests::route_preserves_base_path ... ok
+test control_plane::types::tests::workspace_info_omits_absent_nullable_fields ... ok
+test control_plane::util::tests::route_strips_trailing_slash ... ok
+test control_plane::types::tests::from_row_produces_explicit_nulls ... ok
+test control_plane::types::tests::listed_info_omits_id ... ok
+test control_plane::types::tests::workspace_info_serializes_with_project_id_camel_case ... ok
+test control_plane::types::tests::adapter_entry_json_shape ... ok
+test control_plane::util::tests::route_appends_path_and_clears_query ... ok
+test control_plane::workspace_context::tests::default_is_none_outside_context ... ok
+test control_plane::workspace_context::tests::provide_scopes_workspace_id ... ok
+test control_plane::util::tests::wait_event_aborts_on_cancellation ... ok
+test control_plane::workspace_adapter_runtime::tests::context_carries_ambient_project_and_workspace ... ok
+test control_plane::workspace_events::tests::status_payload_json ... ok
+test sync::event::tests::event_id_create_prefix ... ok
+test control_plane::workspace_context::tests::instance_context_scopes_project_id ... ok
+test control_plane::workspace_events::tests::connection_status_json ... ok
+test control_plane::workspace_sql::tests::workspace_ddl_matches_drizzle ... ok
+test control_plane::workspace_context::tests::restore_sets_workspace_id ... ok
+test sync::event::tests::serialized_event_json_shape ... ok
+test control_plane::workspace_sql::tests::workspace_migration_bundle ... ok
+test sync::event::tests::payload_json_shape_omits_absent_fields ... ok
+test sync::event::tests::versioned_type_format ... ok
+test sync::event::tests::history_event_converts_to_serialized_event ... ok
+test sync::event::tests::history_event_json_shape ... ok
+test sync::event::tests::storage_type ... ok
+test sync::schema::tests::event_id_serializes_as_plain_string ... ok
+test sync::schema::tests::descending_session_id_orders_reverse ... ok
+test sync::schema::tests::event_id_has_prefix_and_length ... ok
+test sync::schema::tests::event_id_rejects_wrong_prefix ... ok
+test sync::event::tests::payload_json_shape_with_durable_and_location ... ok
+test sync::schema::tests::event_id_timestamp_extraction_round_trips ... ok
+test sync::sql::tests::event_indexes_match_drizzle ... ok
+test sync::schema::tests::event_id_validates_provided_id ... ok
+test sync::sql::tests::event_sequence_ddl_matches_drizzle ... ok
+test sync::store::tests::owner_claim_steals_session ... ok
+test sync::schema::tests::ids_are_monotonic ... ok
+test sync::schema::tests::event_id_validation_guard ... ok
+test sync::sql::tests::event_migration_bundle ... ok
+test sync::store::tests::publish_assigns_incrementing_cursors ... ok
+test sync::schema::tests::workspaces_prefix_validation ... ok
+test sync::store::tests::publish_rejects_event_id_collision ... ok
+test sync::sql::tests::event_ddl_matches_drizzle ... ok
+test sync::store::tests::read_aggregate_paginates_by_cursor ... ok
+test sync::store::tests::publish_requires_aggregate_field ... ok
+test sync::store::tests::remove_deletes_aggregate ... ok
+test sync::store::tests::replay_rejects_unknown_durable_type ... ok
+test sync::store::tests::replay_all_validates_same_aggregate_and_contiguous_cursors ... ok
+test sync::store::tests::replay_is_idempotent ... ok
+test sync::store::tests::replay_commits_at_cursor ... ok
+test sync::store::tests::replay_publish_notifies_listeners ... ok
+test sync::store::tests::replay_divergence_is_detected ... ok
+test control_plane::util::tests::wait_event_times_out ... ok
+test sync::store::tests::sequences_are_per_aggregate ... ok
+test sync::store::tests::replay_sequence_mismatch_is_detected ... ok
+test sync::store::tests::strict_owner_rejects_mismatch ... ok
+test control_plane::util::tests::wait_event_returns_on_match ... ok
+
+test result: ok. 88 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.05s
+
+     Running tests/workspace_service.rs (target/debug/deps/workspace_service-c9502fabf2dfa994)
+
+running 9 tests
+test create_inserts_and_returns_workspace ... ok
+test remove_removes_workspace_and_calls_adapter ... ok
+test create_uses_provided_id_and_local_target_skips_remote ... ok
+test session_warp_replays_events_and_steals_session ... ok
+test status_reports_connection_state ... ok
+test wait_for_sync_succeeds_when_already_synced ... ok
+test sync_list_discovers_workspaces_from_adapters ... ok
+test wait_for_sync_times_out_on_missing_cursor ... ok
+test experimental_flag_disables_sync ... ok
+
+test result: ok. 9 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 5.02s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_tool-9665543ee8014ecc)
+
+running 80 tests
+test base64::tests::encodes_hello ... ok
+test checksum::tests::stable_checksum ... ok
+test core::registry::tests::settles_unknown_tool_as_error ... ok
+test core::read_filesystem::tests::lists_directory ... ok
+test core::read_filesystem::tests::offsets_out_of_range_fail ... ok
+test core::read_filesystem::tests::reads_pages ... ok
+test core::registry::tests::registers_and_materializes ... ok
+test core::read_filesystem::tests::reads_small_text_file ... ok
+test diff::tests::diff_lines_reports_changes ... ok
+test diff::tests::trim_diff_removes_shared_indent ... ok
+test jsonschema::tests::applies_integer_safe_bounds_to_bare_integers ... ok
+test jsonschema::tests::preserves_required_nullable_fields ... ok
+test jsonschema::tests::output_keys_are_sorted ... ok
+test jsonschema::tests::strips_null_from_optional_properties ... ok
+test diff::tests::two_files_patch_headers ... ok
+test core::tool_output_store::tests::passes_small_output_through ... ok
+test mime::tests::resolves_common_extensions ... ok
+test core::tool_output_store::tests::bounds_large_output_to_preview ... ok
+test patch::tests::derives_contents_from_chunks ... ok
+test patch::tests::derives_with_fuzzy_whitespace_match ... ok
+test patch::tests::unicode_normalization_matches ... ok
+test core::registry::tests::settle_executes_tool_and_projects ... ok
+test schema::tests::validates_required_and_constraints ... ok
+test schema::tests::positive_int_encodes_exclusive_minimum ... ok
+test patch::tests::missing_markers_is_error ... ok
+test patch::tests::parses_add_update_delete ... ok
+test patch::tests::parses_move_directive ... ok
+test core::tests::builtin_definitions_are_exposed ... ok
+test tool::apply_patch::tests::applies_add_patch ... ok
+test tool::apply_patch::tests::schema_matches_reference_snapshot ... ok
+test tool::edit::tests::replace_matches_with_trimmed_lines ... ok
+test tool::edit::tests::replace_rejects_identical ... ok
+test tool::apply_patch::tests::rejects_empty_patch ... ok
+test tool::external_directory::tests::asks_for_external_paths ... ok
+test tool::edit::tests::replace_simple ... ok
+test tool::edit::tests::replace_requires_unique ... ok
+test tool::edit::tests::schema_matches_reference_snapshot ... ok
+test tool::external_directory::tests::skips_internal_paths ... ok
+test tool::glob::tests::schema_matches_reference_snapshot ... ok
+test tool::grep::tests::schema_matches_reference_snapshot ... ok
+test tool::mcp_websearch::tests::parses_direct_json_payload ... ok
+test tool::lsp::tests::schema_matches_reference_snapshot ... ok
+test tool::mcp_websearch::tests::parses_sse_payload ... ok
+test tool::mcp_websearch::tests::returns_none_for_non_json ... ok
+test tool::question::tests::schema_matches_reference_snapshot ... ok
+test tool::read::tests::formats_directory_read_output ... ok
+test tool::read::tests::miss_suggests_similar_files ... ok
+test tool::read::tests::formats_file_read_output ... ok
+test tool::edit::tests::edit_applies_and_reports ... ok
+test tool::read::tests::schema_matches_reference_snapshot ... ok
+test tool::shell::tests::arity_prefix_picks_subcommand ... ok
+test tool::registry::tests::exposes_builtin_tool_ids_in_order ... ok
+test ripgrep::tests::grep_matches_content ... ok
+test tool::glob::tests::no_files_returns_no_files_found ... ok
+test tool::shell::tests::renders_description ... ok
+test tool::task::tests::render_output_formats ... ok
+test tool::shell::tests::tail_truncates ... ok
+test tool::todo::tests::executes_and_counts_pending ... ok
+test tool::task::tests::schema_matches_reference_snapshot ... ok
+test tool::todo::tests::schema_matches_reference_snapshot ... ok
+test tool::registry::tests::task_description_lists_agents ... ok
+test tool::webfetch::tests::schema_matches_reference_snapshot ... ok
+test tool::webfetch::tests::extracts_text_from_html ... ok
+test tool::registry::tests::model_filter_swaps_edit_for_apply_patch ... ok
+test tool::shell::tests::executes_and_returns_exit_code ... ok
+test tool::websearch::tests::schema_matches_reference_snapshot ... ok
+test tool::websearch::tests::description_embeds_year ... ok
+test tool::shell_prompt::tests::renders_bash_description ... ok
+test tool::websearch::tests::provider_selection_is_deterministic ... ok
+test tool::write::tests::schema_matches_reference_snapshot ... ok
+test tool::write::tests::writes_new_file ... ok
+test truncate::tests::passes_through_small_output ... ok
+test util::tests::identifier_roundtrip_timestamp ... ok
+test tool::webfetch::tests::rejects_non_http_urls ... ok
+test util::tests::evaluate_respects_last_rule ... ok
+test truncate::tests::truncates_tail ... ok
+test util::tests::wildcard_matches ... ok
+test truncate::tests::truncates_head ... ok
+test tool::shell::tests::reports_timeout_metadata ... ok
+test ripgrep::tests::glob_resolves_relative_entries ... ok
+
+test result: ok. 80 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.31s
+
+     Running tests/golden.rs (target/debug/deps/golden-1051d85511a4aff9)
+
+running 14 tests
+test opt_prop_and_prop_are_exported ... ok
+test apply_patch_schema_matches_reference_snapshot ... ok
+test model_filter_swaps_apply_patch_for_gpt_models ... ok
+test registry_exposes_exact_reference_tool_set ... ok
+test core_builtins_expose_reference_tool_names ... ok
+test description_strings_match_reference_prompts ... ok
+test edit_schema_matches_reference_snapshot ... ok
+test bash_schema_matches_reference_snapshot ... ok
+test glob_grep_schemas_match_reference_snapshots ... ok
+test read_schema_matches_reference_snapshot ... ok
+test webfetch_websearch_schemas_match_reference_snapshots ... ok
+test task_schema_matches_reference_snapshot ... ok
+test write_schema_matches_reference_snapshot ... ok
+test question_todo_skill_invalid_schemas_match_reference_snapshots ... ok
+
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.20s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_tui-cdac92c875a16d08)
+
+running 150 tests
+test client::tests::parse_key_stroke_roundtrip_display ... ok
+test client::tests::sse_parser_accumulates_data ... ok
+test client::tests::mock_client_delivers_queued_events ... ok
+test client::tests::sse_parser_filters_sync_events ... ok
+test client::tests::sse_parser_ignores_heartbeats ... ok
+test components::dialog::tests::list_render_marks_selected ... ok
+test components::dialog::tests::confirm_renders_options ... ok
+test components::dialog::tests::help_lists_bindings ... ok
+test components::dialog::tests::empty_filter_returns_all ... ok
+test components::dialog::tests::selection_wraps ... ok
+test components::message::tests::assistant_markdown_renders ... ok
+test components::dialog::tests::filter_ranks_relevant ... ok
+test components::message::tests::queued_user_message_shows_badge ... ok
+test components::message::tests::shell_block_shows_command_and_output ... ok
+test components::message::tests::user_message_text_renders ... ok
+test components::message::tests::tool_inline_completed_hidden_when_details_off ... ok
+test components::permission::tests::render_permission_stage ... ok
+test components::prompt::tests::layout_multiline ... ok
+test components::prompt::tests::layout_wraps_and_finds_cursor ... ok
+test components::prompt::tests::part_markers_are_styled ... ok
+test components::question::tests::review_shows_unanswered ... ok
+test components::question::tests::renders_options_with_numbers ... ok
+test components::question::tests::tabs_rendered_for_multiple ... ok
+test components::message::tests::todos_render ... ok
+test components::message::tests::reasoning_collapsed_in_hide_mode ... ok
+test components::permission::tests::edit_info_has_diff_body ... ok
+test components::prompt::tests::cursor_at_end ... ok
+test components::spinner::tests::frames_cycle ... ok
+test components::text::tests::pad_to_pads ... ok
+test components::text::tests::styled_spans_keep_order ... ok
+test components::toast::tests::caps_at_five ... ok
+test components::permission::tests::bash_info ... ok
+test config::tests::resolve_defaults ... ok
+test components::text::tests::width_counts_display_cells ... ok
+test config::tests::object_binding_value ... ok
+test components::toast::tests::toast_expiry ... ok
+test config::tests::diff_style_parsing ... ok
+test config::tests::resolve_with_overrides ... ok
+test config::tests::terminal_suspend_adds_ctrl_z_undo ... ok
+test keybind::tests::command_map_roundtrips ... ok
+test config::tests::unknown_keybinds_ignored ... ok
+test keybind::tests::definitions_have_unique_names_and_commands ... ok
+test keymap::tests::backtab_matches_shift_tab ... ok
+test config::tests::prompt_width_helpers ... ok
+test keybind::tests::key_defaults_present ... ok
+test keymap::tests::ctrl_char_matches_uppercase_surface ... ok
+test keymap::tests::disabled_group_skipped ... ok
+test keymap::tests::keymap_dispatches_single_binding ... ok
+test keymap::tests::parse_function_keys ... ok
+test keymap::tests::parse_leader_sequence ... ok
+test keymap::tests::parse_none_disables ... ok
+test keymap::tests::parse_object_form ... ok
+test keymap::tests::keymap_leader_times_out ... ok
+test keymap::tests::parse_single_keys ... ok
+test keymap::tests::plain_char_case_sensitive ... ok
+test keymap::tests::priority_wins ... ok
+test local::tests::current_model_falls_back_to_first_provider_model ... ok
+test keymap::tests::parse_shift_enter ... ok
+test local::tests::cycle_agent_wraps ... ok
+test keymap::tests::keymap_leader_chord ... ok
+test local::tests::recent_models_cycle ... ok
+test local::tests::cycle_model ... ok
+test keymap::tests::parse_key_aliases ... ok
+test keymap::tests::parse_comma_alternatives ... ok
+test local::tests::primary_agents_exclude_subagents ... ok
+test prompt::autocomplete::tests::fuzzy_matching ... ok
+test prompt::autocomplete::tests::mention_trigger_detection ... ok
+test logo::tests::logo_lines_match_reference ... ok
+test prompt::autocomplete::tests::mention_trigger_wraps ... ok
+test keymap::tests::multiple_leader_bindings_share_chord ... ok
+test prompt::autocomplete::tests::slash_trigger_only_at_start ... ok
+test prompt::history::tests::append_dedupes_consecutive ... ok
+test prompt::history::tests::duplicate_check ... ok
+test prompt::history::tests::move_ignored_when_input_differs ... ok
+test prompt::history::tests::append_trims_to_limit ... ok
+test logo::tests::logo_has_four_lines ... ok
+test prompt::history::tests::move_next_returns_to_draft ... ok
+test prompt::history::tests::move_previous_walks_history ... ok
+test prompt::autocomplete::tests::fuzzy_filter_ranks ... ok
+test prompt::input::tests::delete_to_line_edges ... ok
+test prompt::history::tests::parse_history_skips_corrupt_lines ... ok
+test prompt::input::tests::delete_words ... ok
+test prompt::input::tests::clear_when_empty_does_not_undo ... ok
+test prompt::input::tests::insert_and_text ... ok
+test prompt::input::tests::insert_at_cursor ... ok
+test prompt::input::tests::delete_line_collapses ... ok
+test prompt::input::tests::backspace_and_delete ... ok
+test prompt::input::tests::line_boundaries ... ok
+test prompt::input::tests::undo_redo ... ok
+test prompt::input::tests::movement_across_lines ... ok
+test prompt::input::tests::non_ascii_handling ... ok
+test prompt::input::tests::select_all ... ok
+test prompt::input::tests::selection_deletes ... ok
+test prompt::input::tests::word_movement ... ok
+test prompt::parts::tests::plain_text_strips_markers ... ok
+test prompt::parts::tests::duplicate_markers_locate_distinctly ... ok
+test prompt::parts::tests::expand_text_parts_replaces_content ... ok
+test prompt::parts::tests::sync_updates_shifted_ranges ... ok
+test prompt::parts::tests::expand_text_parts_strips_file_markers ... ok
+test prompt::stash::tests::parse_stash_skips_corrupt ... ok
+test prompt::state::tests::editing_drops_deleted_parts ... ok
+test prompt::parts::tests::sync_drops_deleted_markers ... ok
+test prompt::stash::tests::push_pop_trim ... ok
+test prompt::parts::tests::placeholder_expansion_on_copy ... ok
+test prompt::stash::tests::remove_index ... ok
+test prompt::state::tests::insert_part_creates_marker_and_source ... ok
+test prompt::state::tests::mention_autocomplete_updates ... ok
+test prompt::state::tests::plain_text_strips_marker ... ok
+test prompt::state::tests::slash_autocomplete_replaces_from_start ... ok
+test prompt::parts::tests::strip_ids_removes_fields ... ok
+test sync::tests::message_upsert_sorted ... ok
+test sync::tests::part_delta_appends ... ok
+test sync::tests::permission_flow ... ok
+test sync::tests::question_flow ... ok
+test sync::tests::todo_and_diff ... ok
+test sync::tests::session_status_event ... ok
+test sync::tests::derived_status ... ok
+test theme::tests::agent_color_uses_palette ... ok
+test theme::tests::hex_parse ... ok
+test theme::tests::selected_foreground_contrast ... ok
+test theme::tests::tint_blends ... ok
+test sync::tests::sync_session_data_replaces_messages ... ok
+test sync::tests::session_upsert_and_remove ... ok
+test util::display::tests::subagent_formatters ... ok
+test util::display::tests::execute_calls_parse ... ok
+test util::display::tests::parse_apply_patch_files_filters_invalid ... ok
+test util::display::tests::parse_diagnostics_filters_severity ... ok
+test prompt::autocomplete::tests::line_range_extraction ... ok
+test util::display::tests::tool_input_formats_primitives ... ok
+test util::display::tests::tool_input_omits_keys ... ok
+test util::format::tests::format_duration_values ... ok
+test util::format::tests::short_output_not_collapsed ... ok
+test util::format::tests::too_many_lines_gets_ellipsis_line ... ok
+test util::locale::tests::duration_forms ... ok
+test util::locale::tests::titlecase_words ... ok
+test util::display::tests::parse_todos_and_questions ... ok
+test util::format::tests::long_lines_collapsed_to_char_limit ... ok
+test util::locale::tests::truncation_forms ... ok
+test util::locale::tests::number_compact ... ok
+test util::markdown::tests::code_block_concealed_by_default ... ok
+test util::markdown::tests::code_block_expanded_when_not_concealed ... ok
+test util::markdown::tests::grid_table ... ok
+test util::markdown::tests::inline_code_is_kept ... ok
+test util::markdown::tests::renders_headings_and_bold ... ok
+test util::path_format::tests::outside_base_abbreviates_home ... ok
+test util::markdown::tests::wraps_long_text ... ok
+test util::path_format::tests::formats_relative ... ok
+test util::path_format::tests::abbreviate_home_cases ... ok
+test util::display::tests::reasoning_summary_handles_title_block ... ok
+test util::display::tests::default_title_detection ... ok
+
+test result: ok. 150 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+
+     Running tests/rendering.rs (target/debug/deps/rendering-a29eb3572bd2ae81)
+
+running 4 tests
+test prompt_layout_renders_placeholder_and_cursor ... ok
+test prompt_expands_text_parts_on_submit ... ok
+test message_list_wraps_to_fixed_width ... ok
+test session_message_list_snapshot ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+     Running unittests src/lib.rs (target/debug/deps/oc_util-f384f4e6a48ea60e)
+
+running 156 tests
+test format::formatter::tests::by_name_lookup ... ok
+test format::formatter::tests::all_formatters_have_distinct_names ... ok
+test format::formatter::tests::gofmt_disabled_without_binary ... ok
+test format::tests::file_returns_false_with_no_matching_formatter ... ok
+test format::formatter::tests::pint_enabled_when_composer_declares_it ... ok
+test fs_util::tests::contains_detects_ancestry ... ok
+test format::formatter::tests::pint_disabled_without_composer_dependency ... ok
+test format::tests::command_cache_is_reused ... ok
+test format::tests::status_empty_when_disabled ... ok
+test fs_util::tests::find_up_walks_to_root ... ok
+test format::tests::file_runs_custom_commands_sequentially ... ok
+test fs_util::tests::overlaps_detects_either_direction ... ok
+test format::tests::disabling_ruff_also_disables_uv ... ok
+test format::tests::custom_config_keeps_builtins_and_adds_custom ... ok
+test glob::tests::expand_braces_basics ... ok
+test fs_util::tests::write_json_is_pretty ... ok
+test format::tests::status_lists_all_builtins_when_enabled ... ok
+test fs_util::tests::read_directory_entries_classifies_types ... ok
+test fs_util::tests::read_file_string_safe_returns_none_when_missing ... ok
+test glob::tests::glob_match_escapes_literals ... ok
+test fs_util::tests::write_with_dirs_creates_parents ... ok
+test glob::tests::glob_match_braces ... ok
+test glob::tests::glob_match_star_does_not_cross_slash ... ok
+test glob::tests::glob_match_question_and_class ... ok
+test global::tests::bin_is_under_cache ... ok
+test fs_util::tests::glob_up_collects_across_directories ... ok
+test global::tests::log_and_repos_are_under_data ... ok
+test global::tests::test_home_env_override ... ok
+test npm::tests::sanitize_leaves_unix_names_alone ... ok
+test npm::tests::unscoped_handles_scoped_packages ... ok
+test ripgrep::binary::tests::platform_mapping_covers_current_host ... ok
+test ripgrep::binary::tests::resolves_an_executable ... ok
+test glob::tests::scan_star_matches_only_current_dir ... ok
+test ripgrep::tests::abort_stops_search ... ok
+test glob::tests::scan_include_all_returns_directories ... ok
+test ripgrep::tests::detects_invalid_pattern_messages ... ok
+test glob::tests::scan_does_not_include_dirs_by_default ... ok
+test glob::tests::scan_absolute_prefixes_cwd ... ok
+test glob::tests::scan_double_star_glob_matches_base_dir ... ok
+test npm::tests::which_returns_none_for_missing_package ... ok
+test ripgrep::tests::grep_invalid_pattern_errors ... ok
+test ripgrep::tests::find_lists_files_respecting_glob ... ok
+test ripgrep::tests::find_applies_limit_and_calls_on_entry ... ok
+test ripgrep::tests::find_includes_hidden_with_flag ... ok
+test util::bom::tests::join_reinserts_bom ... ok
+test ripgrep::tests::normalizes_relative_paths ... ok
+test util::bom::tests::split_detects_bom ... ok
+test util::bom::tests::read_file_keeps_bom_character_for_detection ... ok
+test util::data_url::tests::binary_base64_decodes_as_lossy_utf8 ... ok
+test util::data_url::tests::base64_is_lenient_about_padding_and_garbage ... ok
+test util::data_url::tests::decodes_percent_encoded_urls ... ok
+test ripgrep::tests::grep_honors_file_and_include ... ok
+test util::data_url::tests::decodes_base64_urls ... ok
+test util::data_url::tests::no_comma_returns_empty ... ok
+test util::defer::tests::async_defer_awaits ... ok
+test util::defer::tests::runs_on_drop ... ok
+test util::data_url::tests::malformed_percent_encoding_errors ... ok
+test util::error::tests::cli_error_for_config_invalid ... ok
+test util::error::tests::cli_error_for_model_not_found ... ok
+test util::error::tests::cli_error_undefined_for_unknown ... ok
+test util::error::tests::data_for_std_error ... ok
+test util::error::tests::data_mirrors_own_properties ... ok
+test util::error::tests::format_falls_back_for_empty_object ... ok
+test util::error::tests::format_prints_pretty_json_for_objects ... ok
+test util::error::tests::message_falls_back_to_string ... ok
+test util::error::tests::message_from_data_object ... ok
+test ripgrep::tests::grep_no_matches_returns_empty ... ok
+test util::error::tests::message_prefers_std_error_display ... ok
+test util::filesystem::tests::mime_types_by_extension ... ok
+test ripgrep::tests::glob_returns_entries ... ok
+test util::filesystem::tests::read_write_round_trip ... ok
+test util::filesystem::tests::stat_missing_returns_none ... ok
+test util::filesystem::tests::up_collects_all_targets_per_directory ... ok
+test util::filesystem::tests::write_creates_parent_dirs ... ok
+test ripgrep::tests::grep_returns_matches ... ok
+test util::error::tests::message_from_tagged_object ... ok
+test util::filesystem::tests::resolve_file_path_handles_file_urls ... ok
+test util::html::tests::escapes_all_special_characters ... ok
+test util::filesystem::tests::find_up_with_stop_and_root_first ... ok
+test util::html::tests::leaves_plain_text_untouched ... ok
+test util::html::tests::does_not_double_escape_entities ... ok
+test util::iife::tests::immediately_invokes ... ok
+test util::iife::tests::runs_side_effect ... ok
+test util::lazy::tests::computes_once ... ok
+test util::filesystem::tests::write_json_indents ... ok
+test util::local_context::tests::nested_provide_overrides_then_restores ... ok
+test util::lazy::tests::reset_recomputes ... ok
+test util::local_context::tests::provide_works_inside_spawned_tasks ... ok
+test util::local_context::tests::use_raises_not_found_outside_provide ... ok
+test util::filesystem::tests::write_stream_copies ... ok
+test util::local_context::tests::provide_makes_value_available ... ok
+test util::locale::tests::datetime_combines_time_and_date ... ok
+test util::locale::tests::pluralize_uses_template ... ok
+test util::locale::tests::time_is_short_format ... ok
+test util::locale::tests::titlecase_words ... ok
+test util::locale::tests::truncate_variants ... ok
+test util::media::tests::media_checks ... ok
+test util::media::tests::sniffs_gif_bmp_pdf ... ok
+test util::media::tests::sniffs_jpeg ... ok
+test util::locale::tests::number_abbreviates ... ok
+test util::locale::tests::duration_units ... ok
+test util::media::tests::sniffs_png ... ok
+test util::media::tests::unknown_bytes_fall_back ... ok
+test util::media::tests::sniffs_webp ... ok
+test util::process::tests::empty_command_is_rejected ... ok
+test util::process::tests::nothrow_returns_non_zero ... ok
+test util::process::tests::env_override_and_cwd ... ok
+test util::process::tests::nothrow_masks_spawn_errors ... ok
+test util::filesystem::tests::glob_up_collects_matches ... ok
+test util::process::tests::abort_kills_process ... ok
+test util::process::tests::run_fails_on_non_zero ... ok
+test util::proxy_env::tests::all_proxy_fallback ... ok
+test util::process::tests::run_captures_output ... ok
+test util::process::tests::spawn_errors_propagate ... ok
+test util::proxy_env::tests::invalid_url_returns_none ... ok
+test util::proxy_env::tests::default_ports_used_when_absent ... ok
+test util::process::tests::shell_system_runs_through_sh ... ok
+test util::proxy_env::tests::no_proxy_blocks ... ok
+test util::proxy_env::tests::no_proxy_star_blocks_everything ... ok
+test util::process::tests::stop_terminates_process ... ok
+test util::proxy_env::tests::prepends_protocol_when_missing ... ok
+test util::queue::tests::queue_delivers_in_fifo_order ... ok
+test util::process::tests::text_and_lines ... ok
+test util::proxy_env::tests::no_proxy_uppercase_and_suffix_matching ... ok
+test util::queue::tests::queue_resolves_pending_waiters ... ok
+test util::proxy_env::tests::uses_protocol_specific_proxy ... ok
+test util::queue::tests::work_processes_all_items ... ok
+test util::record::tests::objects_are_records ... ok
+test util::record::tests::non_objects_are_not_records ... ok
+test util::rpc::tests::message_serialization_matches_reference ... ok
+test util::signal::tests::wait_resolves_after_trigger ... ok
+test util::signal::tests::multiple_waits_all_resolve ... ok
+test util::timeout::tests::preserves_inner_error ... ok
+test util::rpc::tests::request_result_round_trip ... ok
+test util::signal::tests::wait_resolves_if_already_triggered ... ok
+test util::rpc::tests::events_reach_subscribers ... ok
+test util::timeout::tests::resolves_before_timeout ... ok
+test util::token::tests::counts_utf16_units ... ok
+test util::rpc::tests::failed_handler_posts_no_result ... ok
+test util::token::tests::rounds_to_nearest_token ... ok
+test util::token::tests::empty_string_is_zero ... ok
+test glob::tests::scan_finds_files_recursively ... ok
+test util::wildcard::tests::escapes_regex_metacharacters ... ok
+test util::timeout::tests::uses_label ... ok
+test util::timeout::tests::times_out ... ok
+test util::wildcard::tests::all_prefers_longer_patterns ... ok
+test util::wildcard::tests::matches_newlines_with_star ... ok
+test util::wildcard::tests::normalizes_backslashes ... ok
+test which::tests::finds_commands_on_path ... ok
+test util::wildcard::tests::match_sequence_supports_star_skip ... ok
+test util::wildcard::tests::matches_literals_and_wildcards ... ok
+test util::queue::tests::work_runs_concurrently ... ok
+test util::wildcard::tests::matches_multi_segment_with_star ... ok
+test util::wildcard::tests::all_structured_matches_tail_sequence ... ok
+test util::archive::tests::extracts_zip_with_unzip ... ok
+test util::wildcard::tests::all_returns_last_matching_pattern ... ok
+
+test result: ok. 156 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.21s
+
+   Doc-tests oc_acp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_cli
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_client
+
+running 1 test
+test crates/oc-client/src/lib.rs - (line 11) ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.09s
+
+   Doc-tests oc_command
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_config
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_database
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_llm
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_mcp
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_plugin
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_project
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_provider
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_schema
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_server
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_session
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_session_runner
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_sync
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_tool
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_tui
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests oc_util
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+

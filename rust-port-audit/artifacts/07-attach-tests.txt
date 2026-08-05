@@ -1,0 +1,18 @@
+# 07-attach-tests.txt — captured Wed Aug  5 09:03:03 UTC 2026
+
+## A) Rust CLI: run --attach http://127.0.0.1:43124 (Rust serve = bare TCP sink)
+## target release/opencode run --attach ... 'say hi' (timeout 12s)
+[exit=124]
+
+## B) Rust CLI: plain 'run' (LocalClient path)
+[91m[1mError:  [0mthe in-process opencode server is not wired yet in this build (TODO(integration): oc-server)
+Try `opencode run --attach <url>` to connect to a running opencode server.
+[exit=1]
+
+## C) Rust CLI: run --attach http://127.0.0.1:43125 (REFERENCE serve)
+## target release/opencode run --attach ... 'say hi' (timeout 25s)
+[0m
+> build · big-pickle
+[0m
+Hi
+[exit=0]

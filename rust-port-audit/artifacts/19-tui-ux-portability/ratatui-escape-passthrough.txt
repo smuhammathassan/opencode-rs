@@ -1,0 +1,6 @@
+=== bytes (escaped) ===
+\u{1b}[1;1Hprefix\u{1b}[1;8H\u{1b}[31mred\u{1b}[0m\u{1b}[1;21H\u{1b}]0;TITLE\u{7}\u{1b}[1;32Htail\u{1b}[39m\u{1b}[49m\u{1b}[59m\u{1b}[0m\u{1b}[?25l\u{1b}[?25h
+=== contains ESC? ===
+ESC seq present: true
+ESC chars count: 13
+\u{1b}[1;1Hprefix\u{1b}[1;8H\u{1b}[31mred\u{1b}[0m\u{1b}[1;21H\u{1b}]0;TITLE\u{7}\u{1b}[1;32Htail\u{1b}[39m\u{1b}[49m\u{1b}[59m\u{1b}[0m\u{1b}[?25l\u{1b}[?25h

@@ -1,0 +1,48 @@
+[01-valid] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[02-singlequote] ref=1(no) rust=0(yes) *** DIVERGE ***
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[03-unquoted] ref=1(no) rust=0(yes) *** DIVERGE ***
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[04-bom] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[05-dupkeys] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[06-comments] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[07-dupkeys-comma] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[08-empty] ref=0(yes) rust=0(yes) MATCH
+  ref : 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[09-comment-only] ref=1(no) rust=1(no) MATCH
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+[10-dup-mixed] ref=1(no) rust=1(no) MATCH
+  ref : Error: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ Expected string | undefined, got 123 model 
+  rust: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ invalid type: integer `123`, expected a string model 
+[ws-only] ref=1(no) rust=0(yes) *** DIVERGE ***
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: === DIRECTORIES === /tmp/oc04/home1/.config/opencode 
+[top-bool] ref=1(no) rust=1(no) MATCH
+  ref : Error: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ Expected Config, got true  
+  rust: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ invalid type: boolean `true`, expected struct Info 
+[top-array] ref=1(no) rust=1(no) MATCH
+  ref : Error: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ Expected Config, got [1,2]  
+  rust: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ invalid type: integer `1`, expected a string [0] 
+[top-null] ref=1(no) rust=1(no) MATCH
+  ref : Error: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ Expected Config, got null  
+  rust: Configuration is invalid at /tmp/oc04/home1/.config/opencode/opencode.jsonc ↳ invalid type: null, expected struct Info 
+[garbage] ref=1(no) rust=1(no) MATCH
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+[truncated] ref=1(no) rust=1(no) MATCH
+  ref : Error: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 
+  rust: Config file at /tmp/oc04/home1/.config/opencode/opencode.jsonc is not valid JSON(C):  --- JSONC Input --- 

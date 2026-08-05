@@ -1,0 +1,38 @@
+[policy-correct] MATCH ref=0 rust=0
+[policy-bad-effect] MATCH ref=1 rust=1
+[experimental-full] MATCH ref=0 rust=0
+[toml-legacy-migrate] DIFF-CONTENT ref=0 rust=0 :: semantic JSON content differs
+  REF_ERR : 
+  RUST_ERR: === DIRECTORIES ===
+/tmp/oc04/diffhome/.config/opencode
+
+  REF_OUT : {
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4",
+  "theme": "dark",
+  "agent": {},
+  "mode": {},
+  "plugin": [],
+  "command": {},
+  "username": "root"
+}
+
+  RUST_OUT: {
+  "$schema": "https://opencode.ai/config.json",
+  "command": {},
+  "plugin": [],
+  "model": "anthropic/claude-sonnet-4",
+  "username": "root",
+  "mode": {},
+  "agent": {}
+}
+
+[toml-legacy-bad] MATCH ref=0 rust=0
+[home-dot-opencode] MATCH ref=0 rust=0
+[home-dot-opencode-json] MATCH ref=0 rust=0
+[nested-project-discovery] MATCH ref=0 rust=0
+[bad-project-config] MATCH ref=1 rust=1
+[configdir-overrides-global] MATCH ref=0 rust=0
+[xdg-config-home-priority] MATCH ref=0 rust=0
+[global-config-json] MATCH ref=0 rust=0
+[env-config-content-unknown-key] MATCH ref=1 rust=1

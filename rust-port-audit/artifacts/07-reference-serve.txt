@@ -1,0 +1,49 @@
+# 07-reference-serve.txt — captured Wed Aug  5 09:02:48 UTC 2026
+# Reference binary serve --port 43113, HOME=/tmp/oc07-home
+
+## startup log
+Warning: OPENCODE_SERVER_PASSWORD is not set; server is unsecured.
+opencode server listening on http://127.0.0.1:43113
+
+## GET /api/health
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 05 Aug 2026 09:02:48 GMT
+Content-Length: 16
+Vary: Origin
+
+{"healthy":true}[curl_exit=0]
+
+## GET /api/session
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 05 Aug 2026 09:02:48 GMT
+Content-Length: 954
+Vary: Origin
+
+{"data":[{"id":"ses_02edc6053ffeTjP0fTtItraYof","projectID":"global","agent":"build","model":{"id":"big-pickle","providerID":"opencode","variant":"default"},"cost":0,"tokens":{"input":7849,"output":2,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1785920200620,"updated":1785920204349},"title":"Greeting","location":{"directory":"/root"},"subpath":"root"},{"id":"ses_02eddb8ccffe08nW0xk2TYCtU4","projectID":"global","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1785920112508,"updated":1785920112508},"title":"New session - 2026-08-05T08:55:12.508Z","location":{"directory":"/root"},"subpath":"root"}],"cursor":{"previous":"eyJhbmNob3IiOnsiaWQiOiJzZXNfMDJlZGM2MDUzZmZlVGpQMGZUdEl0cmFZb2YiLCJ0aW1lIjoxNzg1OTIwMjAwNjIwLCJkaXJlY3Rpb24iOiJwcmV2aW91cyJ9fQ","next":"eyJhbmNob3IiOnsiaWQiOiJzZXNfMDJlZGRiOGNjZmZlMDhuVzB4azJUWUN0VTQiLCJ0aW1lIjoxNzg1OTIwMTEyNTA4LCJkaXJlY3Rpb24iOiJuZXh0In19"}}[curl_exit=0]
+
+## POST /api/session
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Wed, 05 Aug 2026 09:02:48 GMT
+Content-Length: 309
+Vary: Origin
+
+{"data":{"id":"ses_02ed6c430ffe30eOftY7NHpGS4","projectID":"global","cost":0,"tokens":{"input":0,"output":0,"reasoning":0,"cache":{"read":0,"write":0}},"time":{"created":1785920568299,"updated":1785920568299},"title":"New session - 2026-08-05T09:02:48.299Z","location":{"directory":"/root"},"subpath":"root"}}[curl_exit=0]
+
+## GET /api/event (SSE, first 3s of stream, headers + body)
+HTTP/1.1 200 OK
+Cache-Control: no-cache, no-transform
+X-Content-Type-Options: nosniff
+Content-Type: text/event-stream
+Vary: Origin
+x-accel-buffering: no
+Date: Wed, 05 Aug 2026 09:02:48 GMT
+Transfer-Encoding: chunked
+
+data: {"id":"evt_fd1293c1c001DFQa57Khhw8OdI","type":"server.connected","data":{}}
+
+: heartbeat
+
+[pipeline_exit=0]

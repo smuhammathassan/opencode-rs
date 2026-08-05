@@ -1,0 +1,4 @@
+Script started on 2026-08-05 08:55:00+00:00 [COMMAND="./target/release/opencode attach http://localhost:3000 </dev/null" <not executed on terminal>]
+[91m[1mError:  [0mattaching the TUI to a running server is not yet wired in this build (TODO(integration): oc-tui/oc-client)
+
+Script done on 2026-08-05 08:55:00+00:00 [COMMAND_EXIT_CODE="1"]

@@ -1,0 +1,12 @@
+checked versions: 310
+YANKED:
+ERRORS: 9
+   ('cc', '1.4.0', 'HTTP Error 404: Not Found')
+   ('log', '0.4.33', 'HTTP Error 404: Not Found')
+   ('lru', '0.12.5', 'HTTP Error 404: Not Found')
+   ('mio', '1.2.2', 'HTTP Error 404: Not Found')
+   ('ryu', '1.0.23', 'HTTP Error 404: Not Found')
+   ('syn', '2.0.119', 'HTTP Error 404: Not Found')
+   ('syn', '3.0.3', 'HTTP Error 404: Not Found')
+   ('tar', '0.4.46', 'HTTP Error 404: Not Found')
+   ('url', '2.5.8', 'HTTP Error 404: Not Found')

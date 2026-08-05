@@ -1,0 +1,42 @@
+    Blocking waiting for file lock on build directory
+    Checking oc-schema v0.1.0 (/root/opencode-rs/crates/oc-schema)
+    Checking oc-util v0.1.0 (/root/opencode-rs/crates/oc-util)
+    Checking oc-plugin v0.1.0 (/root/opencode-rs/crates/oc-plugin)
+crates/oc-util/src/ripgrep/mod.rs:289:28: error: unnecessary `>= y + 1` or `x - 1 >=`: help: change it to: `rows.len() > input.limit`
+crates/oc-plugin/src/js/runtime.rs:806:13: error: variable does not need to be mutable
+crates/oc-plugin/src/js/runtime.rs:32:29: error: transmute used without annotations: help: consider adding missing annotations: `transmute::<*mut std::ffi::c_void, *mut libquickjs_sys::JSRefCountHeader>`
+crates/oc-plugin/src/js/runtime.rs:233:24: error: usage of an `Arc` that is not `Send` and `Sync`
+crates/oc-plugin/src/js/runtime.rs:634:26: error: redundant closure: help: replace the closure with the tuple variant itself: `JsError::InvalidString`
+crates/oc-plugin/src/js/transpile.rs:464:17: error: this `if let` can be collapsed into the outer `if let`
+crates/oc-plugin/src/js/transpile.rs:556:61: error: this `if` has identical blocks
+crates/oc-plugin/src/js/transpile.rs:774:17: error: this `if` can be collapsed into the outer `match`
+crates/oc-plugin/src/js/transpile.rs:767:21: error: this `if` can be collapsed into the outer `match`
+crates/oc-plugin/src/js/transpile.rs:793:9: error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
+crates/oc-plugin/src/js/transpile.rs:814:21: error: this `if` can be collapsed into the outer `match`
+crates/oc-plugin/src/js/transpile.rs:862:13: error: this `if` statement can be collapsed
+crates/oc-plugin/src/js/transpile.rs:1130:28: error: this expression creates a reference which is immediately dereferenced by the compiler: help: change this to: `text`
+crates/oc-plugin/src/loader.rs:300:1: error: large size difference between variants: the entire enum is at least 304 bytes
+crates/oc-plugin/src/shared.rs:105:39: error: this `if` has identical blocks
+error: could not compile `oc-plugin` (lib) due to 13 previous errors
+warning: build failed, waiting for other jobs to finish...
+crates/oc-plugin/src/npm.rs:192:1: error: items after a test module
+crates/oc-plugin/src/npm.rs:270:33: error: the borrowed expression implements the required traits: help: change this to: `paths.npm_packages()`
+error: could not compile `oc-plugin` (lib test) due to 16 previous errors
+crates/oc-util/src/format/formatter.rs:52:8: error: very complex type used. Consider factoring parts into `type` definitions
+crates/oc-util/src/ripgrep/mod.rs:125:19: error: very complex type used. Consider factoring parts into `type` definitions
+crates/oc-util/src/ripgrep/mod.rs:160:14: error: very complex type used. Consider factoring parts into `type` definitions
+crates/oc-util/src/util/process.rs:25:1: error: this `impl` can be derived
+crates/oc-util/src/util/process.rs:45:1: error: this `impl` can be derived
+crates/oc-util/src/util/proxy_env.rs:84:17: error: stripping a prefix manually
+error: could not compile `oc-util` (lib) due to 7 previous errors
+crates/oc-util/src/fs_util.rs:344:9: error: used `assert_eq!` with a literal bool
+crates/oc-util/src/util/error.rs:419:21: error: this can be `std::io::Error::other(_)`
+crates/oc-util/src/util/process.rs:568:9: error: field assignment outside of initializer for an instance created with Default::default()
+crates/oc-util/src/util/rpc.rs:275:9: error: non-binding `let` on a future
+crates/oc-util/src/util/process.rs:553:13: error: useless use of `vec!`: help: you can use a slice directly: `&["echo shell".to_string()]`
+error: could not compile `oc-util` (lib test) due to 12 previous errors
+crates/oc-schema/src/session_message.rs:340:1: error: large size difference between variants: the entire enum is at least 544 bytes
+crates/oc-schema/src/session_message.rs:419:1: error: large size difference between variants: the entire enum is at least 424 bytes
+crates/oc-schema/src/v1/session.rs:913:1: error: large size difference between variants: the entire enum is at least 648 bytes
+error: could not compile `oc-schema` (lib test) due to 3 previous errors
+error: could not compile `oc-schema` (lib) due to 3 previous errors

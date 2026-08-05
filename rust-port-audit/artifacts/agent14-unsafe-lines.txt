@@ -1,0 +1,52 @@
+./oc-plugin/src/js/runtime.rs:30:unsafe fn free_value(context: *mut q::JSContext, value: q::JSValue) {
+./oc-plugin/src/js/runtime.rs:117:unsafe fn build_closure_trampoline<F>(
+./oc-plugin/src/js/runtime.rs:123:    unsafe extern "C" fn trampoline<F>(
+./oc-plugin/src/js/runtime.rs:157:        unsafe { free_value(self.ctx, self.value) };
+./oc-plugin/src/js/runtime.rs:164:    unsafe fn into_inner(mut self) -> q::JSValue {
+./oc-plugin/src/js/runtime.rs:190:        let raw = unsafe { q::JS_GetPropertyStr(self.value.ctx, self.value.value, cname.as_ptr()) };
+./oc-plugin/src/js/runtime.rs:219:        let rt = unsafe { q::JS_NewRuntime() };
+./oc-plugin/src/js/runtime.rs:223:        let ctx = unsafe { q::JS_NewContext(rt) };
+./oc-plugin/src/js/runtime.rs:225:            unsafe { q::JS_FreeRuntime(rt) };
+./oc-plugin/src/js/runtime.rs:250:        let raw = unsafe {
+./oc-plugin/src/js/runtime.rs:281:            let pending = unsafe { q::JS_IsJobPending(self.rt) };
+./oc-plugin/src/js/runtime.rs:286:            let _ = unsafe { q::JS_ExecutePendingJob(self.rt, &mut ctx) };
+./oc-plugin/src/js/runtime.rs:295:        let raw = unsafe { q::JS_GetPropertyStr(self.ctx, global.value.value, cname.as_ptr()) };
+./oc-plugin/src/js/runtime.rs:300:        unsafe { free_value(self.ctx, raw) };
+./oc-plugin/src/js/runtime.rs:312:        let raw = unsafe { owned.into_inner() };
+./oc-plugin/src/js/runtime.rs:314:            unsafe { q::JS_SetPropertyStr(self.ctx, global.value.value, cname.as_ptr(), raw) };
+./oc-plugin/src/js/runtime.rs:356:        let raw = unsafe {
+./oc-plugin/src/js/runtime.rs:411:                Ok(value) => unsafe { value.into_inner() },
+./oc-plugin/src/js/runtime.rs:415:                    unsafe {
+./oc-plugin/src/js/runtime.rs:425:        let (pair, trampoline) = unsafe { build_closure_trampoline(wrapper) };
+./oc-plugin/src/js/runtime.rs:428:        let cfunc = unsafe { q::JS_NewCFunctionData(self.ctx, trampoline, argcount, 0, 1, data) };
+./oc-plugin/src/js/runtime.rs:435:            unsafe { q::JS_SetPropertyStr(self.ctx, global.value.value, cname.as_ptr(), cfunc) };
+./oc-plugin/src/js/runtime.rs:447:        unsafe {
+./oc-plugin/src/js/runtime.rs:456:    let raw = unsafe { q::JS_GetGlobalObject(ctx) };
+./oc-plugin/src/js/runtime.rs:461:    let raw = unsafe { q::JS_GetException(ctx) };
+./oc-plugin/src/js/runtime.rs:465:    let str_raw = unsafe { q::JS_ToString(ctx, owned.value) };
+./oc-plugin/src/js/runtime.rs:488:        let arg_slice = unsafe { std::slice::from_raw_parts(argv, argc as usize) };
+./oc-plugin/src/js/runtime.rs:528:            let qval = unsafe { q::JS_NewString(ctx, cstr.as_ptr()) };
+./oc-plugin/src/js/runtime.rs:537:            let arr = unsafe { q::JS_NewArray(ctx) };
+./oc-plugin/src/js/runtime.rs:547:                        unsafe { free_value(ctx, arr) };
+./oc-plugin/src/js/runtime.rs:553:                let raw = unsafe { qvalue.into_inner() };
+./oc-plugin/src/js/runtime.rs:554:                let ret = unsafe {
+./oc-plugin/src/js/runtime.rs:564:                    unsafe { free_value(ctx, arr) };
+./oc-plugin/src/js/runtime.rs:571:            let obj = unsafe { q::JS_NewObject(ctx) };
+./oc-plugin/src/js/runtime.rs:580:                        unsafe { free_value(ctx, obj) };
+./oc-plugin/src/js/runtime.rs:584:                let raw = unsafe { qvalue.into_inner() };
+./oc-plugin/src/js/runtime.rs:585:                let ret = unsafe { q::JS_SetPropertyStr(ctx, obj, ckey.as_ptr(), raw) };
+./oc-plugin/src/js/runtime.rs:587:                    unsafe { free_value(ctx, obj) };
+./oc-plugin/src/js/runtime.rs:613:            let val = unsafe { raw.u.int32 };
+./oc-plugin/src/js/runtime.rs:617:            let val = unsafe { raw.u.int32 };
+./oc-plugin/src/js/runtime.rs:623:            let val = unsafe { raw.u.float64 };
+./oc-plugin/src/js/runtime.rs:627:            let ptr = unsafe { q::JS_ToCStringLen(ctx, std::ptr::null_mut(), *raw, 0) };
+./oc-plugin/src/js/runtime.rs:631:            let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
+./oc-plugin/src/js/runtime.rs:636:            unsafe { q::JS_FreeCString(ctx, ptr) };
+./oc-plugin/src/js/runtime.rs:640:            let is_array = unsafe { q::JS_IsArray(ctx, *raw) } > 0;
+./oc-plugin/src/js/runtime.rs:643:                let len_value = unsafe {
+./oc-plugin/src/js/runtime.rs:653:                    let item_raw = unsafe { q::JS_GetPropertyUint32(ctx, *raw, index as u32) };
+./oc-plugin/src/js/runtime.rs:665:                let identity = unsafe { raw.u.ptr as usize };
+./oc-plugin/src/js/runtime.rs:674:                    let prop_raw = unsafe { q::JS_GetPropertyStr(ctx, *raw, ckey.as_ptr()) };
+./oc-plugin/src/js/runtime.rs:698:    let raw = unsafe { q::JS_Call(ctx, keys.value, object.value.value, 1, [obj].as_mut_ptr()) };
+./oc-util/src/util/process.rs:231:    let result = unsafe { libc::kill(pid as i32, signal) };
+./oc-database/src/sqlite.rs:348:        unsafe {

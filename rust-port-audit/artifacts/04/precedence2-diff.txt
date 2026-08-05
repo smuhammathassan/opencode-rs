@@ -1,0 +1,4 @@
+[openconfig-vs-project] MATCH ref=0 rust=0
+[openconfig-vs-configdir] MATCH ref=0 rust=0
+[content-vs-configdir] MATCH ref=0 rust=0
+[content-vs-project] MATCH ref=0 rust=0

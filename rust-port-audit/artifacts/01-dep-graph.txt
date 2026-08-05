@@ -1,0 +1,21 @@
+INTERNAL DEPENDENCY EDGES (declared in Cargo.toml, ordered by Cargo.toml listing)
+oc-acp: oc-core, oc-llm, oc-schema, oc-session, oc-tool
+oc-cli: oc-acp, oc-client, oc-command, oc-config, oc-core, oc-database, oc-llm, oc-mcp, oc-plugin, oc-project, oc-provider, oc-schema, oc-server, oc-session, oc-session-runner, oc-sync, oc-tool, oc-util
+oc-client: oc-core, oc-schema, oc-util
+oc-command: oc-core, oc-schema, oc-session, oc-util
+oc-config: oc-schema, oc-util
+oc-core: oc-config, oc-database, oc-schema, oc-util
+oc-database: oc-schema, oc-util
+oc-llm: oc-core, oc-provider, oc-schema, oc-util
+oc-mcp: oc-core, oc-schema, oc-util
+oc-plugin: (none)
+oc-project: oc-core, oc-schema, oc-util
+oc-provider: oc-core, oc-schema, oc-util
+oc-schema: (none)
+oc-server: oc-acp, oc-core, oc-llm, oc-plugin, oc-provider, oc-schema, oc-session, oc-sync, oc-tool, oc-util
+oc-session: oc-core, oc-llm, oc-mcp, oc-plugin, oc-provider, oc-schema, oc-tool, oc-util
+oc-session-runner: oc-llm, oc-plugin, oc-provider, oc-session, oc-tool
+oc-sync: oc-core, oc-database, oc-provider, oc-schema, oc-util
+oc-tool: oc-core, oc-llm, oc-mcp, oc-plugin, oc-schema, oc-util
+oc-tui: oc-client, oc-core, oc-schema, oc-session, oc-util
+oc-util: (none)

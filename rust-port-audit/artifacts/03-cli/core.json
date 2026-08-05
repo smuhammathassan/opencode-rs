@@ -1,0 +1,597 @@
+[
+ {
+  "scenario": {
+   "args": [
+    "--version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1061
+  },
+  "rust": {
+   "args": [
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 2
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "-v"
+   ]
+  },
+  "ref": {
+   "args": [
+    "-v"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1075
+  },
+  "rust": {
+   "args": [
+    "-v"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "version"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0mFailed to change directory to /root/version\n",
+   "time_ms": 1436
+  },
+  "rust": {
+   "args": [
+    "version"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mFailed to change directory to /root/version\n\u001b[91m\u001b[1mError:  \u001b[0mUnexpected error\n\nNo such file or directory (os error 2)\n",
+   "time_ms": 9
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nCommands:\n  opencode completion          generate shell completion script\n  opencode acp                 start ACP (Agent Client Protocol) server\n  opencode mcp                 manage MCP (Model Context Protocol) servers\n  opencode [project]           start opencode tui                                          [default]\n  opencode attach <url>        attach to a running opencode server\n  opencode run [message..]     run opencode with a message\n  opencode debug               debugging and troubleshooting tools\n  opencode providers           manage AI providers and credentials                   [aliases: auth]\n  opencode agent               manage agents\n  opencode upgrade [target]    upgrade opencode to the latest or a specific version\n  opencode uninstall           uninstall opencode and remove all related files\n  opencode serve               starts a headless opencode server\n  opencode web                 start opencode server and open web interface\n  opencode models [provider]   list all available models\n  opencode stats               show token usage and cost statistics\n  opencode export [sessionID]  export session data as JSON\n  opencode import <file>       import session data from JSON file or URL\n  opencode github              manage GitHub agent\n  opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode\n  opencode session             manage sessions\n  opencode plugin <module>     install plugin and update config                      [aliases: plug]\n  opencode db                  database tools\n\nPositionals:\n  project  path to start opencode in                                                        [string]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --port          port to listen on                                        [number] [default: 0]\n      --hostname      hostname to listen on                          [string] [default: \"127.0.0.1\"]\n      --mdns          enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain   custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors          additional domains to allow for CORS                     [array] [default: []]\n  -m, --model         model to use in the format of provider/model                          [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n      --prompt        prompt to use                                                         [string]\n      --agent         agent to use                                                          [string]\n      --auto          auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]\n",
+   "time_ms": 1177
+  },
+  "rust": {
+   "args": [
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nGlobal options defined once at the top level and inherited by every subcommand. Mirrors the `--print-logs` / `--log-level` / `--pure` options in index.ts\n\nUsage: opencode [OPTIONS] [project] [COMMAND]\n\nCommands:\n  completion  generate shell completion script\n  acp         start ACP (Agent Client Protocol) server\n  mcp         manage MCP (Model Context Protocol) servers\n  attach      attach to a running opencode server\n  run         run opencode with a message\n  debug       debugging and troubleshooting tools\n  providers   manage AI providers and credentials [alias: auth]\n  agent       manage agents\n  upgrade     upgrade opencode to the latest or a specific version\n  uninstall   uninstall opencode and remove all related files\n  serve       starts a headless opencode server\n  web         start opencode server and open web interface\n  models      list all available models\n  stats       show token usage and cost statistics\n  export      export session data as JSON\n  import      import session data from JSON file or URL\n  github      manage GitHub agent\n  pr          fetch and checkout a GitHub PR branch, then run opencode\n  session     manage sessions\n  plugin      install plugin and update config [alias: plug]\n  db          database tools\n\nArguments:\n  [project]  path to start opencode in\n\nOptions:\n  -v, --version                      show version number\n      --print-logs                   print logs to stderr\n      --log-level <LOG_LEVEL>        log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                         run without external plugins\n      --port <PORT>                  port to listen on [default: 0]\n      --hostname <HOSTNAME>          hostname to listen on [default: 127.0.0.1]\n      --mdns                         enable mDNS service discovery (defaults hostname to 0.0.0.0)\n      --mdns-domain <MDNS_DOMAIN>    custom domain name for mDNS service (default: opencode.local) [default: opencode.local]\n      --cors [<CORS>...]             additional domains to allow for CORS\n  -m, --model <MODEL>                model to use in the format of provider/model\n  -c, --continue                     continue the last session\n  -s, --session <SESSION>            session id to continue\n      --fork                         fork the session when continuing (use with --continue or --session)\n      --prompt <PROMPT>              prompt to use\n      --agent <AGENT>                agent to use\n      --auto                         auto-approve permissions that are not explicitly denied (dangerous!)\n      --mini                         start the minimal interactive interface\n      --no-replay                    disable mini session history replay on resume and after resize\n      --replay-limit <REPLAY_LIMIT>  cap visible mini replay to the newest N messages\n  -h, --help                         Print help\n\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "-h"
+   ]
+  },
+  "ref": {
+   "args": [
+    "-h"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nCommands:\n  opencode completion          generate shell completion script\n  opencode acp                 start ACP (Agent Client Protocol) server\n  opencode mcp                 manage MCP (Model Context Protocol) servers\n  opencode [project]           start opencode tui                                          [default]\n  opencode attach <url>        attach to a running opencode server\n  opencode run [message..]     run opencode with a message\n  opencode debug               debugging and troubleshooting tools\n  opencode providers           manage AI providers and credentials                   [aliases: auth]\n  opencode agent               manage agents\n  opencode upgrade [target]    upgrade opencode to the latest or a specific version\n  opencode uninstall           uninstall opencode and remove all related files\n  opencode serve               starts a headless opencode server\n  opencode web                 start opencode server and open web interface\n  opencode models [provider]   list all available models\n  opencode stats               show token usage and cost statistics\n  opencode export [sessionID]  export session data as JSON\n  opencode import <file>       import session data from JSON file or URL\n  opencode github              manage GitHub agent\n  opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode\n  opencode session             manage sessions\n  opencode plugin <module>     install plugin and update config                      [aliases: plug]\n  opencode db                  database tools\n\nPositionals:\n  project  path to start opencode in                                                        [string]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --port          port to listen on                                        [number] [default: 0]\n      --hostname      hostname to listen on                          [string] [default: \"127.0.0.1\"]\n      --mdns          enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain   custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors          additional domains to allow for CORS                     [array] [default: []]\n  -m, --model         model to use in the format of provider/model                          [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n      --prompt        prompt to use                                                         [string]\n      --agent         agent to use                                                          [string]\n      --auto          auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]\n",
+   "time_ms": 1076
+  },
+  "rust": {
+   "args": [
+    "-h"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nGlobal options defined once at the top level and inherited by every subcommand. Mirrors the `--print-logs` / `--log-level` / `--pure` options in index.ts\n\nUsage: opencode [OPTIONS] [project] [COMMAND]\n\nCommands:\n  completion  generate shell completion script\n  acp         start ACP (Agent Client Protocol) server\n  mcp         manage MCP (Model Context Protocol) servers\n  attach      attach to a running opencode server\n  run         run opencode with a message\n  debug       debugging and troubleshooting tools\n  providers   manage AI providers and credentials [alias: auth]\n  agent       manage agents\n  upgrade     upgrade opencode to the latest or a specific version\n  uninstall   uninstall opencode and remove all related files\n  serve       starts a headless opencode server\n  web         start opencode server and open web interface\n  models      list all available models\n  stats       show token usage and cost statistics\n  export      export session data as JSON\n  import      import session data from JSON file or URL\n  github      manage GitHub agent\n  pr          fetch and checkout a GitHub PR branch, then run opencode\n  session     manage sessions\n  plugin      install plugin and update config [alias: plug]\n  db          database tools\n\nArguments:\n  [project]  path to start opencode in\n\nOptions:\n  -v, --version                      show version number\n      --print-logs                   print logs to stderr\n      --log-level <LOG_LEVEL>        log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                         run without external plugins\n      --port <PORT>                  port to listen on [default: 0]\n      --hostname <HOSTNAME>          hostname to listen on [default: 127.0.0.1]\n      --mdns                         enable mDNS service discovery (defaults hostname to 0.0.0.0)\n      --mdns-domain <MDNS_DOMAIN>    custom domain name for mDNS service (default: opencode.local) [default: opencode.local]\n      --cors [<CORS>...]             additional domains to allow for CORS\n  -m, --model <MODEL>                model to use in the format of provider/model\n  -c, --continue                     continue the last session\n  -s, --session <SESSION>            session id to continue\n      --fork                         fork the session when continuing (use with --continue or --session)\n      --prompt <PROMPT>              prompt to use\n      --agent <AGENT>                agent to use\n      --auto                         auto-approve permissions that are not explicitly denied (dangerous!)\n      --mini                         start the minimal interactive interface\n      --no-replay                    disable mini session history replay on resume and after resize\n      --replay-limit <REPLAY_LIMIT>  cap visible mini replay to the newest N messages\n  -h, --help                         Print help\n\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "help"
+   ],
+   "exit": 0,
+   "stdout": "\n\nCommands:\n  opencode completion          generate shell completion script\n  opencode acp                 start ACP (Agent Client Protocol) server\n  opencode mcp                 manage MCP (Model Context Protocol) servers\n  opencode [project]           start opencode tui                                          [default]\n  opencode attach <url>        attach to a running opencode server\n  opencode run [message..]     run opencode with a message\n  opencode debug               debugging and troubleshooting tools\n  opencode providers           manage AI providers and credentials                   [aliases: auth]\n  opencode agent               manage agents\n  opencode upgrade [target]    upgrade opencode to the latest or a specific version\n  opencode uninstall           uninstall opencode and remove all related files\n  opencode serve               starts a headless opencode server\n  opencode web                 start opencode server and open web interface\n  opencode models [provider]   list all available models\n  opencode stats               show token usage and cost statistics\n  opencode export [sessionID]  export session data as JSON\n  opencode import <file>       import session data from JSON file or URL\n  opencode github              manage GitHub agent\n  opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode\n  opencode session             manage sessions\n  opencode plugin <module>     install plugin and update config                      [aliases: plug]\n  opencode db                  database tools\n\nPositionals:\n  project  path to start opencode in                                                        [string]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --port          port to listen on                                        [number] [default: 0]\n      --hostname      hostname to listen on                          [string] [default: \"127.0.0.1\"]\n      --mdns          enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain   custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors          additional domains to allow for CORS                     [array] [default: []]\n  -m, --model         model to use in the format of provider/model                          [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n      --prompt        prompt to use                                                         [string]\n      --agent         agent to use                                                          [string]\n      --auto          auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]\n",
+   "stderr": "",
+   "time_ms": 1133
+  },
+  "rust": {
+   "args": [
+    "help"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mFailed to change directory to /root/help\n\u001b[91m\u001b[1mError:  \u001b[0mUnexpected error\n\nNo such file or directory (os error 2)\n",
+   "time_ms": 7
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "badcommand"
+   ]
+  },
+  "ref": {
+   "args": [
+    "badcommand"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError: \u001b[0mFailed to change directory to /root/badcommand\n",
+   "time_ms": 1420
+  },
+  "rust": {
+   "args": [
+    "badcommand"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[91m\u001b[1mError:  \u001b[0mFailed to change directory to /root/badcommand\n\u001b[91m\u001b[1mError:  \u001b[0mUnexpected error\n\nNo such file or directory (os error 2)\n",
+   "time_ms": 6
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--badflag"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--badflag"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nCommands:\n  opencode completion          generate shell completion script\n  opencode acp                 start ACP (Agent Client Protocol) server\n  opencode mcp                 manage MCP (Model Context Protocol) servers\n  opencode [project]           start opencode tui                                          [default]\n  opencode attach <url>        attach to a running opencode server\n  opencode run [message..]     run opencode with a message\n  opencode debug               debugging and troubleshooting tools\n  opencode providers           manage AI providers and credentials                   [aliases: auth]\n  opencode agent               manage agents\n  opencode upgrade [target]    upgrade opencode to the latest or a specific version\n  opencode uninstall           uninstall opencode and remove all related files\n  opencode serve               starts a headless opencode server\n  opencode web                 start opencode server and open web interface\n  opencode models [provider]   list all available models\n  opencode stats               show token usage and cost statistics\n  opencode export [sessionID]  export session data as JSON\n  opencode import <file>       import session data from JSON file or URL\n  opencode github              manage GitHub agent\n  opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode\n  opencode session             manage sessions\n  opencode plugin <module>     install plugin and update config                      [aliases: plug]\n  opencode db                  database tools\n\nPositionals:\n  project  path to start opencode in                                                        [string]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --port          port to listen on                                        [number] [default: 0]\n      --hostname      hostname to listen on                          [string] [default: \"127.0.0.1\"]\n      --mdns          enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain   custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors          additional domains to allow for CORS                     [array] [default: []]\n  -m, --model         model to use in the format of provider/model                          [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n      --prompt        prompt to use                                                         [string]\n      --agent         agent to use                                                          [string]\n      --auto          auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]\n",
+   "time_ms": 1164
+  },
+  "rust": {
+   "args": [
+    "--badflag"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "error: unexpected argument '--badflag' found\n\n  tip: to pass '--badflag' as a value, use '-- --badflag'\n\nUsage: opencode [OPTIONS] [project] [COMMAND]\n\nFor more information, try '--help'.\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "run",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "run",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode run [message..]\n\nrun opencode with a message\n\nPositionals:\n  message  message to send                                                     [array] [default: []]\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --command      the command to run, use message for args                               [string]\n  -c, --continue     continue the last session                                             [boolean]\n  -s, --session      session id to continue                                                 [string]\n      --fork         fork the session before continuing (requires --continue or --session) [boolean]\n      --share        share the session                                                     [boolean]\n  -m, --model        model to use in the format of provider/model                           [string]\n      --agent        agent to use                                                           [string]\n      --format       format: default (formatted) or json (raw JSON events)\n                                          [string] [choices: \"default\", \"json\"] [default: \"default\"]\n  -f, --file         file(s) to attach to message                                            [array]\n      --title        title for the session (uses truncated prompt if no value provided)     [string]\n      --attach       attach to a running opencode server (e.g., http://localhost:4096)      [string]\n  -p, --password     basic auth password (defaults to OPENCODE_SERVER_PASSWORD)             [string]\n  -u, --username     basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --dir          directory to run in, path on remote server if attaching                [string]\n      --port         port for the local server (defaults to random port if no value provided)\n                                                                                            [number]\n      --variant      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n                                                                                            [string]\n      --thinking     show thinking blocks                                                  [boolean]\n  -i, --interactive  run in direct interactive split-footer mode          [boolean] [default: false]\n      --auto         auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]",
+   "time_ms": 1090
+  },
+  "rust": {
+   "args": [
+    "run",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "run opencode with a message\n\nUsage: opencode run [OPTIONS] [message]...\n\nArguments:\n  [message]...  message to send\n\nOptions:\n      --command <COMMAND>      the command to run, use message for args\n  -v, --version                show version number\n  -c, --continue               continue the last session\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n  -s, --session <SESSION>      session id to continue\n      --fork                   fork the session before continuing (requires --continue or --session)\n      --pure                   run without external plugins\n      --share                  share the session\n  -m, --model <MODEL>          model to use in the format of provider/model\n      --agent <AGENT>          agent to use\n      --format <FORMAT>        format: default (formatted) or json (raw JSON events) [default: default] [possible values: default, json]\n  -f, --file <FILE>            file(s) to attach to message\n      --title <TITLE>          title for the session (uses truncated prompt if no value provided)\n      --attach <ATTACH>        attach to a running opencode server (e.g., http://localhost:4096)\n  -p, --password <PASSWORD>    basic auth password (defaults to OPENCODE_SERVER_PASSWORD)\n  -u, --username <USERNAME>    basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n      --dir <DIR>              directory to run in, path on remote server if attaching\n      --port <PORT>            port for the local server (defaults to random port if no value provided)\n      --variant <VARIANT>      model variant (provider-specific reasoning effort, e.g., high, max, minimal)\n      --thinking [<THINKING>]  show thinking blocks [possible values: true, false]\n  -i, --interactive            run in direct interactive split-footer mode\n      --auto                   auto-approve permissions that are not explicitly denied (dangerous!)\n  -h, --help                   Print help\n",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "serve",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "serve",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode serve\n\nstarts a headless opencode server\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --port         port to listen on                                         [number] [default: 0]\n      --hostname     hostname to listen on                           [string] [default: \"127.0.0.1\"]\n      --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain  custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors         additional domains to allow for CORS                      [array] [default: []]",
+   "time_ms": 999
+  },
+  "rust": {
+   "args": [
+    "serve",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "starts a headless opencode server\n\nUsage: opencode serve [OPTIONS]\n\nOptions:\n      --port <PORT>                port to listen on [default: 0]\n  -v, --version                    show version number\n      --hostname <HOSTNAME>        hostname to listen on [default: 127.0.0.1]\n      --print-logs                 print logs to stderr\n      --log-level <LOG_LEVEL>      log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --mdns                       enable mDNS service discovery (defaults hostname to 0.0.0.0)\n      --mdns-domain <MDNS_DOMAIN>  custom domain name for mDNS service (default: opencode.local) [default: opencode.local]\n      --pure                       run without external plugins\n      --cors [<CORS>...]           additional domains to allow for CORS\n  -h, --help                       Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "models",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "models",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode models [provider]\n\nlist all available models\n\nPositionals:\n  provider  provider ID to filter models by                                                 [string]\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]\n      --verbose     use more verbose model output (includes metadata like costs)           [boolean]\n      --refresh     refresh the models cache from models.dev                               [boolean]",
+   "time_ms": 981
+  },
+  "rust": {
+   "args": [
+    "models",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "list all available models\n\nUsage: opencode models [OPTIONS] [provider]\n\nArguments:\n  [provider]  provider ID to filter models by\n\nOptions:\n  -v, --version                show version number\n      --verbose                use more verbose model output (includes metadata like costs)\n      --print-logs             print logs to stderr\n      --refresh                refresh the models cache from models.dev\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "acp",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "acp",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode acp\n\nstart ACP (Agent Client Protocol) server\n\nOptions:\n  -h, --help         show help                                                             [boolean]\n  -v, --version      show version number                                                   [boolean]\n      --print-logs   print logs to stderr                                                  [boolean]\n      --log-level    log level                  [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure         run without external plugins                                          [boolean]\n      --port         port to listen on                                         [number] [default: 0]\n      --hostname     hostname to listen on                           [string] [default: \"127.0.0.1\"]\n      --mdns         enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain  custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors         additional domains to allow for CORS                      [array] [default: []]\n      --cwd          working directory                                   [string] [default: \"/root\"]",
+   "time_ms": 939
+  },
+  "rust": {
+   "args": [
+    "acp",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "start ACP (Agent Client Protocol) server\n\nUsage: opencode acp [OPTIONS]\n\nOptions:\n      --port <PORT>                port to listen on [default: 0]\n  -v, --version                    show version number\n      --hostname <HOSTNAME>        hostname to listen on [default: 127.0.0.1]\n      --print-logs                 print logs to stderr\n      --log-level <LOG_LEVEL>      log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --mdns                       enable mDNS service discovery (defaults hostname to 0.0.0.0)\n      --mdns-domain <MDNS_DOMAIN>  custom domain name for mDNS service (default: opencode.local) [default: opencode.local]\n      --pure                       run without external plugins\n      --cors [<CORS>...]           additional domains to allow for CORS\n      --cwd <CWD>                  working directory\n  -h, --help                       Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "attach",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "attach",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode attach <url>\n\nattach to a running opencode server\n\nPositionals:\n  url  http://localhost:4096                                                     [string] [required]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --dir           directory to run in                                                   [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n  -p, --password      basic auth password (defaults to OPENCODE_SERVER_PASSWORD)            [string]\n  -u, --username      basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n                                                                                            [string]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]",
+   "time_ms": 1006
+  },
+  "rust": {
+   "args": [
+    "attach",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "attach to a running opencode server\n\nUsage: opencode attach [OPTIONS] <URL>\n\nArguments:\n  <URL>  http://localhost:4096\n\nOptions:\n      --dir <DIR>                    directory to run in\n  -v, --version                      show version number\n  -c, --continue                     continue the last session\n      --print-logs                   print logs to stderr\n      --log-level <LOG_LEVEL>        log level [possible values: DEBUG, INFO, WARN, ERROR]\n  -s, --session <SESSION>            session id to continue\n      --fork                         fork the session when continuing (use with --continue or --session)\n      --pure                         run without external plugins\n  -p, --password <PASSWORD>          basic auth password (defaults to OPENCODE_SERVER_PASSWORD)\n  -u, --username <USERNAME>          basic auth username (defaults to OPENCODE_SERVER_USERNAME or 'opencode')\n      --mini                         start the minimal interactive interface\n      --no-replay                    disable mini session history replay on resume and after resize\n      --replay-limit <REPLAY_LIMIT>  cap visible mini replay to the newest N messages\n  -h, --help                         Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "completion",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "completion",
+    "--help"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u2800                                \u2584     \n\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584 \u2588\u2580\u2580\u2580 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588\n\u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580 \u2588  \u2588 \u2588    \u2588  \u2588 \u2588  \u2588 \u2588\u2580\u2580\u2580\n\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580  \u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580\u2580\u2580\u2580\n\nCommands:\n  opencode completion          generate shell completion script\n  opencode acp                 start ACP (Agent Client Protocol) server\n  opencode mcp                 manage MCP (Model Context Protocol) servers\n  opencode [project]           start opencode tui                                          [default]\n  opencode attach <url>        attach to a running opencode server\n  opencode run [message..]     run opencode with a message\n  opencode debug               debugging and troubleshooting tools\n  opencode providers           manage AI providers and credentials                   [aliases: auth]\n  opencode agent               manage agents\n  opencode upgrade [target]    upgrade opencode to the latest or a specific version\n  opencode uninstall           uninstall opencode and remove all related files\n  opencode serve               starts a headless opencode server\n  opencode web                 start opencode server and open web interface\n  opencode models [provider]   list all available models\n  opencode stats               show token usage and cost statistics\n  opencode export [sessionID]  export session data as JSON\n  opencode import <file>       import session data from JSON file or URL\n  opencode github              manage GitHub agent\n  opencode pr <number>         fetch and checkout a GitHub PR branch, then run opencode\n  opencode session             manage sessions\n  opencode plugin <module>     install plugin and update config                      [aliases: plug]\n  opencode db                  database tools\n\nPositionals:\n  project  path to start opencode in                                                        [string]\n\nOptions:\n  -h, --help          show help                                                            [boolean]\n  -v, --version       show version number                                                  [boolean]\n      --print-logs    print logs to stderr                                                 [boolean]\n      --log-level     log level                 [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure          run without external plugins                                         [boolean]\n      --port          port to listen on                                        [number] [default: 0]\n      --hostname      hostname to listen on                          [string] [default: \"127.0.0.1\"]\n      --mdns          enable mDNS service discovery (defaults hostname to 0.0.0.0)\n                                                                          [boolean] [default: false]\n      --mdns-domain   custom domain name for mDNS service (default: opencode.local)\n                                                                [string] [default: \"opencode.local\"]\n      --cors          additional domains to allow for CORS                     [array] [default: []]\n  -m, --model         model to use in the format of provider/model                          [string]\n  -c, --continue      continue the last session                                            [boolean]\n  -s, --session       session id to continue                                                [string]\n      --fork          fork the session when continuing (use with --continue or --session)  [boolean]\n      --prompt        prompt to use                                                         [string]\n      --agent         agent to use                                                          [string]\n      --auto          auto-approve permissions that are not explicitly denied (dangerous!)\n                                                                          [boolean] [default: false]\n      --mini          start the minimal interactive interface             [boolean] [default: false]\n      --no-replay     disable mini session history replay on resume and after resize       [boolean]\n      --replay-limit  cap visible mini replay to the newest N messages                      [number]\n",
+   "time_ms": 1052
+  },
+  "rust": {
+   "args": [
+    "completion",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "generate shell completion script\n\nUsage: opencode completion [OPTIONS]\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "completion"
+   ]
+  },
+  "ref": {
+   "args": [
+    "completion"
+   ],
+   "exit": 0,
+   "stdout": "###-begin-opencode-completions-###\n#\n# yargs command completion script\n#\n# Installation: opencode completion >> ~/.bashrc\n#    or opencode completion >> ~/.bash_profile on OSX.\n#\n_opencode_yargs_completions()\n{\n    local cur_word args type_list\n\n    cur_word=\"${COMP_WORDS[COMP_CWORD]}\"\n    args=(\"${COMP_WORDS[@]}\")\n\n    # ask yargs to generate completions.\n    # see https://stackoverflow.com/a/40944195/7080036 for the spaces-handling awk\n    mapfile -t type_list < <(opencode --get-yargs-completions \"${args[@]}\")\n    mapfile -t COMPREPLY < <(compgen -W \"$( printf '%q ' \"${type_list[@]}\" )\" -- \"${cur_word}\" |\n        awk '/ / { print \"\\\"\"$0\"\\\"\" } /^[^ ]+$/ { print $0 }')\n\n    # if no match was found, fall back to filename completion\n    if [ ${#COMPREPLY[@]} -eq 0 ]; then\n      COMPREPLY=()\n    fi\n\n    return 0\n}\ncomplete -o bashdefault -o default -F _opencode_yargs_completions opencode\n###-end-opencode-completions-###\n\n",
+   "stderr": "",
+   "time_ms": 1065
+  },
+  "rust": {
+   "args": [
+    "completion"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "\u001b[93m\u001b[1m !   \u001b[0m shell completion generation is not yet wired in this build (TODO(integration): clap_complete)\n",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "completion",
+    "bash"
+   ]
+  },
+  "ref": {
+   "args": [
+    "completion",
+    "bash"
+   ],
+   "exit": 0,
+   "stdout": "###-begin-opencode-completions-###\n#\n# yargs command completion script\n#\n# Installation: opencode completion >> ~/.bashrc\n#    or opencode completion >> ~/.bash_profile on OSX.\n#\n_opencode_yargs_completions()\n{\n    local cur_word args type_list\n\n    cur_word=\"${COMP_WORDS[COMP_CWORD]}\"\n    args=(\"${COMP_WORDS[@]}\")\n\n    # ask yargs to generate completions.\n    # see https://stackoverflow.com/a/40944195/7080036 for the spaces-handling awk\n    mapfile -t type_list < <(opencode --get-yargs-completions \"${args[@]}\")\n    mapfile -t COMPREPLY < <(compgen -W \"$( printf '%q ' \"${type_list[@]}\" )\" -- \"${cur_word}\" |\n        awk '/ / { print \"\\\"\"$0\"\\\"\" } /^[^ ]+$/ { print $0 }')\n\n    # if no match was found, fall back to filename completion\n    if [ ${#COMPREPLY[@]} -eq 0 ]; then\n      COMPREPLY=()\n    fi\n\n    return 0\n}\ncomplete -o bashdefault -o default -F _opencode_yargs_completions opencode\n###-end-opencode-completions-###\n\n",
+   "stderr": "",
+   "time_ms": 977
+  },
+  "rust": {
+   "args": [
+    "completion",
+    "bash"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "error: unexpected argument 'bash' found\n\nUsage: opencode completion [OPTIONS]\n\nFor more information, try '--help'.\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "generate",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "generate",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode generate\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1059
+  },
+  "rust": {
+   "args": [
+    "generate",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "Usage: opencode generate [OPTIONS]\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "console",
+    "--help"
+   ]
+  },
+  "ref": {
+   "args": [
+    "console",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "opencode console\n\nCommands:\n  opencode console login [url]     log in to console\n  opencode console logout [email]  log out from console\n  opencode console switch          switch active org\n  opencode console orgs            list orgs\n  opencode console open            open active console account\n\nOptions:\n  -h, --help        show help                                                              [boolean]\n  -v, --version     show version number                                                    [boolean]\n      --print-logs  print logs to stderr                                                   [boolean]\n      --log-level   log level                   [string] [choices: \"DEBUG\", \"INFO\", \"WARN\", \"ERROR\"]\n      --pure        run without external plugins                                           [boolean]",
+   "time_ms": 1130
+  },
+  "rust": {
+   "args": [
+    "console",
+    "--help"
+   ],
+   "exit": 0,
+   "stdout": "",
+   "stderr": "Usage: opencode console [OPTIONS] [COMMAND]\n\nCommands:\n  login   log in to console\n  logout  log out from console\n  switch  switch active org\n  orgs    list orgs\n  open    open active console account\n\nOptions:\n  -v, --version                show version number\n      --print-logs             print logs to stderr\n      --log-level <LOG_LEVEL>  log level [possible values: DEBUG, INFO, WARN, ERROR]\n      --pure                   run without external plugins\n  -h, --help                   Print help\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--log-level",
+    "DEBUG",
+    "--version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--log-level",
+    "DEBUG",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1197
+  },
+  "rust": {
+   "args": [
+    "--log-level",
+    "DEBUG",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 4
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--log-level",
+    "BOGUS",
+    "--version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--log-level",
+    "BOGUS",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1358
+  },
+  "rust": {
+   "args": [
+    "--log-level",
+    "BOGUS",
+    "--version"
+   ],
+   "exit": 1,
+   "stdout": "",
+   "stderr": "error: invalid value 'BOGUS' for '--log-level <LOG_LEVEL>'\n  [possible values: DEBUG, INFO, WARN, ERROR]\n\nFor more information, try '--help'.\n",
+   "time_ms": 3
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--pure",
+    "--version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--pure",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1236
+  },
+  "rust": {
+   "args": [
+    "--pure",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 5
+  }
+ },
+ {
+  "scenario": {
+   "args": [
+    "--print-logs",
+    "--version"
+   ]
+  },
+  "ref": {
+   "args": [
+    "--print-logs",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 1218
+  },
+  "rust": {
+   "args": [
+    "--print-logs",
+    "--version"
+   ],
+   "exit": 0,
+   "stdout": "1.18.13\n",
+   "stderr": "",
+   "time_ms": 5
+  }
+ }
+]

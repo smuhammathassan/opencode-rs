@@ -1,0 +1,40 @@
+# Agent 17 raw measurements (2026-08-05)
+
+## warm --version/--help (python3 perf_counter, n=12)
+STOCK --version: min=1125.9 med=1477.3 max=2035.7 stdev=304.1 ms
+RUST  --version: min=2.5 med=2.8 max=3.4 stdev=0.3 ms (incl ~1.1ms spawn)
+STOCK --help:    min=1960.2 med=2915.0 max=3423.7 ms
+RUST  --help:    min=3.2 med=5.0 max=9.6 ms
+STOCK run--help: min=1809.4 med=2789.9 max=3959.5 ms
+RUST  run--help: min=2.9 med=3.4 max=5.3 ms
+
+## /usr/bin/time -v RSS (KB)
+STOCK --version: 175160..191908 (median ~186000)
+RUST  --version: 4736..4992
+STOCK --help:    197756..200912
+RUST  --help:    4736..4992
+
+## cold (sync+drop_caches=3)
+STOCK --version cold: min=1477.6 med=1983.7 max=3296.6 ms
+RUST  --version cold: min=8.1 med=27.4 max=35.9 ms
+STOCK --help cold:    min=1628.1 med=2040.3 max=2329.3 ms
+RUST  --help cold:    min=13.7 med=14.5 max=23.3 ms
+
+## real-work commands (warm)
+STOCK db path:  wall med=1691ms RSS med=273932KB
+RUST  db path:  wall med=14ms  RSS med=5376KB
+STOCK debug paths: wall med=1062ms RSS med=193712KB
+RUST  debug paths: wall med=7ms   RSS med=5376KB
+
+## serve
+STOCK serve: TCP-accept ~2.8-4.5s; spawn->HTTP /health 200 ~5.6s; peak RSS 345184KB
+RUST  serve: bare TCP socket, drains bytes, NEVER serves HTTP (25s timeout); peak RSS 5376KB
+
+## TUI (pty)
+STOCK tui: first pty output ~2.1s; peak RSS 719996KB; stays running
+RUST  tui: NOT IMPLEMENTED; pty -> 'the TUI is not yet wired in this build'; no-tty -> prints msg, exit 0
+
+## binary sizes
+stock: 180381824 B (unstripped, embeds V8/Bun runtime + JS bundle, .text 57.5MB .rodata 33.9MB)
+rust:   8054560 B (unstripped; stripped copy -> 6.1MB decimal / 5.8MiB)
+ratio: 22.4x (claimed 23x); with stripped rust 31x

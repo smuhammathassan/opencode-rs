@@ -1,0 +1,14 @@
+# 07-rust-serve-endpoints.txt — captured Wed Aug  5 09:02:09 UTC 2026
+# Rust binary serve --port 43122 (bare TCP sink), HOME=/tmp/oc07-home
+
+## GET /api/health
+[curl_exit=124]
+
+## GET /api/session
+[curl_exit=124]
+
+## POST /api/session
+[curl_exit=124]
+
+## GET /api/event (SSE)
+[curl_exit=124]
