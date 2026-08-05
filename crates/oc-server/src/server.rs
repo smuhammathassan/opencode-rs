@@ -125,3 +125,24 @@ async fn start_listener(opts: ListenOptions) -> std::io::Result<Listener> {
         handle,
     })
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn listen_binds_and_stops() {
+        let opts = ListenOptions::new("127.0.0.1", 0);
+        let listener = listen(opts).await.expect("listen failed");
+        let port = listener.port;
+        assert!(port > 0);
+
+        // The listener must accept TCP connections on the bound port.
+        let stream = tokio::net::TcpStream::connect(("127.0.0.1", port))
+            .await
+            .expect("tcp connect failed");
+        drop(stream);
+
+        listener.stop(false).await;
+    }
+}
