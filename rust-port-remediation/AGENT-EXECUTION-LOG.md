@@ -41,4 +41,4 @@ See `02-DEPENDENCY-WAVES.md`. Wave 1 (foundations: schema, composition root, con
 
 ## Commit log (Wave 0)
 
-- To be recorded after the planning evidence commit on `fix/audit-remediation`.
+- `ba32ba7` on `fix/audit-remediation` — "Remediation Wave 0: 20-agent read-only planning pass, baseline, finding-status, dependency waves" (24 files, 4926 insertions; planning evidence only, no source changes).
