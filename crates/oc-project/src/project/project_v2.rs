@@ -57,7 +57,10 @@ impl ProjectV2 {
             previous,
             id,
             directory: repo.worktree,
-            vcs: Some(Vcs { r#type: "git".to_string(), store: repo.common_directory }),
+            vcs: Some(Vcs {
+                r#type: "git".to_string(),
+                store: repo.common_directory,
+            }),
         }
     }
 
@@ -131,12 +134,33 @@ async fn root(git: Arc<Git>, repo: &Repository) -> Option<String> {
 async fn discover(git: Arc<Git>, input: &str) -> Option<Repository> {
     let dotgit = up_target(".git", input).await?;
     let cwd = pathutil::dirname(&dotgit);
-    let top_level = git.run(
-        &["rev-parse", "--show-toplevel"],
-        &crate::git::Options { cwd: cwd.clone(), ..Default::default() },
-    ).await;
-    let git_dir = git.run(&["rev-parse", "--git-dir"], &crate::git::Options { cwd: cwd.clone(), ..Default::default() }).await;
-    let common_dir = git.run(&["rev-parse", "--git-common-dir"], &crate::git::Options { cwd: cwd.clone(), ..Default::default() }).await;
+    let top_level = git
+        .run(
+            &["rev-parse", "--show-toplevel"],
+            &crate::git::Options {
+                cwd: cwd.clone(),
+                ..Default::default()
+            },
+        )
+        .await;
+    let git_dir = git
+        .run(
+            &["rev-parse", "--git-dir"],
+            &crate::git::Options {
+                cwd: cwd.clone(),
+                ..Default::default()
+            },
+        )
+        .await;
+    let common_dir = git
+        .run(
+            &["rev-parse", "--git-common-dir"],
+            &crate::git::Options {
+                cwd: cwd.clone(),
+                ..Default::default()
+            },
+        )
+        .await;
     if git_dir.exit_code != 0 || common_dir.exit_code != 0 {
         return None;
     }
@@ -195,7 +219,9 @@ fn root_of(input: &str) -> String {
     let path = PathBuf::from(input);
     match path.components().next() {
         Some(std::path::Component::RootDir) => "/".to_string(),
-        Some(std::path::Component::Prefix(prefix)) => prefix.as_os_str().to_string_lossy().into_owned(),
+        Some(std::path::Component::Prefix(prefix)) => {
+            prefix.as_os_str().to_string_lossy().into_owned()
+        }
         _ => String::new(),
     }
 }
@@ -206,15 +232,24 @@ mod tests {
 
     #[test]
     fn url_parses_https_remotes() {
-        assert_eq!(url("https://github.com/sst/opencode.git"), Some("github.com/sst/opencode".to_string()));
-        assert_eq!(url("https://github.com/sst/opencode"), Some("github.com/sst/opencode".to_string()));
+        assert_eq!(
+            url("https://github.com/sst/opencode.git"),
+            Some("github.com/sst/opencode".to_string())
+        );
+        assert_eq!(
+            url("https://github.com/sst/opencode"),
+            Some("github.com/sst/opencode".to_string())
+        );
     }
 
     #[test]
     fn url_parses_scp_remotes_with_user() {
         // SCP forms without `user@` parse as a URL with an empty host in the
         // reference, so they resolve to `undefined`.
-        assert_eq!(url("git@github.com:sst/opencode.git"), Some("github.com/sst/opencode".to_string()));
+        assert_eq!(
+            url("git@github.com:sst/opencode.git"),
+            Some("github.com/sst/opencode".to_string())
+        );
         assert_eq!(url("github.com:sst/opencode.git"), None);
     }
 

@@ -114,7 +114,10 @@ pub struct ProjectNotFoundError {
 
 impl ProjectNotFoundError {
     pub fn new(projectID: ProjectID) -> Self {
-        ProjectNotFoundError { tag: "Project.NotFoundError".to_string(), projectID }
+        ProjectNotFoundError {
+            tag: "Project.NotFoundError".to_string(),
+            projectID,
+        }
     }
 }
 
@@ -194,7 +197,11 @@ pub enum PatchApplyReason {
 
 impl PatchApplyError {
     pub fn new(message: impl Into<String>, reason: PatchApplyReason) -> Self {
-        PatchApplyError { tag: "VcsPatchApplyError".to_string(), message: message.into(), reason }
+        PatchApplyError {
+            tag: "VcsPatchApplyError".to_string(),
+            message: message.into(),
+            reason,
+        }
     }
 }
 
@@ -250,7 +257,10 @@ pub struct TaggedError {
 
 impl TaggedError {
     pub fn new(tag: impl Into<String>, message: impl Into<String>) -> Self {
-        TaggedError { tag: tag.into(), message: message.into() }
+        TaggedError {
+            tag: tag.into(),
+            message: message.into(),
+        }
     }
 }
 
@@ -276,9 +286,17 @@ pub enum WorktreeError {
 
 impl WorktreeError {
     worktree_error!(NotGit, not_git, "WorktreeNotGitError");
-    worktree_error!(NameGenerationFailed, name_generation_failed, "WorktreeNameGenerationFailedError");
+    worktree_error!(
+        NameGenerationFailed,
+        name_generation_failed,
+        "WorktreeNameGenerationFailedError"
+    );
     worktree_error!(CreateFailed, create_failed, "WorktreeCreateFailedError");
-    worktree_error!(StartCommandFailed, start_command_failed, "WorktreeStartCommandFailedError");
+    worktree_error!(
+        StartCommandFailed,
+        start_command_failed,
+        "WorktreeStartCommandFailedError"
+    );
     worktree_error!(RemoveFailed, remove_failed, "WorktreeRemoveFailedError");
     worktree_error!(ResetFailed, reset_failed, "WorktreeResetFailedError");
     worktree_error!(ListFailed, list_failed, "WorktreeListFailedError");
@@ -388,7 +406,11 @@ mod tests {
             name: None,
             icon: None,
             commands: None,
-            time: ProjectTime { created: 1, updated: 2, initialized: None },
+            time: ProjectTime {
+                created: 1,
+                updated: 2,
+                initialized: None,
+            },
             sandboxes: vec!["/a".to_string(), "/b".to_string()],
         };
         let json = serde_json::to_value(&info).unwrap();
@@ -406,16 +428,26 @@ mod tests {
 
     #[test]
     fn project_icon_uses_override_key() {
-        let icon = ProjectIcon { url: None, override_: Some("x".to_string()), color: Some("red".to_string()) };
+        let icon = ProjectIcon {
+            url: None,
+            override_: Some("x".to_string()),
+            color: Some("red".to_string()),
+        };
         let json = serde_json::to_value(&icon).unwrap();
         assert_eq!(json, serde_json::json!({ "override": "x", "color": "red" }));
     }
 
     #[test]
     fn snapshot_patch_golden() {
-        let patch = SnapshotPatch { hash: "abc123".to_string(), files: vec!["/w/a.ts".to_string()] };
+        let patch = SnapshotPatch {
+            hash: "abc123".to_string(),
+            files: vec!["/w/a.ts".to_string()],
+        };
         let json = serde_json::to_value(&patch).unwrap();
-        assert_eq!(json, serde_json::json!({ "hash": "abc123", "files": ["/w/a.ts"] }));
+        assert_eq!(
+            json,
+            serde_json::json!({ "hash": "abc123", "files": ["/w/a.ts"] })
+        );
     }
 
     #[test]
@@ -438,7 +470,10 @@ mod tests {
 
     #[test]
     fn worktree_create_input_golden() {
-        let input = WorktreeCreateInput { name: Some("x".to_string()), startCommand: None };
+        let input = WorktreeCreateInput {
+            name: Some("x".to_string()),
+            startCommand: None,
+        };
         let json = serde_json::to_value(&input).unwrap();
         assert_eq!(json, serde_json::json!({ "name": "x" }));
     }
@@ -466,7 +501,12 @@ mod tests {
 
     #[test]
     fn vcs_file_status_golden() {
-        let status = VcsFileStatus { file: "a.ts".to_string(), additions: 3, deletions: 1, status: "modified".to_string() };
+        let status = VcsFileStatus {
+            file: "a.ts".to_string(),
+            additions: 3,
+            deletions: 1,
+            status: "modified".to_string(),
+        };
         let json = serde_json::to_value(&status).unwrap();
         assert_eq!(
             json,

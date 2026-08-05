@@ -30,10 +30,19 @@ impl Bootstrap {
         vcs: Arc<Vcs>,
         snapshot: Arc<Snapshot>,
     ) -> Arc<Bootstrap> {
-        Arc::new(Bootstrap { config, project, vcs, snapshot })
+        Arc::new(Bootstrap {
+            config,
+            project,
+            vcs,
+            snapshot,
+        })
     }
 
-    pub async fn run(&self, ctx: &InstanceContext, shutdown: broadcast::Sender<()>) -> Vec<tokio::task::JoinHandle<()>> {
+    pub async fn run(
+        &self,
+        ctx: &InstanceContext,
+        shutdown: broadcast::Sender<()>,
+    ) -> Vec<tokio::task::JoinHandle<()>> {
         tracing::info!("bootstrapping");
         // Config is eagerly materialized for nice traces in the reference.
         let _ = self.config.clone();

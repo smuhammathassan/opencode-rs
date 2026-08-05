@@ -2,13 +2,13 @@
 use std::sync::Arc;
 
 use crate::git::Git;
-use crate::schema::{ProjectIcon, ProjectID, ProjectInfo, ProjectNotFoundError, ProjectTime};
 use crate::project::project_v2::ProjectV2;
 use crate::project::store::{from_row, ProjectRow, ProjectStore};
+use crate::schema::{ProjectID, ProjectIcon, ProjectInfo, ProjectNotFoundError, ProjectTime};
 use crate::util::bus::{Bus, BusEvent, EventPayload};
 use crate::util::config::Config;
-use crate::util::{fs, pathutil, process, GitResult};
 use crate::util::process::SpawnOptions;
+use crate::util::{fs, pathutil, process, GitResult};
 
 pub const DEFAULT_INIT_COMMAND: &str = "init";
 
@@ -44,9 +44,21 @@ impl Project {
     }
 
     async fn git(&self, args: &[&str], cwd: Option<&str>) -> GitResult {
-        let result = process::run("git", args, SpawnOptions { cwd: cwd.map(String::from), ..Default::default() }).await;
+        let result = process::run(
+            "git",
+            args,
+            SpawnOptions {
+                cwd: cwd.map(String::from),
+                ..Default::default()
+            },
+        )
+        .await;
         match result {
-            Ok(result) => GitResult { code: result.exit_code, text: result.stdout_text(), stderr: result.stderr_text() },
+            Ok(result) => GitResult {
+                code: result.exit_code,
+                text: result.stdout_text(),
+                stderr: result.stderr_text(),
+            },
             Err(error) => GitResult::failure(error.to_string()),
         }
     }
@@ -80,11 +92,16 @@ impl Project {
 
         // Phase 2: upsert
         let project_id = ProjectID::make(&data.id);
-        self.store.migrate_project_id(data.previous.as_deref().unwrap_or(""), &data.id);
+        self.store
+            .migrate_project_id(data.previous.as_deref().unwrap_or(""), &data.id);
         let existing = self.store.get_project(&data.id).map(|row| from_row(&row));
 
         let fake_vcs = std::env::var("OPENCODE_FAKE_VCS").ok();
-        let vcs = data.vcs.as_ref().map(|vcs| vcs.r#type.clone()).or_else(|| fake_vcs.clone());
+        let vcs = data
+            .vcs
+            .as_ref()
+            .map(|vcs| vcs.r#type.clone())
+            .or_else(|| fake_vcs.clone());
         let now = now_ms();
 
         let existing = existing.unwrap_or_else(|| ProjectInfo {
@@ -92,7 +109,11 @@ impl Project {
             worktree: worktree.clone(),
             vcs,
             sandboxes: Vec::new(),
-            time: ProjectTime { created: now, updated: now, initialized: None },
+            time: ProjectTime {
+                created: now,
+                updated: now,
+                initialized: None,
+            },
             ..ProjectInfo::default()
         });
 
@@ -105,9 +126,21 @@ impl Project {
         }
 
         let mut result = ProjectInfo {
-            worktree: if project_id == ProjectID::global() { worktree.clone() } else { existing.worktree.clone() },
-            vcs: data.vcs.as_ref().map(|vcs| vcs.r#type.clone()).or_else(|| fake_vcs.clone()),
-            time: ProjectTime { created: existing.time.created, updated: now, initialized: existing.time.initialized },
+            worktree: if project_id == ProjectID::global() {
+                worktree.clone()
+            } else {
+                existing.worktree.clone()
+            },
+            vcs: data
+                .vcs
+                .as_ref()
+                .map(|vcs| vcs.r#type.clone())
+                .or_else(|| fake_vcs.clone()),
+            time: ProjectTime {
+                created: existing.time.created,
+                updated: now,
+                initialized: existing.time.initialized,
+            },
             ..existing
         };
 
@@ -130,16 +163,22 @@ impl Project {
             time_created: result.time.created,
             time_updated: result.time.updated,
             time_initialized: result.time.initialized,
-            sandboxes: result.sandboxes.iter().map(|sandbox| pathutil::resolve(sandbox)).collect(),
+            sandboxes: result
+                .sandboxes
+                .iter()
+                .map(|sandbox| pathutil::resolve(sandbox))
+                .collect(),
             commands: result.commands.clone(),
         };
         self.store.upsert_project(&row);
 
         if project_id != ProjectID::global() {
-            self.store.update_sessions_to_project(&data.directory, &project_id.0);
+            self.store
+                .update_sessions_to_project(&data.directory, &project_id.0);
         }
 
-        self.store.add_project_directory(&project_id.0, &data.directory);
+        self.store
+            .add_project_directory(&project_id.0, &data.directory);
 
         self.emit_updated(&result);
         if project_id != ProjectID::global() {
@@ -150,8 +189,15 @@ impl Project {
             }
         }
 
-        let sandbox = if data.vcs.is_some() { data.directory } else { worktree };
-        Ok(FromDirectoryResult { project: result, sandbox })
+        let sandbox = if data.vcs.is_some() {
+            data.directory
+        } else {
+            worktree
+        };
+        Ok(FromDirectoryResult {
+            project: result,
+            sandbox,
+        })
     }
 
     async fn filter_existing(&self, sandboxes: &[String]) -> Vec<String> {
@@ -169,16 +215,25 @@ impl Project {
         if input.vcs.as_deref() != Some("git") {
             return;
         }
-        if input.icon.as_ref().is_some_and(|icon| icon.override_.is_some()) {
+        if input
+            .icon
+            .as_ref()
+            .is_some_and(|icon| icon.override_.is_some())
+        {
             return;
         }
         if input.icon.as_ref().is_some_and(|icon| icon.url.is_some()) {
             return;
         }
 
-        let mut matches = fs::glob_files(&input.worktree, &["ico", "png", "svg", "jpg", "jpeg", "webp"]);
+        let mut matches = fs::glob_files(
+            &input.worktree,
+            &["ico", "png", "svg", "jpg", "jpeg", "webp"],
+        );
         matches.sort_by(|a, b| a.len().cmp(&b.len()));
-        let Some(shortest) = matches.into_iter().next() else { return };
+        let Some(shortest) = matches.into_iter().next() else {
+            return;
+        };
 
         let buffer = fs::read_bytes(&shortest).await;
         let base64 = base64_encode(&buffer);
@@ -186,7 +241,11 @@ impl Project {
         let url = format!("data:{mime};base64,{base64}");
         let update = ProjectUpdateInput {
             projectID: input.id.clone(),
-            icon: Some(ProjectIcon { url: Some(url), override_: None, color: None }),
+            icon: Some(ProjectIcon {
+                url: Some(url),
+                override_: None,
+                color: None,
+            }),
             ..ProjectUpdateInput::default()
         };
         if let Err(error) = self.update(&update).await {
@@ -202,11 +261,17 @@ impl Project {
         self.store.get_project(&id.0).map(|row| from_row(&row))
     }
 
-    pub async fn update(&self, input: &ProjectUpdateInput) -> Result<ProjectInfo, ProjectNotFoundError> {
-        let Some(result) = self
-            .store
-            .update_project(&input.projectID.0, input.name.clone(), input.icon.as_ref(), input.commands.clone(), now_ms())
-        else {
+    pub async fn update(
+        &self,
+        input: &ProjectUpdateInput,
+    ) -> Result<ProjectInfo, ProjectNotFoundError> {
+        let Some(result) = self.store.update_project(
+            &input.projectID.0,
+            input.name.clone(),
+            input.icon.as_ref(),
+            input.commands.clone(),
+            now_ms(),
+        ) else {
             return Err(ProjectNotFoundError::new(input.projectID.clone()));
         };
         let data = from_row(&result);
@@ -214,7 +279,11 @@ impl Project {
         Ok(data)
     }
 
-    pub async fn init_git(&self, directory: &str, project: &ProjectInfo) -> anyhow::Result<ProjectInfo> {
+    pub async fn init_git(
+        &self,
+        directory: &str,
+        project: &ProjectInfo,
+    ) -> anyhow::Result<ProjectInfo> {
         if project.vcs.as_deref() == Some("git") {
             return Ok(project.clone());
         }
@@ -223,12 +292,17 @@ impl Project {
         }
         let result = self.git(&["init", "--quiet"], Some(directory)).await;
         if result.code != 0 {
-            let message = result
-                .stderr
-                .trim()
-                .to_string();
-            let message = if message.is_empty() { result.text.trim().to_string() } else { message };
-            anyhow::bail!(if message.is_empty() { "Failed to initialize git repository".to_string() } else { message });
+            let message = result.stderr.trim().to_string();
+            let message = if message.is_empty() {
+                result.text.trim().to_string()
+            } else {
+                message
+            };
+            anyhow::bail!(if message.is_empty() {
+                "Failed to initialize git repository".to_string()
+            } else {
+                message
+            });
         }
         Ok(self.from_directory(directory).await?.project)
     }
@@ -238,7 +312,9 @@ impl Project {
     }
 
     pub async fn sandboxes(&self, id: &ProjectID) -> Vec<String> {
-        let Some(row) = self.store.get_project(&id.0) else { return Vec::new() };
+        let Some(row) = self.store.get_project(&id.0) else {
+            return Vec::new();
+        };
         let data = from_row(&row);
         let mut kept = Vec::new();
         for sandbox in &data.sandboxes {
@@ -250,7 +326,10 @@ impl Project {
     }
 
     pub async fn add_sandbox(&self, id: &ProjectID, directory: &str) -> anyhow::Result<()> {
-        let row = self.store.get_project(&id.0).ok_or_else(|| anyhow::anyhow!("Project not found: {id}"))?;
+        let row = self
+            .store
+            .get_project(&id.0)
+            .ok_or_else(|| anyhow::anyhow!("Project not found: {id}"))?;
         let sandbox = pathutil::resolve(directory);
         let mut sandboxes = row.sandboxes.clone();
         if !sandboxes.contains(&sandbox) {
@@ -265,9 +344,17 @@ impl Project {
     }
 
     pub async fn remove_sandbox(&self, id: &ProjectID, directory: &str) -> anyhow::Result<()> {
-        let row = self.store.get_project(&id.0).ok_or_else(|| anyhow::anyhow!("Project not found: {id}"))?;
+        let row = self
+            .store
+            .get_project(&id.0)
+            .ok_or_else(|| anyhow::anyhow!("Project not found: {id}"))?;
         let sandbox = pathutil::resolve(directory);
-        let sandboxes: Vec<String> = row.sandboxes.iter().filter(|s| **s != sandbox).cloned().collect();
+        let sandboxes: Vec<String> = row
+            .sandboxes
+            .iter()
+            .filter(|s| **s != sandbox)
+            .cloned()
+            .collect();
         let result = self
             .store
             .update_project_sandboxes(&id.0, sandboxes, now_ms())
@@ -297,7 +384,9 @@ impl Project {
                     _ = shutdown.recv() => break,
                 };
                 let Some(event) = event else { break };
-                let Some(data) = event.payload.data.as_ref() else { continue };
+                let Some(data) = event.payload.data.as_ref() else {
+                    continue;
+                };
                 let name = data.get("name").and_then(|value| value.as_str());
                 if name == Some(DEFAULT_INIT_COMMAND) {
                     project.set_initialized(&ctx.project.id).await;
@@ -308,7 +397,10 @@ impl Project {
 }
 
 fn now_ms() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }
 
 fn base64_encode(input: &[u8]) -> String {
@@ -331,8 +423,8 @@ fn mime_type(path: &str) -> String {
     }
 }
 
-pub use crate::schema::ProjectUpdateInput;
 pub use crate::project::instance_context::InstanceContext;
+pub use crate::schema::ProjectUpdateInput;
 
 #[cfg(test)]
 mod tests {
@@ -353,7 +445,9 @@ mod tests {
             time_updated: 2,
             time_initialized: Some(3),
             sandboxes: vec!["/a".to_string()],
-            commands: Some(ProjectCommands { start: Some("npm run dev".to_string()) }),
+            commands: Some(ProjectCommands {
+                start: Some("npm run dev".to_string()),
+            }),
         };
         let info = from_row(&row);
         assert_eq!(info.id.0, "pid");
@@ -362,13 +456,20 @@ mod tests {
         assert_eq!(info.name.as_deref(), Some("n"));
         assert_eq!(
             info.icon,
-            Some(ProjectIcon { url: Some("u".to_string()), override_: None, color: Some("c".to_string()) })
+            Some(ProjectIcon {
+                url: Some("u".to_string()),
+                override_: None,
+                color: Some("c".to_string())
+            })
         );
         assert_eq!(info.time.created, 1);
         assert_eq!(info.time.updated, 2);
         assert_eq!(info.time.initialized, Some(3));
         assert_eq!(info.sandboxes, vec!["/a"]);
-        assert_eq!(info.commands.as_ref().and_then(|c| c.start.as_deref()), Some("npm run dev"));
+        assert_eq!(
+            info.commands.as_ref().and_then(|c| c.start.as_deref()),
+            Some("npm run dev")
+        );
     }
 
     #[test]

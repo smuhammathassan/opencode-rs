@@ -66,7 +66,11 @@ fn xdg_dir(key: &str, fallback: &PathBuf) -> Option<PathBuf> {
 fn home_dir() -> PathBuf {
     std::env::var_os("USERPROFILE")
         .map(PathBuf::from)
-        .unwrap_or_else(|| std::env::var_os("HOME").map(PathBuf::from).unwrap_or_default())
+        .unwrap_or_else(|| {
+            std::env::var_os("HOME")
+                .map(PathBuf::from)
+                .unwrap_or_default()
+        })
 }
 
 #[cfg(not(target_os = "windows"))]

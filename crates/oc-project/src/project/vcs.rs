@@ -5,7 +5,9 @@ use std::sync::{Arc, Mutex};
 use regex::Regex;
 
 use crate::git::{Git, Item, Kind, Patch, PatchOptions};
-use crate::schema::{PatchApplyError, PatchApplyReason, VcsApplyInput, VcsApplyResult, VcsFileDiff, VcsFileStatus};
+use crate::schema::{
+    PatchApplyError, PatchApplyReason, VcsApplyInput, VcsApplyResult, VcsFileDiff, VcsFileStatus,
+};
 use crate::util::bus::{Bus, EventPayload};
 use crate::util::diff::{format_patch, structured_patch};
 use crate::util::GitResult;
@@ -87,7 +89,9 @@ fn parse_path_token(value: &str) -> String {
     if !value.starts_with('"') {
         return value.split('\t').next().unwrap_or(value).to_string();
     }
-    parse_quoted_path(value).map(|(value, _)| value).unwrap_or_else(|| value.to_string())
+    parse_quoted_path(value)
+        .map(|(value, _)| value)
+        .unwrap_or_else(|| value.to_string())
 }
 
 fn file_from_diff_path(value: Option<&str>) -> Option<String> {
@@ -108,7 +112,9 @@ fn file_from_diff_path(value: Option<&str>) -> Option<String> {
 fn file_from_git_header(header: &str) -> Option<String> {
     if header.starts_with('"') {
         let first = parse_quoted_path(header);
-        let second = first.and_then(|(_, end)| header.get(end..)).map(|s| s.trim_start());
+        let second = first
+            .and_then(|(_, end)| header.get(end..))
+            .map(|s| s.trim_start());
         let second = second?;
         if second.is_empty() {
             return None;
@@ -126,15 +132,25 @@ fn file_from_git_header(header: &str) -> Option<String> {
 fn file_from_patch_chunk(chunk: &str) -> Option<String> {
     let next_re = Regex::new(r"(?m)^\+\+\+ (.+)$").unwrap();
     let before_re = Regex::new(r"(?m)^--- (.+)$").unwrap();
-    let next = next_re.captures(chunk).and_then(|caps| caps.get(1)).map(|m| m.as_str().to_string());
-    let before = before_re.captures(chunk).and_then(|caps| caps.get(1)).map(|m| m.as_str().to_string());
-    let file = file_from_diff_path(next.as_deref()).or_else(|| file_from_diff_path(before.as_deref()));
+    let next = next_re
+        .captures(chunk)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string());
+    let before = before_re
+        .captures(chunk)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string());
+    let file =
+        file_from_diff_path(next.as_deref()).or_else(|| file_from_diff_path(before.as_deref()));
     if file.is_some() {
         return file;
     }
 
     let header_re = Regex::new(r"(?m)^diff --git (.+)$").unwrap();
-    let header = header_re.captures(chunk).and_then(|caps| caps.get(1)).map(|m| m.as_str().to_string());
+    let header = header_re
+        .captures(chunk)
+        .and_then(|caps| caps.get(1))
+        .map(|m| m.as_str().to_string());
     file_from_git_header(header.as_deref().unwrap_or(""))
 }
 
@@ -184,7 +200,8 @@ async fn batch_patches(
     let chunks = split_git_patch(&result);
     let mut patches: HashMap<String, String> = HashMap::new();
     for (index, chunk) in chunks.iter().enumerate() {
-        let file = file_from_patch_chunk(chunk).or_else(|| list.get(index).map(|item| item.file.clone()));
+        let file =
+            file_from_patch_chunk(chunk).or_else(|| list.get(index).map(|item| item.file.clone()));
         if let Some(file) = file {
             patches.entry(file).or_default().push_str(chunk);
         }
@@ -192,7 +209,13 @@ async fn batch_patches(
     (patches, result.truncated)
 }
 
-async fn native_patch(git: &Git, cwd: &str, r#ref: Option<&str>, item: &Item, options: DiffOptions) -> String {
+async fn native_patch(
+    git: &Git,
+    cwd: &str,
+    r#ref: Option<&str>,
+    item: &Item,
+    options: DiffOptions,
+) -> String {
     let options = PatchOptions {
         context: Some(options.context.unwrap_or(PATCH_CONTEXT_LINES)),
         max_output_bytes: Some(MAX_PATCH_BYTES),
@@ -200,7 +223,8 @@ async fn native_patch(git: &Git, cwd: &str, r#ref: Option<&str>, item: &Item, op
     let result = if item.code == "??" || r#ref.is_none() {
         git.patch_untracked(cwd, &item.file, Some(options)).await
     } else {
-        git.patch(cwd, r#ref.unwrap(), &item.file, Some(options)).await
+        git.patch(cwd, r#ref.unwrap(), &item.file, Some(options))
+            .await
     };
     if !result.truncated && !result.text.is_empty() {
         return result.text;
@@ -256,7 +280,9 @@ async fn files(
         let stat = if let Some(stat) = map.get(&item.file) {
             Some(*stat)
         } else if item.status == Kind::Added {
-            git.stat_untracked(cwd, &item.file).await.map(|stat| (stat.additions, stat.deletions))
+            git.stat_untracked(cwd, &item.file)
+                .await
+                .map(|stat| (stat.additions, stat.deletions))
         } else {
             None
         };
@@ -283,7 +309,12 @@ async fn files(
     next
 }
 
-async fn diff_against_ref(git: &Git, cwd: &str, r#ref: &str, options: DiffOptions) -> Vec<VcsFileDiff> {
+async fn diff_against_ref(
+    git: &Git,
+    cwd: &str,
+    r#ref: &str,
+    options: DiffOptions,
+) -> Vec<VcsFileDiff> {
     let (list, stats, extra) = (
         git.diff(cwd, r#ref).await,
         git.stats(cwd, r#ref).await,
@@ -302,9 +333,25 @@ async fn diff_against_ref(git: &Git, cwd: &str, r#ref: &str, options: DiffOption
     .await
 }
 
-async fn track(git: &Git, cwd: &str, r#ref: Option<&str>, options: DiffOptions) -> Vec<VcsFileDiff> {
+async fn track(
+    git: &Git,
+    cwd: &str,
+    r#ref: Option<&str>,
+    options: DiffOptions,
+) -> Vec<VcsFileDiff> {
     match r#ref {
-        None => files(git, cwd, None, git.status(cwd).await, HashMap::new(), empty_batch(), options).await,
+        None => {
+            files(
+                git,
+                cwd,
+                None,
+                git.status(cwd).await,
+                HashMap::new(),
+                empty_batch(),
+                options,
+            )
+            .await
+        }
         Some(r#ref) => diff_against_ref(git, cwd, r#ref, options).await,
     }
 }
@@ -323,21 +370,35 @@ pub struct Vcs {
 
 impl Clone for Vcs {
     fn clone(&self) -> Self {
-        Vcs { git: self.git.clone(), bus: self.bus.clone(), states: self.states.clone() }
+        Vcs {
+            git: self.git.clone(),
+            bus: self.bus.clone(),
+            states: self.states.clone(),
+        }
     }
 }
 
 impl Vcs {
     pub fn new(git: Arc<Git>, bus: Arc<Bus>) -> Arc<Vcs> {
-        Arc::new(Vcs { git, bus, states: Arc::new(Mutex::new(HashMap::new())) })
+        Arc::new(Vcs {
+            git,
+            bus,
+            states: Arc::new(Mutex::new(HashMap::new())),
+        })
     }
 
     fn state_for(&self, _ctx: &crate::schema::ProjectInfo, directory: &str) -> Arc<Mutex<State>> {
         if let Some(state) = self.states.lock().unwrap().get(directory) {
             return state.clone();
         }
-        let state = Arc::new(Mutex::new(State { current: None, root: None }));
-        self.states.lock().unwrap().insert(directory.to_string(), state.clone());
+        let state = Arc::new(Mutex::new(State {
+            current: None,
+            root: None,
+        }));
+        self.states
+            .lock()
+            .unwrap()
+            .insert(directory.to_string(), state.clone());
         state
     }
 
@@ -376,8 +437,12 @@ impl Vcs {
                     _ = shutdown.recv() => break,
                 };
                 let Some(event) = event else { break };
-                let Some(data) = event.payload.data.as_ref() else { continue };
-                let Some(file) = data.get("file").and_then(|value| value.as_str()) else { continue };
+                let Some(data) = event.payload.data.as_ref() else {
+                    continue;
+                };
+                let Some(file) = data.get("file").and_then(|value| value.as_str()) else {
+                    continue;
+                };
                 if !file.ends_with("HEAD") {
                     continue;
                 }
@@ -387,8 +452,10 @@ impl Vcs {
                     guard.current != next
                 };
                 if changed {
-                    let properties = serde_json::to_value(crate::schema::VcsBranchUpdated { branch: next.clone() })
-                        .unwrap_or(serde_json::Value::Null);
+                    let properties = serde_json::to_value(crate::schema::VcsBranchUpdated {
+                        branch: next.clone(),
+                    })
+                    .unwrap_or(serde_json::Value::Null);
                     bus.emit(crate::util::bus::BusEvent {
                         directory: directory.clone(),
                         project: Some(project_id.clone()),
@@ -411,19 +478,32 @@ impl Vcs {
         self.states.lock().unwrap().remove(directory);
     }
 
-    pub async fn branch(&self, ctx: &crate::schema::ProjectInfo, directory: &str) -> Option<String> {
+    pub async fn branch(
+        &self,
+        ctx: &crate::schema::ProjectInfo,
+        directory: &str,
+    ) -> Option<String> {
         let state = self.state_for(ctx, directory);
         let guard = state.lock().unwrap();
         guard.current.clone()
     }
 
-    pub async fn default_branch(&self, ctx: &crate::schema::ProjectInfo, directory: &str) -> Option<String> {
+    pub async fn default_branch(
+        &self,
+        ctx: &crate::schema::ProjectInfo,
+        directory: &str,
+    ) -> Option<String> {
         let state = self.state_for(ctx, directory);
         let guard = state.lock().unwrap();
         guard.root.as_ref().map(|root| root.name.clone())
     }
 
-    pub async fn status(&self, ctx: &crate::schema::ProjectInfo, directory: &str, worktree: &str) -> Vec<VcsFileStatus> {
+    pub async fn status(
+        &self,
+        ctx: &crate::schema::ProjectInfo,
+        directory: &str,
+        worktree: &str,
+    ) -> Vec<VcsFileStatus> {
         if ctx.vcs.as_deref() != Some("git") {
             return Vec::new();
         }
@@ -443,7 +523,10 @@ impl Vcs {
             let stat = if let Some(stat) = map.get(&item.file) {
                 Some(*stat)
             } else if item.status == Kind::Added {
-                self.git.stat_untracked(worktree, &item.file).await.map(|s| (s.additions, s.deletions))
+                self.git
+                    .stat_untracked(worktree, &item.file)
+                    .await
+                    .map(|s| (s.additions, s.deletions))
             } else {
                 None
             };
@@ -497,11 +580,20 @@ impl Vcs {
         }
         let has_head = self.git.has_head(directory).await;
         let status = self.git.status(directory).await;
-        let tracked = if has_head { self.git.patch_all(directory, "HEAD", None).await.text } else { String::new() };
+        let tracked = if has_head {
+            self.git.patch_all(directory, "HEAD", None).await.text
+        } else {
+            String::new()
+        };
         let mut untracked = Vec::new();
         for item in &status {
             if item.code == "??" {
-                untracked.push(self.git.patch_untracked(directory, &item.file, None).await.text);
+                untracked.push(
+                    self.git
+                        .patch_untracked(directory, &item.file, None)
+                        .await
+                        .text,
+                );
             }
         }
         let mut parts: Vec<String> = Vec::new();
@@ -526,7 +618,10 @@ impl Vcs {
         }
         let applied = self.git.apply_patch(directory, &input.patch).await;
         if applied.exit_code != 0 {
-            return Err(PatchApplyError::new("Patch can't be applied", PatchApplyReason::NotClean));
+            return Err(PatchApplyError::new(
+                "Patch can't be applied",
+                PatchApplyReason::NotClean,
+            ));
         }
         Ok(VcsApplyResult { applied: true })
     }
@@ -537,9 +632,19 @@ impl Vcs {
     pub async fn raw(&self, args: &[&str], cwd: &str) -> GitResult {
         let result = self
             .git
-            .run(args, &crate::git::Options { cwd: cwd.to_string(), ..Default::default() })
+            .run(
+                args,
+                &crate::git::Options {
+                    cwd: cwd.to_string(),
+                    ..Default::default()
+                },
+            )
             .await;
-        GitResult { code: result.exit_code, text: result.text(), stderr: String::from_utf8_lossy(&result.stderr).into_owned() }
+        GitResult {
+            code: result.exit_code,
+            text: result.text(),
+            stderr: String::from_utf8_lossy(&result.stderr).into_owned(),
+        }
     }
 }
 
@@ -549,10 +654,19 @@ mod tests {
 
     #[test]
     fn parse_quoted_path_unescapes() {
-        assert_eq!(parse_quoted_path("\"a\\tb\"\"").map(|(v, _)| v), Some("a\tb".to_string()));
-        assert_eq!(parse_quoted_path("\"a\\\"b\"").map(|(v, _)| v), Some("a\"b".to_string()));
+        assert_eq!(
+            parse_quoted_path("\"a\\tb\"\"").map(|(v, _)| v),
+            Some("a\tb".to_string())
+        );
+        assert_eq!(
+            parse_quoted_path("\"a\\\"b\"").map(|(v, _)| v),
+            Some("a\"b".to_string())
+        );
         assert_eq!(parse_quoted_path("\"unterminated"), None);
-        assert_eq!(parse_quoted_path("\"plain\"").map(|(v, end)| (v, end)), Some(("plain".to_string(), 7)));
+        assert_eq!(
+            parse_quoted_path("\"plain\"").map(|(v, end)| (v, end)),
+            Some(("plain".to_string(), 7))
+        );
     }
 
     #[test]
@@ -563,16 +677,28 @@ mod tests {
 
     #[test]
     fn file_from_diff_path_strips_a_and_b_prefixes() {
-        assert_eq!(file_from_diff_path(Some("a/src/index.ts")), Some("src/index.ts".to_string()));
-        assert_eq!(file_from_diff_path(Some("b/src/index.ts")), Some("src/index.ts".to_string()));
-        assert_eq!(file_from_diff_path(Some("src/index.ts")), Some("src/index.ts".to_string()));
+        assert_eq!(
+            file_from_diff_path(Some("a/src/index.ts")),
+            Some("src/index.ts".to_string())
+        );
+        assert_eq!(
+            file_from_diff_path(Some("b/src/index.ts")),
+            Some("src/index.ts".to_string())
+        );
+        assert_eq!(
+            file_from_diff_path(Some("src/index.ts")),
+            Some("src/index.ts".to_string())
+        );
         assert_eq!(file_from_diff_path(Some("/dev/null")), None);
         assert_eq!(file_from_diff_path(None), None);
     }
 
     #[test]
     fn file_from_git_header_handles_plain_and_quoted() {
-        assert_eq!(file_from_git_header("a/src/index.ts b/src/index.ts"), Some("src/index.ts".to_string()));
+        assert_eq!(
+            file_from_git_header("a/src/index.ts b/src/index.ts"),
+            Some("src/index.ts".to_string())
+        );
         assert_eq!(
             file_from_git_header("\"a/file name.txt\" \"b/file name.txt\""),
             Some("file name.txt".to_string())
@@ -609,6 +735,9 @@ mod tests {
 
     #[test]
     fn empty_patch_renders_headers() {
-        assert_eq!(empty_patch("src/index.ts"), "--- src/index.ts\n+++ src/index.ts");
+        assert_eq!(
+            empty_patch("src/index.ts"),
+            "--- src/index.ts\n+++ src/index.ts"
+        );
     }
 }

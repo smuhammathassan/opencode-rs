@@ -13,11 +13,17 @@ pub async fn exists(path: &str) -> bool {
 }
 
 pub async fn is_dir(path: &str) -> bool {
-    tokio::fs::metadata(path).await.map(|meta| meta.is_dir()).unwrap_or(false)
+    tokio::fs::metadata(path)
+        .await
+        .map(|meta| meta.is_dir())
+        .unwrap_or(false)
 }
 
 pub async fn is_file(path: &str) -> bool {
-    tokio::fs::metadata(path).await.map(|meta| meta.is_file()).unwrap_or(false)
+    tokio::fs::metadata(path)
+        .await
+        .map(|meta| meta.is_file())
+        .unwrap_or(false)
 }
 
 pub async fn ensure_dir(path: &str) -> std::io::Result<()> {
@@ -85,14 +91,19 @@ pub fn glob_files(root: &str, extensions: &[&str]) -> Vec<String> {
     let mut matches = Vec::new();
     let mut stack = vec![Path::new(root).to_path_buf()];
     while let Some(dir) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&dir) else { continue };
+        let Ok(entries) = std::fs::read_dir(&dir) else {
+            continue;
+        };
         for entry in entries.flatten() {
             let path = entry.path();
             if path.is_dir() {
                 stack.push(path);
             } else if path.is_file() {
                 if let Some(ext) = path.extension().and_then(|e| e.to_str()) {
-                    if extensions.iter().any(|candidate| ext.eq_ignore_ascii_case(candidate)) {
+                    if extensions
+                        .iter()
+                        .any(|candidate| ext.eq_ignore_ascii_case(candidate))
+                    {
                         matches.push(path.to_string_lossy().into_owned());
                     }
                 }

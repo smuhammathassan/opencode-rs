@@ -17,6 +17,9 @@ pub async fn dispose_all_instances(store: &InstanceStore) {
     store.dispose_all().await;
 }
 
-pub async fn reload_instance(store: &InstanceStore, input: LoadInput) -> Result<InstanceContext, String> {
+pub async fn reload_instance(
+    store: &InstanceStore,
+    input: LoadInput,
+) -> Result<InstanceContext, String> {
     store.reload(input).await
 }

@@ -30,15 +30,16 @@ pub struct ProjectRow {
 
 /// Mirrors `Project.fromRow` (reference/packages/opencode/src/project/project.ts).
 pub fn from_row(row: &ProjectRow) -> ProjectInfo {
-    let icon = if row.icon_url.is_some() || row.icon_url_override.is_some() || row.icon_color.is_some() {
-        Some(ProjectIcon {
-            url: row.icon_url.clone(),
-            override_: row.icon_url_override.clone(),
-            color: row.icon_color.clone(),
-        })
-    } else {
-        None
-    };
+    let icon =
+        if row.icon_url.is_some() || row.icon_url_override.is_some() || row.icon_color.is_some() {
+            Some(ProjectIcon {
+                url: row.icon_url.clone(),
+                override_: row.icon_url_override.clone(),
+                color: row.icon_color.clone(),
+            })
+        } else {
+            None
+        };
     ProjectInfo {
         id: crate::schema::ProjectID::make(&row.id),
         worktree: row.worktree.clone(),
@@ -91,7 +92,13 @@ impl ProjectStore {
     }
 
     pub fn list_projects(&self) -> Vec<ProjectRow> {
-        self.state.lock().unwrap().projects.values().cloned().collect()
+        self.state
+            .lock()
+            .unwrap()
+            .projects
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Mirrors the `insert ... onConflictDoUpdate` upsert in `Project.fromDirectory`.
@@ -121,7 +128,12 @@ impl ProjectStore {
     }
 
     /// Mirrors the sandbox-list update in `addSandbox`/`removeSandbox`.
-    pub fn update_project_sandboxes(&self, id: &str, sandboxes: Vec<String>, time_updated: u64) -> Option<ProjectRow> {
+    pub fn update_project_sandboxes(
+        &self,
+        id: &str,
+        sandboxes: Vec<String>,
+        time_updated: u64,
+    ) -> Option<ProjectRow> {
         let mut state = self.state.lock().unwrap();
         let row = state.projects.get_mut(id)?;
         row.sandboxes = sandboxes;
@@ -164,7 +176,9 @@ impl ProjectStore {
             }
         }
 
-        state.project_directories.retain(|(project_id, _)| project_id != old);
+        state
+            .project_directories
+            .retain(|(project_id, _)| project_id != old);
 
         for session in state.sessions.values_mut() {
             if session.project_id == old {
@@ -185,7 +199,9 @@ impl ProjectStore {
     /// Mirrors `ProjectDirectories.create` with `onConflictDoNothing`.
     pub fn add_project_directory(&self, project_id: &str, directory: &str) {
         let mut state = self.state.lock().unwrap();
-        state.project_directories.insert((project_id.to_string(), directory.to_string()));
+        state
+            .project_directories
+            .insert((project_id.to_string(), directory.to_string()));
     }
 
     /// Test helper mirroring the session table's `project_id` + `directory`.
@@ -193,17 +209,29 @@ impl ProjectStore {
         let mut state = self.state.lock().unwrap();
         state.sessions.insert(
             session_id.to_string(),
-            SessionRow { project_id: project_id.to_string(), directory: directory.to_string(), time_updated: now() },
+            SessionRow {
+                project_id: project_id.to_string(),
+                directory: directory.to_string(),
+                time_updated: now(),
+            },
         );
     }
 
     /// Test helper mirroring the workspace table's `project_id`.
     pub fn insert_workspace(&self, workspace_id: &str, project_id: &str) {
         let mut state = self.state.lock().unwrap();
-        state.workspaces.insert(workspace_id.to_string(), WorkspaceRow { project_id: project_id.to_string() });
+        state.workspaces.insert(
+            workspace_id.to_string(),
+            WorkspaceRow {
+                project_id: project_id.to_string(),
+            },
+        );
     }
 }
 
 fn now() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
 }

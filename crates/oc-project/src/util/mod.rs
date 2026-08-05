@@ -19,6 +19,10 @@ pub struct GitResult {
 
 impl GitResult {
     pub fn failure(message: String) -> Self {
-        GitResult { code: 1, text: String::new(), stderr: message }
+        GitResult {
+            code: 1,
+            text: String::new(),
+            stderr: message,
+        }
     }
 }

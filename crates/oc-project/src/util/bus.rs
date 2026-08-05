@@ -79,7 +79,11 @@ impl EventListener {
         loop {
             match self.receiver.recv().await {
                 Ok(event) => {
-                    let location = event.payload.location.as_ref().map(|l| l.directory.as_str());
+                    let location = event
+                        .payload
+                        .location
+                        .as_ref()
+                        .map(|l| l.directory.as_str());
                     if matches(&event.payload.r#type, location) {
                         return Some(event);
                     }

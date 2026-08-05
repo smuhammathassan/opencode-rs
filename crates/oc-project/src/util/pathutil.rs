@@ -76,7 +76,11 @@ fn components(input: &str) -> Vec<&str> {
 
 /// Joins path parts like Node's `path.join`.
 pub fn join(parts: &[&str]) -> String {
-    parts.iter().fold(PathBuf::new(), |acc, part| acc.join(part)).to_string_lossy().into_owned()
+    parts
+        .iter()
+        .fold(PathBuf::new(), |acc, part| acc.join(part))
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Basename, matching Node's `path.basename` (no extension stripping).

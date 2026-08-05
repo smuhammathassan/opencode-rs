@@ -79,7 +79,13 @@ pub fn structured_patch(
             op_pos += 1;
         }
 
-        hunks.push(Hunk { old_start, old_count, new_start, new_count, lines });
+        hunks.push(Hunk {
+            old_start,
+            old_count,
+            new_start,
+            new_count,
+            lines,
+        });
     }
 
     StructuredPatch {
@@ -96,7 +102,10 @@ pub fn format_patch(patch: &StructuredPatch) -> String {
     out.push(format!("--- {}{}", patch.old_file_name, patch.old_header));
     out.push(format!("+++ {}{}", patch.new_file_name, patch.new_header));
     for hunk in &patch.hunks {
-        out.push(format!("@@ -{},{} +{},{} @@", hunk.old_start, hunk.old_count, hunk.new_start, hunk.new_count));
+        out.push(format!(
+            "@@ -{},{} +{},{} @@",
+            hunk.old_start, hunk.old_count, hunk.new_start, hunk.new_count
+        ));
         out.extend(hunk.lines.iter().cloned());
     }
     out.join("\n")
@@ -130,7 +139,8 @@ fn hunk_ranges(ops: &[Op], context: usize) -> Vec<(usize, usize)> {
             end += 1;
         }
         let start = index.saturating_sub(context);
-        let finish = end.saturating_add(context).min(ops.len());        if let Some((_, previous_finish)) = ranges.last_mut() {
+        let finish = end.saturating_add(context).min(ops.len());
+        if let Some((_, previous_finish)) = ranges.last_mut() {
             if start <= *previous_finish {
                 *previous_finish = finish;
                 index = finish;
@@ -244,7 +254,10 @@ mod tests {
 
     #[test]
     fn insertion_renders_single_hunk() {
-        assert_eq!(render("a\nb\n", "a\nx\nb\n", 0), "--- f.txt\n+++ f.txt\n@@ -2,0 +2,1 @@\n+x");
+        assert_eq!(
+            render("a\nb\n", "a\nx\nb\n", 0),
+            "--- f.txt\n+++ f.txt\n@@ -2,0 +2,1 @@\n+x"
+        );
     }
 
     #[test]
@@ -257,12 +270,18 @@ mod tests {
 
     #[test]
     fn deletion_renders() {
-        assert_eq!(render("a\nb\n", "a\n", 0), "--- f.txt\n+++ f.txt\n@@ -2,1 +2,0 @@\n-b");
+        assert_eq!(
+            render("a\nb\n", "a\n", 0),
+            "--- f.txt\n+++ f.txt\n@@ -2,1 +2,0 @@\n-b"
+        );
     }
 
     #[test]
     fn large_context_merges_into_one_hunk() {
         let rendered = render("1\n2\n3\n4\n5\n", "1\n2\nX\n4\n5\n", usize::MAX);
-        assert_eq!(rendered, "--- f.txt\n+++ f.txt\n@@ -1,5 +1,5 @@\n 1\n 2\n-3\n+X\n 4\n 5");
+        assert_eq!(
+            rendered,
+            "--- f.txt\n+++ f.txt\n@@ -1,5 +1,5 @@\n 1\n 2\n-3\n+X\n 4\n 5"
+        );
     }
 }

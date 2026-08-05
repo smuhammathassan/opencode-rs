@@ -26,7 +26,11 @@ pub struct LoadInput {
 
 impl LoadInput {
     pub fn directory(directory: impl Into<String>) -> LoadInput {
-        LoadInput { directory: directory.into(), worktree: None, project: None }
+        LoadInput {
+            directory: directory.into(),
+            worktree: None,
+            project: None,
+        }
     }
 }
 
@@ -40,7 +44,11 @@ struct Entry {
 impl Entry {
     fn new() -> Entry {
         let (shutdown, _) = broadcast::channel(1);
-        Entry { result: Arc::new(OnceLock::new()), notify: Arc::new(Notify::new()), shutdown }
+        Entry {
+            result: Arc::new(OnceLock::new()),
+            notify: Arc::new(Notify::new()),
+            shutdown,
+        }
     }
 
     async fn await_result(&self) -> Result<InstanceContext, String> {
@@ -94,7 +102,10 @@ impl InstanceStore {
         }
 
         let store = self.clone();
-        let input = LoadInput { directory: directory.clone(), ..input };
+        let input = LoadInput {
+            directory: directory.clone(),
+            ..input
+        };
         let shutdown = entry.shutdown.clone();
         let task_entry = entry.clone();
         tokio::spawn(async move {
@@ -111,10 +122,16 @@ impl InstanceStore {
         let directory = pathutil::resolve(&input.directory);
         let previous = self.cache.lock().await.get(&directory).cloned();
         let entry = Entry::new();
-        self.cache.lock().await.insert(directory.clone(), entry.clone());
+        self.cache
+            .lock()
+            .await
+            .insert(directory.clone(), entry.clone());
 
         let store = self.clone();
-        let input = LoadInput { directory: directory.clone(), ..input };
+        let input = LoadInput {
+            directory: directory.clone(),
+            ..input
+        };
         let shutdown = entry.shutdown.clone();
         let task_entry = entry.clone();
         tokio::spawn(async move {
@@ -171,8 +188,13 @@ impl InstanceStore {
 
     pub async fn dispose_all(&self) {
         tracing::info!("disposing all instances");
-        let entries: Vec<(String, Entry)> =
-            self.cache.lock().await.iter().map(|(key, value)| (key.clone(), value.clone())).collect();
+        let entries: Vec<(String, Entry)> = self
+            .cache
+            .lock()
+            .await
+            .iter()
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect();
         for (directory, entry) in entries {
             let exit = entry.await_result().await;
             match exit {
@@ -187,12 +209,20 @@ impl InstanceStore {
         }
     }
 
-    pub async fn provide<T>(&self, input: LoadInput, effect: impl FnOnce(&InstanceContext) -> T) -> Result<T, String> {
+    pub async fn provide<T>(
+        &self,
+        input: LoadInput,
+        effect: impl FnOnce(&InstanceContext) -> T,
+    ) -> Result<T, String> {
         let ctx = self.load(input).await?;
         Ok(effect(&ctx))
     }
 
-    async fn boot(&self, input: &LoadInput, shutdown: broadcast::Sender<()>) -> Result<InstanceContext, String> {
+    async fn boot(
+        &self,
+        input: &LoadInput,
+        shutdown: broadcast::Sender<()>,
+    ) -> Result<InstanceContext, String> {
         let ctx = if let (Some(project), Some(worktree)) = (&input.project, &input.worktree) {
             InstanceContext {
                 directory: input.directory.clone(),
@@ -200,8 +230,16 @@ impl InstanceStore {
                 project: project.clone(),
             }
         } else {
-            let result = self.project.from_directory(&input.directory).await.map_err(|error| error.to_string())?;
-            InstanceContext { directory: input.directory.clone(), worktree: result.sandbox, project: result.project }
+            let result = self
+                .project
+                .from_directory(&input.directory)
+                .await
+                .map_err(|error| error.to_string())?;
+            InstanceContext {
+                directory: input.directory.clone(),
+                worktree: result.sandbox,
+                project: result.project,
+            }
         };
         self.bootstrap.run(&ctx, shutdown).await;
         Ok(ctx)

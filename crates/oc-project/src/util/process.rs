@@ -39,9 +39,17 @@ impl SpawnResult {
 /// Runs `program` with `args`, capturing stdout/stderr. Output is capped at
 /// `max_output_bytes` (drained past the cap so the child never blocks) and the
 /// `truncated` flag mirrors the reference's `stdoutTruncated || stderrTruncated`.
-pub async fn run(program: &str, args: &[&str], options: SpawnOptions) -> std::io::Result<SpawnResult> {
+pub async fn run(
+    program: &str,
+    args: &[&str],
+    options: SpawnOptions,
+) -> std::io::Result<SpawnResult> {
     let mut command = Command::new(program);
-    command.args(args).stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
+    command
+        .args(args)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
     if let Some(cwd) = &options.cwd {
         command.current_dir(cwd);
     }
@@ -87,7 +95,11 @@ pub fn which(binary: &str) -> bool {
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;
-            candidate.is_file() && candidate.metadata().map(|m| m.permissions().mode() & 0o111 != 0).unwrap_or(false)
+            candidate.is_file()
+                && candidate
+                    .metadata()
+                    .map(|m| m.permissions().mode() & 0o111 != 0)
+                    .unwrap_or(false)
         }
         #[cfg(not(unix))]
         {
