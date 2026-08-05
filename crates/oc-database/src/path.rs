@@ -4,6 +4,11 @@
 //! these in Drizzle custom column types (`absoluteColumn`, `directoryColumn`,
 //! `pathColumn`, `absoluteArrayColumn`); here they are plain functions applied
 //! at the query boundary by the CRUD helpers in [`crate::tables`].
+//!
+//! The reference types absolute values with `AbsolutePath` (from
+//! `core/src/schema`); this crate keeps them as `String` until oc-schema
+//! exposes the branded type.
+//! // TODO(integration): promote to oc-schema once AbsolutePath exists.
 
 use crate::error::{Error, Result};
 
