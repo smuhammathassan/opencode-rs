@@ -201,7 +201,7 @@ pub struct PartBase {
 pub struct SnapshotPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub snapshot: String,
 }
@@ -211,7 +211,7 @@ pub struct SnapshotPart {
 pub struct PatchPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub hash: String,
     pub files: Vec<String>,
@@ -222,7 +222,7 @@ pub struct PatchPart {
 pub struct TextPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -240,7 +240,7 @@ pub struct TextPart {
 pub struct ReasoningPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -253,7 +253,7 @@ pub struct ReasoningPart {
 pub struct FilePart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub mime: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -268,7 +268,7 @@ pub struct FilePart {
 pub struct AgentPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -280,7 +280,7 @@ pub struct AgentPart {
 pub struct CompactionPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub auto: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -303,7 +303,7 @@ pub struct ModelRef {
 pub struct SubtaskPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub prompt: String,
     pub description: String,
@@ -319,7 +319,7 @@ pub struct SubtaskPart {
 pub struct RetryPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub attempt: u64,
     pub error: Error,
@@ -337,7 +337,7 @@ pub struct RetryPartTime {
 pub struct StepStartPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snapshot: Option<String>,
@@ -366,7 +366,7 @@ pub struct CacheTokens {
 pub struct StepFinishPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub reason: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -378,7 +378,7 @@ pub struct StepFinishPart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStatePending {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     pub raw: String,
@@ -387,7 +387,7 @@ pub struct ToolStatePending {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateRunning {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -406,7 +406,7 @@ pub struct RunningTime {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateCompleted {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     pub output: String,
@@ -429,7 +429,7 @@ pub struct CompletedTime {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateError {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     pub error: String,
@@ -456,7 +456,7 @@ pub enum ToolState {
 pub struct ToolPart {
     #[serde(flatten)]
     pub base: PartBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     #[serde(rename = "callID")]
     pub call_id: String,
@@ -564,7 +564,7 @@ pub struct User {
     pub id: String,
     #[serde(rename = "sessionID")]
     pub session_id: String,
-    #[serde(rename = "role")]
+    #[serde(rename = "role", default, skip_serializing_if = "String::is_empty")]
     pub role: String,
     pub time: UserTime,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -610,7 +610,7 @@ pub struct AssistantTokens {
 pub struct Assistant {
     pub id: String,
     pub session_id: String,
-    #[serde(rename = "role")]
+    #[serde(rename = "role", default, skip_serializing_if = "String::is_empty")]
     pub role: String,
     pub time: AssistantTime,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -39,7 +39,7 @@ pub enum ToolInvocation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TextPart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
 }
@@ -47,7 +47,7 @@ pub struct TextPart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ReasoningPart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -57,7 +57,7 @@ pub struct ReasoningPart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolInvocationPart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub tool_invocation: ToolInvocation,
 }
@@ -65,7 +65,7 @@ pub struct ToolInvocationPart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceUrlPart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub source_id: String,
     pub url: String,
@@ -78,7 +78,7 @@ pub struct SourceUrlPart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct FilePart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub media_type: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -89,7 +89,7 @@ pub struct FilePart {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StepStartPart {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
 }
 

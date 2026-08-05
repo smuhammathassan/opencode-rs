@@ -50,7 +50,7 @@ pub struct Prompt {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UnknownError {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub message: String,
 }
@@ -74,6 +74,7 @@ pub struct MessageBase {
 #[serde(rename_all = "camelCase")]
 pub struct ModelRef {
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub variant: Option<String>,
@@ -84,7 +85,7 @@ pub struct ModelRef {
 pub struct AgentSwitched {
     #[serde(flatten)]
     pub base: MessageBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub agent: String,
 }
@@ -94,7 +95,7 @@ pub struct AgentSwitched {
 pub struct ModelSwitched {
     #[serde(flatten)]
     pub base: MessageBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub model: ModelRef,
 }
@@ -109,7 +110,7 @@ pub struct User {
     pub files: Option<Vec<FileAttachment>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub agents: Option<Vec<AgentAttachment>>,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
 }
 
@@ -120,7 +121,7 @@ pub struct Synthetic {
     pub base: MessageBase,
     pub session_id: String,
     pub text: String,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
 }
 
@@ -129,7 +130,7 @@ pub struct Synthetic {
 pub struct System {
     #[serde(flatten)]
     pub base: MessageBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
 }
@@ -139,7 +140,7 @@ pub struct System {
 pub struct Shell {
     #[serde(flatten)]
     pub base: MessageBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     #[serde(rename = "callID")]
     pub call_id: String,
@@ -159,7 +160,7 @@ pub struct ShellTime {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStatePending {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: String,
 }
@@ -167,7 +168,7 @@ pub struct ToolStatePending {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateRunning {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     pub structured: JsonMap,
@@ -177,7 +178,7 @@ pub struct ToolStateRunning {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateCompleted {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -193,7 +194,7 @@ pub struct ToolStateCompleted {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolStateError {
-    #[serde(rename = "status")]
+    #[serde(rename = "status", default, skip_serializing_if = "String::is_empty")]
     pub status: String,
     pub input: JsonMap,
     pub content: Vec<ToolContent>,
@@ -219,7 +220,7 @@ pub enum ToolState {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolTextContent {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub text: String,
 }
@@ -227,7 +228,7 @@ pub struct ToolTextContent {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ToolFileContent {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub uri: String,
     pub mime: String,
@@ -269,7 +270,7 @@ pub struct AssistantToolTime {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistantTool {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub id: String,
     pub name: String,
@@ -282,7 +283,7 @@ pub struct AssistantTool {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistantText {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub id: String,
     pub text: String,
@@ -291,7 +292,7 @@ pub struct AssistantText {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct AssistantReasoning {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub id: String,
     pub text: String,
@@ -360,7 +361,7 @@ pub struct AssistantTime {
 pub struct Assistant {
     #[serde(flatten)]
     pub base: MessageBase,
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub agent: String,
     pub model: ModelRef,
@@ -381,7 +382,7 @@ pub struct Assistant {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Compaction {
-    #[serde(rename = "type")]
+    #[serde(rename = "type", default, skip_serializing_if = "String::is_empty")]
     pub type_: String,
     pub reason: String,
     pub summary: String,
