@@ -8,10 +8,11 @@ repository.workspace = true
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
-anyhow = { workspace = true }
-thiserror = { workspace = true }
-tracing = { workspace = true }
-futures = { workspace = true }
+regex = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+url = { workspace = true }
+chrono = { workspace = true }
+directories = { workspace = true }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
@@ -19,3 +20,6 @@ oc-mcp = { version = "0.1", path = "../oc-mcp" }
 oc-plugin = { version = "0.1", path = "../oc-plugin" }
 oc-llm = { version = "0.1", path = "../oc-llm" }
 tokio = { workspace = true }
+
+[dev-dependencies]
+tempfile = "3"
