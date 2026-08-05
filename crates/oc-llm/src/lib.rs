@@ -33,3 +33,13 @@ pub use tool_runtime::{dispatch as tool_dispatch, DispatchResult, ToolSettlement
 pub fn version() -> &'static str {
     env!("CARGO_PKG_VERSION")
 }
+
+// TODO(integration):
+//   - WebSocket transport (`route/transport/websocket.ts`) is not ported; the
+//     OpenAI Responses WebSocket route (`responsesWebSocket`) is omitted.
+//   - Bedrock SigV4 request signing (`protocols/utils/bedrock-auth.ts`) is a
+//     stub that fails with a clear error unless bearer auth is configured.
+//   - `Provider.make` supports static definitions only; dynamic `apis` maps
+//     are not ported.
+//   - Reference test infra (`RECORD=true` cassettes, `testEffect`) is not
+//     ported; golden tests use inline fixtures derived from the cassettes.

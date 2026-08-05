@@ -1,5 +1,11 @@
 //! Canonical schema data model for the LLM core.
 //! From reference/packages/llm/src/schema/*.ts
+//!
+//! TODO(integration): `oc-schema` is still a stub. These types are local
+//! mirrors of `reference/packages/schema/src/llm.ts` and
+//! `reference/packages/llm/src/schema/*`; promote the shared data types
+//! (`ContentPart`, `Message`, `ToolDefinition`, `Usage`, `LlmEvent`, …) into
+//! `oc-schema` so the rest of the workspace can reuse them.
 
 pub mod errors;
 pub mod events;
