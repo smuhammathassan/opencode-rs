@@ -123,8 +123,8 @@ define_event! {
 /// `QuestionV1.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{Asked, RejectedEvent, RepliedEvent};
+    pub use crate::event::Definition;
 
     /// `QuestionV1.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

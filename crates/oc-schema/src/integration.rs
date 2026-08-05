@@ -1,7 +1,7 @@
 //! From reference/packages/schema/src/integration.ts
 
-use crate::define_event;
 use crate::connection;
+use crate::define_event;
 use crate::identifier::ascending;
 use crate::integration_id::{IntegrationID, IntegrationMethodID};
 use crate::schema::Finite;
@@ -281,8 +281,8 @@ pub enum AttemptStatusExpiredStatus {
 /// `Integration.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{ConnectionUpdated, Updated};
+    pub use crate::event::Definition;
 
     /// `Integration.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

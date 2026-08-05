@@ -9,7 +9,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Ref {
     pub directory: AbsolutePath,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "workspaceID",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub workspace_id: Option<WorkspaceID>,
 }
 
@@ -17,7 +21,11 @@ pub struct Ref {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Info {
     pub directory: AbsolutePath,
-    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "workspaceID",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub workspace_id: Option<WorkspaceID>,
     pub project: Project,
 }

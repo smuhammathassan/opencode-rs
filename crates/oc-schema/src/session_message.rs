@@ -164,13 +164,13 @@ pub struct Shell {
     pub id: ID,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<IndexMap<String, Value>>,
+    pub time: TimeCompleted,
     #[serde(rename = "type")]
     pub r#type: ShellType,
     #[serde(rename = "callID")]
     pub call_id: String,
     pub command: String,
     pub output: String,
-    pub time: TimeCompleted,
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

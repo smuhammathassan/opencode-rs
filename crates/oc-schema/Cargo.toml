@@ -14,3 +14,7 @@ tracing = { workspace = true }
 futures = { workspace = true }
 indexmap = { workspace = true }
 ryu = "1"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+indexmap = { workspace = true }

@@ -75,7 +75,11 @@ pub struct Request {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Info {
     pub id: ID,
-    #[serde(rename = "integrationID", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "integrationID",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub integration_id: Option<IntegrationID>,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]

@@ -22,8 +22,8 @@ pub struct UpdatedData {
 /// `ProjectDirectories.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::Updated;
+    pub use crate::event::Definition;
 
     /// `ProjectDirectories.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[Definition {

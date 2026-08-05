@@ -49,23 +49,23 @@ pub fn inventory<const N: usize>(definitions: [Definition; N]) -> Vec<Definition
     definitions.to_vec()
 }
 
-/// `latest(definitions)` — keeps the highest durable version per type and rejects
-/// duplicate non-durable definitions.
+/// `latest(definitions)` — keeps the highest durable version per type; mirrors the
+/// reference exactly, which keeps a newer durable version or throws for any other
+/// duplicate definition.
 pub fn latest(definitions: &[Definition]) -> Vec<Definition> {
     let mut result: Vec<Definition> = Vec::new();
     for definition in definitions {
         if let Some(existing) = result.iter_mut().find(|d| d.r#type == definition.r#type) {
             match (&existing.durable, &definition.durable) {
-                (Some(a), Some(b)) => {
+                (Some(a), Some(b)) if a.version != b.version => {
                     if b.version > a.version {
                         *existing = definition.clone();
                     }
                 }
-                (Some(_), None) | (None, Some(_)) | (None, None) => {
-                    if existing != definition {
-                        panic!("Duplicate latest event definition for {}", definition.r#type);
-                    }
-                }
+                _ => panic!(
+                    "Duplicate latest event definition for {}",
+                    definition.r#type
+                ),
             }
         } else {
             result.push(definition.clone());
@@ -189,11 +189,17 @@ mod tests {
         let defs = vec![
             Definition {
                 r#type: "session.next.step.ended",
-                durable: Some(DurableVersion { version: 1, aggregate: "sessionID" }),
+                durable: Some(DurableVersion {
+                    version: 1,
+                    aggregate: "sessionID",
+                }),
             },
             Definition {
                 r#type: "session.next.step.ended",
-                durable: Some(DurableVersion { version: 2, aggregate: "sessionID" }),
+                durable: Some(DurableVersion {
+                    version: 2,
+                    aggregate: "sessionID",
+                }),
             },
         ];
         let out = latest(&defs);
@@ -205,7 +211,10 @@ mod tests {
     fn durable_map_keys() {
         let defs = vec![Definition {
             r#type: "session.created",
-            durable: Some(DurableVersion { version: 1, aggregate: "sessionID" }),
+            durable: Some(DurableVersion {
+                version: 1,
+                aggregate: "sessionID",
+            }),
         }];
         let map = durable(&defs);
         assert!(map.contains_key("session.created.1"));

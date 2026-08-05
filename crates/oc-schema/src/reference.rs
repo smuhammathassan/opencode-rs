@@ -74,8 +74,8 @@ pub struct Info {
 /// `Reference.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::Updated;
+    pub use crate::event::Definition;
 
     /// `Reference.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[Definition {

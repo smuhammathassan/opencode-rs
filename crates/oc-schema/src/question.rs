@@ -120,8 +120,8 @@ pub struct RejectedData {
 /// `Question.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{Asked, Rejected, Replied};
+    pub use crate::event::Definition;
 
     /// `Question.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

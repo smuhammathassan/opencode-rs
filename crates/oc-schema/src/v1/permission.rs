@@ -147,8 +147,8 @@ pub struct RepliedData {
 /// `PermissionV1.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{Asked, Replied};
+    pub use crate::event::Definition;
 
     /// `PermissionV1.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

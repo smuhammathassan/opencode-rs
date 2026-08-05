@@ -127,8 +127,8 @@ pub struct UpdateInput {
 /// `Pty.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{Created, Deleted, Exited, Updated};
+    pub use crate::event::Definition;
 
     /// `Pty.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

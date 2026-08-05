@@ -102,7 +102,10 @@ pub fn format_js_number(v: f64) -> String {
         Some(i) => (&s[..i], s[i + 1..].parse::<i64>().unwrap()),
         None => (s.as_str(), 0),
     };
-    let dot = mant.find('.').map(|i| i as i64).unwrap_or(mant.len() as i64);
+    let dot = mant
+        .find('.')
+        .map(|i| i as i64)
+        .unwrap_or(mant.len() as i64);
     let digits: String = mant.chars().filter(|c| *c != '.').collect();
     let k = dot + exp;
     let n = digits.len() as i64;
@@ -113,7 +116,13 @@ pub fn format_js_number(v: f64) -> String {
         } else {
             digits
         };
-        format!("{}{}e{}{}", sign, mantissa, if e >= 0 { "+" } else { "" }, e)
+        format!(
+            "{}{}e{}{}",
+            sign,
+            mantissa,
+            if e >= 0 { "+" } else { "" },
+            e
+        )
     } else if k >= n {
         format!("{}{}{}", sign, digits, "0".repeat((k - n) as usize))
     } else if k > 0 {

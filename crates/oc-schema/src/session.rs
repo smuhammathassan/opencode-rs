@@ -7,14 +7,14 @@ use crate::project;
 use crate::revert;
 use crate::schema::{DateTimeUtc, Finite, RelativePath};
 use crate::session_id::SessionID;
-use crate::session_message::TokenUsage;
+pub use crate::session_message::{TokenCache, TokenUsage};
 use serde::{Deserialize, Serialize};
 
 /// `Session.ID`.
 pub type ID = SessionID;
 
 /// `Session.Event` — the session event namespace.
-pub use crate::session_event::{DURABLE_DEFINITIONS, DEFINITIONS, DurableEvent, Event};
+pub use crate::session_event::{DurableEvent, Event, DEFINITIONS, DURABLE_DEFINITIONS};
 
 /// `Session.Info.time`.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]

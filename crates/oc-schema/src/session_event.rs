@@ -37,12 +37,25 @@ pub struct Base {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RetryError {
     pub message: String,
-    #[serde(rename = "statusCode", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "statusCode",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub status_code: Option<Finite>,
+    #[serde(rename = "isRetryable")]
     pub is_retryable: bool,
-    #[serde(rename = "responseHeaders", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "responseHeaders",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub response_headers: Option<IndexMap<String, String>>,
-    #[serde(rename = "responseBody", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "responseBody",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub response_body: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<IndexMap<String, String>>,
@@ -303,7 +316,11 @@ pub struct ToolSuccessData {
     pub base: ToolBase,
     pub structured: IndexMap<String, JsonValue>,
     pub content: Vec<ToolContent>,
-    #[serde(rename = "outputPaths", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "outputPaths",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub output_paths: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub result: Option<JsonValue>,

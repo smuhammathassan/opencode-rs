@@ -23,8 +23,8 @@ pub struct AddedData {
 /// `Plugin.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::Added;
+    pub use crate::event::Definition;
 
     /// `Plugin.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[Definition {

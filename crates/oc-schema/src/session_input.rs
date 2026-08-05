@@ -21,6 +21,10 @@ pub struct Admitted {
     pub delivery: Delivery,
     #[serde(rename = "timeCreated")]
     pub time_created: DateTimeUtc,
-    #[serde(rename = "promotedSeq", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "promotedSeq",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub promoted_seq: Option<NonNegativeInt>,
 }

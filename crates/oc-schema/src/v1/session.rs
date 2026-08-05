@@ -131,12 +131,25 @@ pub enum APIErrorName {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct APIErrorData {
     pub message: String,
-    #[serde(rename = "statusCode", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "statusCode",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub status_code: Option<NonNegativeInt>,
+    #[serde(rename = "isRetryable")]
     pub is_retryable: bool,
-    #[serde(rename = "responseHeaders", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "responseHeaders",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub response_headers: Option<IndexMap<String, String>>,
-    #[serde(rename = "responseBody", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "responseBody",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub response_body: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub metadata: Option<IndexMap<String, String>>,
@@ -159,7 +172,11 @@ pub enum ContextOverflowErrorName {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ContextOverflowErrorData {
     pub message: String,
-    #[serde(rename = "responseBody", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "responseBody",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub response_body: Option<String>,
 }
 
@@ -502,7 +519,11 @@ pub struct CompactionPart {
     pub auto: bool,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub overflow: Option<bool>,
-    #[serde(rename = "tail_start_id", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "tail_start_id",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub tail_start_id: Option<MessageID>,
 }
 
@@ -1059,7 +1080,11 @@ pub struct SessionInfo {
     pub slug: String,
     #[serde(rename = "projectID")]
     pub project_id: project::ID,
-    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none", default)]
+    #[serde(
+        rename = "workspaceID",
+        skip_serializing_if = "Option::is_none",
+        default
+    )]
     pub workspace_id: Option<WorkspaceID>,
     pub directory: String,
     #[serde(skip_serializing_if = "Option::is_none", default)]
@@ -1266,11 +1291,11 @@ pub struct ErrorEventData {
 /// `SessionV1.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::{
         Created, Deleted, Diff, ErrorEvent, MessageRemoved, MessageUpdated, PartDelta, PartRemoved,
         PartUpdated, Updated,
     };
+    pub use crate::event::Definition;
 
     /// `SessionV1.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[

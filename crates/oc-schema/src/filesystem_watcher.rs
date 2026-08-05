@@ -33,8 +33,8 @@ pub struct UpdatedData {
 /// `FileSystemWatcher.Event`.
 #[allow(non_snake_case)]
 pub mod Event {
-    pub use crate::event::Definition;
     pub use super::Updated;
+    pub use crate::event::Definition;
 
     /// `FileSystemWatcher.Event.Definitions`.
     pub const DEFINITIONS: &[Definition] = &[Definition {

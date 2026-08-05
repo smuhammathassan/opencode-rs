@@ -48,9 +48,7 @@ fn is_color(value: &str) -> bool {
         return true;
     }
     let bytes = value.as_bytes();
-    bytes.len() == 7
-        && bytes[0] == b'#'
-        && bytes[1..].iter().all(|b| b.is_ascii_hexdigit())
+    bytes.len() == 7 && bytes[0] == b'#' && bytes[1..].iter().all(|b| b.is_ascii_hexdigit())
 }
 
 /// `Agent.Info.mode`.
