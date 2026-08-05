@@ -388,10 +388,11 @@ mod tests {
             120_000,
         );
         assert!(
-            description.starts_with("Executes a given bash command in a persistent shell session")
+            description.starts_with("Executes a given bash command in a persistent shell session"),
+            "{description}"
         );
         assert!(description.contains("commands will time out after 120000ms."));
-        assert!(description.contains("Use `/tmp/opencode` for temporary work"));
+        assert!(description.contains("for temporary work outside the workspace"));
         assert!(description.contains("If the output exceeds 2000 lines or 51200 bytes"));
         let schema = crate::jsonschema::from_schema(&parameters);
         assert_eq!(

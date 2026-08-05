@@ -861,4 +861,42 @@ mod tests {
         assert!(cut);
         assert!(out.ends_with("line 4999"));
     }
+
+    #[tokio::test]
+    async fn executes_and_returns_exit_code() {
+        let dir = tempfile::tempdir().unwrap();
+        let def = crate::tool::tool::wrap("bash", def(None));
+        let mut ctx = crate::model::ToolContext::default();
+        ctx.instance = Some(crate::model::InstanceContext {
+            directory: dir.path().to_string_lossy().to_string(),
+            worktree: dir.path().to_string_lossy().to_string(),
+        });
+        let result = def
+            .execute(serde_json::json!({ "command": "echo hello" }), &mut ctx)
+            .await
+            .unwrap();
+        assert_eq!(result.output.trim(), "hello");
+        assert_eq!(result.metadata["exit"], 0);
+        assert_eq!(result.metadata["truncated"], serde_json::json!(false));
+    }
+
+    #[tokio::test]
+    async fn reports_timeout_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let def = crate::tool::tool::wrap("bash", def(None));
+        let mut ctx = crate::model::ToolContext::default();
+        ctx.instance = Some(crate::model::InstanceContext {
+            directory: dir.path().to_string_lossy().to_string(),
+            worktree: dir.path().to_string_lossy().to_string(),
+        });
+        let result = def
+            .execute(
+                serde_json::json!({ "command": "sleep 5", "timeout": 100 }),
+                &mut ctx,
+            )
+            .await
+            .unwrap();
+        assert!(result.output.contains("<shell_metadata>"));
+        assert!(result.output.contains("exceeding timeout 100 ms"));
+    }
 }
