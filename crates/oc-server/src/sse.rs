@@ -29,7 +29,7 @@ fn event_data(data: serde_json::Value) -> SseEvent {
         .data(serde_json::to_string(&data).unwrap_or_default())
 }
 
-fn sse_response<S, E>(stream: S) -> Response
+fn sse_response<S, E>(stream: S, heartbeat_secs: u64) -> Response
 where
     S: tokio_stream::Stream<Item = Result<SseEvent, E>> + Send + 'static,
     E: Into<axum::BoxError>,
@@ -37,7 +37,7 @@ where
     let mut response = Sse::new(stream)
         .keep_alive(
             KeepAlive::new()
-                .interval(Duration::from_secs(15))
+                .interval(Duration::from_secs(heartbeat_secs))
                 .text("heartbeat"),
         )
         .into_response();
@@ -49,7 +49,7 @@ where
     response
 }
 
-fn sse_of(first: SseEvent, bus: &EventBus) -> Response {
+fn sse_of(first: SseEvent, bus: &EventBus, heartbeat_secs: u64) -> Response {
     let receiver = BroadcastStream::new(bus.subscribe());
     let live = receiver
         .filter_map(move |result| match result {
@@ -58,7 +58,7 @@ fn sse_of(first: SseEvent, bus: &EventBus) -> Response {
         })
         .map(Ok::<SseEvent, std::convert::Infallible>);
     let stream = tokio_stream::iter([Ok::<SseEvent, std::convert::Infallible>(first)]).chain(live);
-    sse_response(stream)
+    sse_response(stream, heartbeat_secs)
 }
 
 /// The v2 `/api/event` stream. From reference/packages/server/src/handlers/event.ts:
@@ -67,6 +67,7 @@ pub fn v2_event_stream(bus: EventBus) -> Response {
     sse_of(
         event_data(serde_json::to_value(server_connected()).unwrap()),
         &bus,
+        15,
     )
 }
 
@@ -88,13 +89,13 @@ pub fn v1_event_stream(bus: EventBus) -> Response {
         .map(Ok::<SseEvent, std::convert::Infallible>);
     let stream =
         tokio_stream::iter([Ok::<SseEvent, std::convert::Infallible>(connected)]).chain(live);
-    sse_response(stream)
+    sse_response(stream, 10)
 }
 
 /// The v2 `/api/session/:sessionID/event` stream. From reference/packages/server/src/
 /// handlers/session.ts (`session.events`): continues with new durable events.
 pub fn session_event_stream(state: AppState) -> Response {
-    sse_of(SseEvent::default(), &state.events)
+    sse_of(SseEvent::default(), &state.events, 15)
 }
 
 /// Build a stream of raw SSE frames for one published event (used by tests).
