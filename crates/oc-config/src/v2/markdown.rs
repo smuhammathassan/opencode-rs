@@ -13,7 +13,9 @@ fn split_frontmatter(content: &str) -> Option<(String, String)> {
         return None;
     }
     let rest = &content[3..];
-    let rest = rest.strip_prefix('\n').or_else(|| rest.strip_prefix("\r\n"))?;
+    let rest = rest
+        .strip_prefix('\n')
+        .or_else(|| rest.strip_prefix("\r\n"))?;
     // Find the closing `---` on its own line.
     let mut lines = rest.split_inclusive('\n');
     let mut frontmatter = String::new();
@@ -39,7 +41,10 @@ pub fn sanitize(content: &str) -> String {
         .split('\n')
         .flat_map(|line| {
             let trimmed = line.trim_start();
-            if trimmed.starts_with('#') || trimmed.is_empty() || line.starts_with(char::is_whitespace) {
+            if trimmed.starts_with('#')
+                || trimmed.is_empty()
+                || line.starts_with(char::is_whitespace)
+            {
                 return vec![line.to_string()];
             }
             let Some(entry) = regex::Regex::new(r"^([a-zA-Z_][a-zA-Z0-9_]*)\s*:\s*(.*)$")
@@ -96,7 +101,10 @@ fn parse_yaml(input: &str) -> Option<IndexMap<String, Value>> {
 fn parse_block(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> {
     let mut map = IndexMap::new();
     loop {
-        let line = lines.get(*idx)?.trim_end();
+        let Some(raw_line) = lines.get(*idx) else {
+            break;
+        };
+        let line = raw_line.trim_end();
         if line.trim().is_empty() || line.trim().starts_with('#') {
             *idx += 1;
             continue;
@@ -135,7 +143,10 @@ fn parse_block(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> 
 fn parse_list(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> {
     let mut items = Vec::new();
     loop {
-        let line = lines.get(*idx)?.trim_end();
+        let Some(raw_line) = lines.get(*idx) else {
+            break;
+        };
+        let line = raw_line.trim_end();
         if line.trim().is_empty() || line.trim().starts_with('#') {
             *idx += 1;
             continue;
@@ -157,7 +168,7 @@ fn parse_list(lines: &[&str], idx: &mut usize, indent: usize) -> Option<Value> {
             let rest = rest.trim_start();
             if rest.is_empty() {
                 items.push(parse_value_block(lines, idx, indent + 1)?);
-            } else             if let Some((key, value)) = split_key(rest) {
+            } else if let Some((key, value)) = split_key(rest) {
                 let mut map = IndexMap::new();
                 let value = if value.is_empty() {
                     parse_value_block(lines, idx, indent + 1)?
@@ -200,7 +211,14 @@ fn block_scalar_indicator(trimmed: &str) -> Option<(char, Option<String>)> {
     let first = chars.next()?;
     if first == '|' || first == '>' {
         let rest = chars.as_str().trim();
-        Some((first, if rest.is_empty() { None } else { Some(rest.to_string()) }))
+        Some((
+            first,
+            if rest.is_empty() {
+                None
+            } else {
+                Some(rest.to_string())
+            },
+        ))
     } else {
         None
     }
@@ -229,7 +247,11 @@ fn parse_block_scalar(
             content_indent = Some(current_indent);
         }
         let indent = content_indent.unwrap();
-        let text = if line.len() >= indent { &line[indent..] } else { "" };
+        let text = if line.len() >= indent {
+            &line[indent..]
+        } else {
+            ""
+        };
         if indicator == '>' {
             if out.ends_with('\n') && !text.is_empty() {
                 out.pop();
@@ -257,6 +279,10 @@ fn split_key(line: &str) -> Option<(String, &str)> {
             return Some((value, rest));
         }
         return None;
+    }
+    if key.starts_with(['"', '\'']) {
+        let value = parse_quoted(key)?;
+        return Some((value, rest));
     }
     Some((key.to_string(), rest))
 }

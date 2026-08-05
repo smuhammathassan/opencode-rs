@@ -10,11 +10,13 @@ pub fn home_dir() -> PathBuf {
     if let Some(home) = std::env::var("OPENCODE_TEST_HOME").ok() {
         return PathBuf::from(home);
     }
-    std::env::var("HOME").map(PathBuf::from).unwrap_or_else(|_| {
-        std::env::var("USERPROFILE")
-            .map(PathBuf::from)
-            .unwrap_or_else(|_| PathBuf::from("/"))
-    })
+    std::env::var("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| {
+            std::env::var("USERPROFILE")
+                .map(PathBuf::from)
+                .unwrap_or_else(|_| PathBuf::from("/"))
+        })
 }
 
 /// The xdg config directory (`Global.Path.config`): `$XDG_CONFIG_HOME/opencode`.
@@ -89,7 +91,10 @@ pub fn directories(directory: &Path, worktree: Option<&Path>) -> Vec<PathBuf> {
 
 /// `ConfigPaths.fileInDirectory(dir, name)`.
 pub fn file_in_directory(dir: &Path, name: &str) -> Vec<PathBuf> {
-    vec![dir.join(format!("{name}.json")), dir.join(format!("{name}.jsonc"))]
+    vec![
+        dir.join(format!("{name}.json")),
+        dir.join(format!("{name}.jsonc")),
+    ]
 }
 
 fn push_unique(list: &mut Vec<PathBuf>, path: PathBuf) {

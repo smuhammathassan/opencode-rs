@@ -54,7 +54,10 @@ pub struct OAuth {
     pub clientSecret: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub scope: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "crate::jsnum::de_port_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "crate::jsnum::de_port_opt"
+    )]
     pub callbackPort: Option<u16>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub redirectUri: Option<String>,

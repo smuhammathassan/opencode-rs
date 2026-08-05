@@ -50,10 +50,22 @@ impl<'de> Deserialize<'de> for Action {
 
 /// `Rule` = `Schema.Union([Action, Object])` where `Object` is a map of
 /// action-to-`Action`. A scalar action applies to `*`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Rule {
     Action(Action),
     Object(IndexMap<String, Action>),
+}
+
+impl Serialize for Rule {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            Rule::Action(action) => action.serialize(serializer),
+            Rule::Object(map) => serializer.collect_map(map.iter()),
+        }
+    }
 }
 
 impl Rule {
@@ -75,7 +87,9 @@ impl Rule {
                 }
                 Ok(Rule::Object(out))
             }
-            other => Err(format!("Expected a permission action or object but got {other}")),
+            other => Err(format!(
+                "Expected a permission action or object but got {other}"
+            )),
         }
     }
 }
@@ -92,7 +106,13 @@ fn parse_action(value: &str) -> Result<Action, String> {
 }
 
 /// Keys that accept `Action` only (not a pattern object).
-const ACTION_ONLY_KEYS: [&str; 5] = ["todowrite", "question", "webfetch", "websearch", "doom_loop"];
+const ACTION_ONLY_KEYS: [&str; 5] = [
+    "todowrite",
+    "question",
+    "webfetch",
+    "websearch",
+    "doom_loop",
+];
 
 /// `Info` — the normalized permission object. A scalar input like `"deny"` is
 /// normalized to `{ "*": "deny" }`, matching the `decodeTo` transform in the

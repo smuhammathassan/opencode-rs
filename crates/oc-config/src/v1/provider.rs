@@ -41,9 +41,19 @@ pub struct ModelCostContext {
     pub input: f64,
     #[serde(deserialize_with = "de_f64", serialize_with = "serialize_js_number")]
     pub output: f64,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub cache_read: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub cache_write: Option<f64>,
 }
 
@@ -53,9 +63,19 @@ pub struct ModelCost {
     pub input: f64,
     #[serde(deserialize_with = "de_f64", serialize_with = "serialize_js_number")]
     pub output: f64,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub cache_read: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub cache_write: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub context_over_200k: Option<ModelCostContext>,
@@ -65,7 +85,12 @@ pub struct ModelCost {
 pub struct ModelLimit {
     #[serde(deserialize_with = "de_f64", serialize_with = "serialize_js_number")]
     pub context: f64,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub input: Option<f64>,
     #[serde(deserialize_with = "de_f64", serialize_with = "serialize_js_number")]
     pub output: f64,

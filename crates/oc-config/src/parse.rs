@@ -25,7 +25,8 @@ pub fn jsonc(text: &str, source: &str) -> Result<Value, ConfigError> {
             } else {
                 issues.push_str(&msg);
             }
-            let message = format!("\n--- JSONC Input ---\n{text}\n--- Errors ---\n{issues}\n--- End ---");
+            let message =
+                format!("\n--- JSONC Input ---\n{text}\n--- Errors ---\n{issues}\n--- End ---");
             Err(ConfigError::json(source, message))
         }
     }

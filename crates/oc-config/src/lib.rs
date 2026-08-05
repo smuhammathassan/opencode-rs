@@ -21,6 +21,8 @@ pub mod v2;
 pub mod variable;
 
 pub use error::{ConfigError, Issue, Result};
-pub use load::{load_config, load_file, load_global, load_instance_state, LoadOptions, PluginOrigin, Scope};
+pub use load::{
+    load_config, load_file, load_global, load_instance_state, LoadOptions, PluginOrigin, Scope,
+};
 pub use parse::schema as parse_schema;
 pub use v1::Info as Config;

@@ -101,7 +101,10 @@ pub struct Info {
         serialize_with = "serialize_js_number_opt"
     )]
     pub temperature: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub top_p: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
@@ -163,7 +166,11 @@ fn normalize(raw: Raw) -> Result<Info, String> {
     let mut permission = PermissionInfo::default();
     if let Some(tools) = &raw.tools {
         for (tool, enabled) in tools {
-            let action = if *enabled { Action::Allow } else { Action::Deny };
+            let action = if *enabled {
+                Action::Allow
+            } else {
+                Action::Deny
+            };
             let key = if tool == "write" || tool == "edit" || tool == "patch" {
                 "edit".to_string()
             } else {

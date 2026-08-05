@@ -53,12 +53,18 @@ impl Entry {
     /// or a `Local` entry (see `local()` in the config-reference plugin).
     pub fn is_local(&self) -> bool {
         match self {
-            Entry::Url(url) => {
-                url.starts_with('.') || url.starts_with('/') || url.starts_with('~')
-            }
+            Entry::Url(url) => url.starts_with('.') || url.starts_with('/') || url.starts_with('~'),
             Entry::Local(_) => true,
             Entry::Git(_) => false,
         }
+    }
+
+    pub fn is_git(&self) -> bool {
+        matches!(self, Entry::Git(_))
+    }
+
+    pub fn is_url(&self) -> bool {
+        matches!(self, Entry::Url(_))
     }
 }
 

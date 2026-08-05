@@ -65,6 +65,12 @@ pub struct PluginOrigin {
     pub scope: Scope,
 }
 
+impl PluginOrigin {
+    pub fn specifier(&self) -> &str {
+        plugin_specifier(&self.spec)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Scope {
     Global,
@@ -105,7 +111,11 @@ pub struct InstanceState {
 ///
 /// Mirrors `Config.loadConfig` with a virtual source: variable substitution,
 /// JSONC parse, legacy-key normalization, then schema validation.
-pub fn load_config(text: &str, source: &Source, env: Option<&IndexMap<String, String>>) -> Result<Info> {
+pub fn load_config(
+    text: &str,
+    source: &Source,
+    env: Option<&IndexMap<String, String>>,
+) -> Result<Info> {
     let expanded = variable::substitute(text, source, env, Missing::Error)?;
     let parsed = parse::jsonc(&expanded, source.display())?;
     let data = normalize_loaded_config(parsed);
@@ -122,7 +132,13 @@ pub fn load_file(path: &str, env: Option<&IndexMap<String, String>>) -> Result<I
     if text.trim().is_empty() {
         return Ok(Info::default());
     }
-    let mut config = load_config(&text, &Source::Path { path: path.to_string() }, env)?;
+    let mut config = load_config(
+        &text,
+        &Source::Path {
+            path: path.to_string(),
+        },
+        env,
+    )?;
     resolve_loaded_plugins(&mut config, path);
     if config.schema.is_none() {
         config.schema = Some("https://opencode.ai/config.json".to_string());
@@ -137,7 +153,8 @@ fn normalize_loaded_config(data: Value) -> Value {
     let Value::Object(mut map) = data else {
         return data;
     };
-    let had_legacy = map.contains_key("theme") || map.contains_key("keybinds") || map.contains_key("tui");
+    let had_legacy =
+        map.contains_key("theme") || map.contains_key("keybinds") || map.contains_key("tui");
     if !had_legacy {
         return Value::Object(map);
     }
@@ -198,6 +215,7 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
 
     impl Acc {
         fn merge(&mut self, next: Info, source: &str, scope: Scope) {
+            self.config = merge_config(&self.config, &next);
             merge_plugins(
                 &mut self.config,
                 &mut self.origins,
@@ -205,7 +223,6 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
                 source,
                 scope,
             );
-            self.config = merge_config(&self.config, &next);
         }
     }
 
@@ -215,7 +232,11 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
     };
 
     let global = load_global(env)?;
-    acc.merge(global, &paths::config_dir().to_string_lossy(), Scope::Global);
+    acc.merge(
+        global,
+        &paths::config_dir().to_string_lossy(),
+        Scope::Global,
+    );
 
     if let Some(custom) = &flags.config {
         acc.merge(load_file(custom, env)?, custom, Scope::Global);
@@ -346,12 +367,7 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
     }
 
     if result.username.is_none() {
-        result.username = Some(
-            options
-                .username
-                .clone()
-                .unwrap_or_else(current_username),
-        );
+        result.username = Some(options.username.clone().unwrap_or_else(current_username));
     }
 
     if result.autoshare == Some(true) && result.share.is_none() {
@@ -359,22 +375,32 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
     }
 
     if flags.disable_autocompact {
-        let compaction = result.compaction.get_or_insert_with(crate::v1::Compaction::default);
+        let compaction = result
+            .compaction
+            .get_or_insert_with(crate::v1::Compaction::default);
         compaction.auto = Some(false);
     }
     if flags.disable_prune {
-        let compaction = result.compaction.get_or_insert_with(crate::v1::Compaction::default);
+        let compaction = result
+            .compaction
+            .get_or_insert_with(crate::v1::Compaction::default);
         compaction.prune = Some(false);
     }
 
     Ok(InstanceState {
         config: result,
-        directories: directories.iter().map(|d| d.to_string_lossy().into_owned()).collect(),
+        directories: directories
+            .iter()
+            .map(|d| d.to_string_lossy().into_owned())
+            .collect(),
         plugin_origins: acc.origins,
     })
 }
 
-fn merge_permissions(source: &crate::v1::PermissionInfo, target: Option<&crate::v1::PermissionInfo>) -> crate::v1::PermissionInfo {
+fn merge_permissions(
+    source: &crate::v1::PermissionInfo,
+    target: Option<&crate::v1::PermissionInfo>,
+) -> crate::v1::PermissionInfo {
     let mut out = source.clone();
     if let Some(target) = target {
         out.assign(target);
@@ -414,7 +440,10 @@ pub fn load_global(env: Option<&IndexMap<String, String>>) -> Result<Info> {
         if !file.exists() {
             let content = serde_json::json!({ "$schema": "https://opencode.ai/config.json" });
             let _ = std::fs::create_dir_all(dir.clone());
-            let _ = std::fs::write(&file, serde_json::to_string_pretty(&content).expect("serializes"));
+            let _ = std::fs::write(
+                &file,
+                serde_json::to_string_pretty(&content).expect("serializes"),
+            );
         }
     }
 
@@ -438,20 +467,34 @@ pub fn load_global(env: Option<&IndexMap<String, String>>) -> Result<Info> {
 
 fn migrate_legacy_toml(legacy: &std::path::Path) -> Result<Info> {
     let text = std::fs::read_to_string(legacy)?;
-    let value: toml::Value = toml::from_str(&text)
-        .map_err(|e| ConfigError::invalid(legacy.to_string_lossy(), Vec::new(), Some(e.to_string())))?;
+    let value: toml::Value = toml::from_str(&text).map_err(|e| {
+        ConfigError::invalid(legacy.to_string_lossy(), Vec::new(), Some(e.to_string()))
+    })?;
     let mut map = match serde_json::to_value(value).expect("toml serializes") {
         Value::Object(map) => map,
         _ => return Ok(Info::default()),
     };
-    let provider = map.shift_remove("provider").and_then(|v| v.as_str().map(String::from));
-    let model = map.shift_remove("model").and_then(|v| v.as_str().map(String::from));
+    let provider = map
+        .shift_remove("provider")
+        .and_then(|v| v.as_str().map(String::from));
+    let model = map
+        .shift_remove("model")
+        .and_then(|v| v.as_str().map(String::from));
     if let (Some(provider), Some(model)) = (provider, model) {
-        map.insert("model".to_string(), Value::String(format!("{provider}/{model}")));
+        map.insert(
+            "model".to_string(),
+            Value::String(format!("{provider}/{model}")),
+        );
     }
-    map.insert("$schema".to_string(), Value::String("https://opencode.ai/config.json".to_string()));
+    map.insert(
+        "$schema".to_string(),
+        Value::String("https://opencode.ai/config.json".to_string()),
+    );
     let next = parse::schema(Value::Object(map), &legacy.to_string_lossy())?;
-    let _ = std::fs::write(legacy.with_file_name("config.json"), serde_json::to_string_pretty(&next).expect("serializes"));
+    let _ = std::fs::write(
+        legacy.with_file_name("config.json"),
+        serde_json::to_string_pretty(&next).expect("serializes"),
+    );
     let _ = std::fs::remove_file(legacy);
     Ok(next)
 }
@@ -474,7 +517,10 @@ fn ensure_gitignore(dir: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dir)?;
     let gitignore = dir.join(".gitignore");
     if !gitignore.exists() {
-        std::fs::write(gitignore, "node_modules\npackage.json\npackage-lock.json\nbun.lock\n.gitignore\n")?;
+        std::fs::write(
+            gitignore,
+            "node_modules\npackage.json\npackage-lock.json\nbun.lock\n.gitignore\n",
+        )?;
     }
     Ok(())
 }
@@ -486,11 +532,14 @@ pub fn managed_config_dir() -> Option<std::path::PathBuf> {
     }
     #[cfg(target_os = "macos")]
     {
-        return Some(std::path::PathBuf::from("/Library/Application Support/opencode"));
+        return Some(std::path::PathBuf::from(
+            "/Library/Application Support/opencode",
+        ));
     }
     #[cfg(target_os = "windows")]
     {
-        let program_data = std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
+        let program_data =
+            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
         return Some(std::path::PathBuf::from(program_data).join("opencode"));
     }
     Some(std::path::PathBuf::from("/etc/opencode"))
@@ -515,16 +564,18 @@ pub fn load_commands(dir: &std::path::Path) -> Result<IndexMap<String, command::
         let name = config_entry_name_from_path(&relative, &["command/", "commands/"]);
         let mut map = data;
         map.insert("template".to_string(), Value::String(body));
-        let parsed = match serde_json::from_value::<command::Info>(Value::Object(map.into_iter().collect())) {
-            Ok(info) => info,
-            Err(error) => {
-                return Err(ConfigError::invalid(
-                    item.to_string_lossy(),
-                    vec![Issue::new(error.to_string(), Vec::new())],
-                    None,
-                ));
-            }
-        };
+        let parsed =
+            match serde_json::from_value::<command::Info>(Value::Object(map.into_iter().collect()))
+            {
+                Ok(info) => info,
+                Err(error) => {
+                    return Err(ConfigError::invalid(
+                        item.to_string_lossy(),
+                        vec![Issue::new(error.to_string(), Vec::new())],
+                        None,
+                    ));
+                }
+            };
         result.insert(name, parsed);
     }
     Ok(result)
@@ -547,8 +598,13 @@ pub fn load_agents(dir: &std::path::Path) -> Result<IndexMap<String, agent::Info
             .to_string_lossy()
             .into_owned();
         let name = config_entry_name_from_path(&relative, &["agent/", "agents/"]);
-        let info = agent::Info::from_parts(name.clone(), data, body)
-            .map_err(|error| ConfigError::invalid(item.to_string_lossy(), vec![Issue::new(error.to_string(), Vec::new())], None))?;
+        let info = agent::Info::from_parts(name.clone(), data, body).map_err(|error| {
+            ConfigError::invalid(
+                item.to_string_lossy(),
+                vec![Issue::new(error.to_string(), Vec::new())],
+                None,
+            )
+        })?;
         result.insert(name, info);
     }
     Ok(result)
@@ -656,7 +712,10 @@ fn is_path_plugin_spec(spec: &str) -> bool {
 
 fn is_windows_absolute(spec: &str) -> bool {
     let bytes = spec.as_bytes();
-    bytes.len() >= 3 && bytes[1] == b':' && (bytes[2] == b'\\' || bytes[2] == b'/') && bytes[0].is_ascii_alphabetic()
+    bytes.len() >= 3
+        && bytes[1] == b':'
+        && (bytes[2] == b'\\' || bytes[2] == b'/')
+        && bytes[0].is_ascii_alphabetic()
 }
 
 /// `resolvePathPluginTarget` — directories resolve to their own URL (with
@@ -676,7 +735,13 @@ fn resolve_path_plugin_target(spec: &str) -> std::io::Result<String> {
     if path.join("package.json").exists() {
         return Ok(path_to_file_url(&path));
     }
-    const INDEX_FILES: [&str; 5] = ["index.ts", "index.tsx", "index.js", "index.mjs", "index.cjs"];
+    const INDEX_FILES: [&str; 5] = [
+        "index.ts",
+        "index.tsx",
+        "index.js",
+        "index.mjs",
+        "index.cjs",
+    ];
     for name in INDEX_FILES {
         let index = path.join(name);
         if index.exists() {
@@ -685,7 +750,10 @@ fn resolve_path_plugin_target(spec: &str) -> std::io::Result<String> {
     }
     Err(std::io::Error::new(
         std::io::ErrorKind::NotFound,
-        format!("Plugin directory {} is missing package.json or index file", path.display()),
+        format!(
+            "Plugin directory {} is missing package.json or index file",
+            path.display()
+        ),
     ))
 }
 
@@ -706,7 +774,9 @@ fn merge_plugins(
         source: source.to_string(),
         scope,
     }));
-    *origins = dedupe_keep_last(std::mem::take(origins), |origin| plugin_identity(&origin.spec));
+    *origins = dedupe_keep_last(std::mem::take(origins), |origin| {
+        plugin_identity(&origin.spec)
+    });
     config.plugin = Some(origins.iter().map(|origin| origin.spec.clone()).collect());
 }
 
@@ -734,7 +804,9 @@ fn package_name(spec: &str) -> String {
 
 /// `os.userInfo().username || "user"`.
 pub fn current_username() -> String {
-    std::env::var("USER").or_else(|_| std::env::var("USERNAME")).unwrap_or_else(|_| "user".to_string())
+    std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_else(|_| "user".to_string())
 }
 
 #[cfg(test)]
@@ -774,7 +846,14 @@ mod tests {
             .iter()
             .map(|o| plugin_specifier(&o.spec).to_string())
             .collect::<Vec<_>>();
-        assert_eq!(names, ["global-plugin@1.0.0", "local-plugin@2.0.0", "shared-plugin@2.0.0"]);
+        assert_eq!(
+            names,
+            [
+                "global-plugin@1.0.0",
+                "local-plugin@2.0.0",
+                "shared-plugin@2.0.0"
+            ]
+        );
     }
 
     #[test]

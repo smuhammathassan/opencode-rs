@@ -154,7 +154,7 @@ pub struct Info {
     pub schema: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub shell: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(rename = "logLevel", skip_serializing_if = "Option::is_none")]
     pub log_level: Option<LogLevel>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub server: Option<server::Server>,

@@ -17,9 +17,19 @@ pub struct Request {
 /// `ConfigV2.Model.Cost.Cache`.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 pub struct Cache {
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub read: Option<f64>,
-    #[serde(skip_serializing_if = "Option::is_none", deserialize_with = "de_f64_opt", serialize_with = "serialize_js_number_opt")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        default,
+        deserialize_with = "de_f64_opt",
+        serialize_with = "serialize_js_number_opt"
+    )]
     pub write: Option<f64>,
 }
 

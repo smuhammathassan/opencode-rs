@@ -110,12 +110,17 @@ pub fn substitute(
                 } else {
                     format!("bad file reference: \"{token}\"")
                 };
-                return Err(ConfigError::invalid(config_source, Vec::new(), Some(message)));
+                return Err(ConfigError::invalid(
+                    config_source,
+                    Vec::new(),
+                    Some(message),
+                ));
             }
         };
 
-        let escaped = serde_json::to_string(&content.trim())
-            .map_err(|e| ConfigError::invalid(config_source.clone(), Vec::new(), Some(e.to_string())))?;
+        let escaped = serde_json::to_string(&content.trim()).map_err(|e| {
+            ConfigError::invalid(config_source.clone(), Vec::new(), Some(e.to_string()))
+        })?;
         out.push_str(escaped.trim_start_matches('"').trim_end_matches('"'));
         cursor = index + token.len();
     }
@@ -132,7 +137,11 @@ fn join(dir: &str, path: &str) -> String {
     if dir.is_empty() || dir == "." {
         path.to_string()
     } else {
-        format!("{}/{}", dir.trim_end_matches('/'), path.trim_start_matches('/'))
+        format!(
+            "{}/{}",
+            dir.trim_end_matches('/'),
+            path.trim_start_matches('/')
+        )
     }
 }
 

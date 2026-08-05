@@ -30,7 +30,10 @@ impl Issue {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ConfigError {
     /// `ConfigJsonError`: the config text is not valid JSON(C).
-    Json { path: String, message: Option<String> },
+    Json {
+        path: String,
+        message: Option<String>,
+    },
     /// `ConfigInvalidError`: the config failed schema validation.
     Invalid {
         path: String,

@@ -16,5 +16,8 @@ pub mod provider;
 pub mod server;
 pub mod skills;
 
-pub use config::{AutoUpdate, Compaction, Enterprise, Experimental, Info, LogLevel, Share, Skills, ToolOutput, Watcher};
+pub use config::{
+    AutoUpdate, Compaction, Enterprise, Experimental, Info, LogLevel, Share, Skills, ToolOutput,
+    Watcher,
+};
 pub use permission::{Action, Info as PermissionInfo, Rule};
