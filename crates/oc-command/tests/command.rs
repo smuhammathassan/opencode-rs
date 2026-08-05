@@ -278,3 +278,100 @@ fn skills_do_not_override_existing_commands() {
     reg.add_skills(&[skill]);
     assert_eq!(reg.get("init").unwrap().template.resolve(), "custom init");
 }
+
+fn write(root: &std::path::Path, rel: &str, content: &str) {
+    let path = root.join(rel);
+    std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+    std::fs::write(&path, content).unwrap();
+}
+
+#[test]
+fn loads_commands_from_command_and_commands_dirs() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(
+        &proj,
+        ".opencode/command/fix.md",
+        "---\ndescription: Fix a bug\n---\nfix the $ARGUMENTS\n",
+    );
+    write(&proj, ".opencode/commands/foo.md", "just a template\n");
+
+    let loaded = oc_command::command::load_from_dir(&proj.join(".opencode")).unwrap();
+    let map: std::collections::HashMap<String, oc_command::command::CommandConfig> =
+        loaded.into_iter().collect();
+    assert_eq!(map.len(), 2);
+    let fix = &map["fix"];
+    assert_eq!(fix.template, "fix the $ARGUMENTS");
+    assert_eq!(fix.description.as_deref(), Some("Fix a bug"));
+    let foo = &map["foo"];
+    assert_eq!(foo.template, "just a template");
+}
+
+#[test]
+fn loads_nested_command_with_relative_path_name() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(&proj, ".opencode/command/sub/x.md", "template body\n");
+    let loaded = oc_command::command::load_from_dir(&proj.join(".opencode")).unwrap();
+    assert_eq!(loaded[0].0, "sub/x");
+}
+
+#[test]
+fn frontmatter_name_overrides_path_derived_name() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(
+        &proj,
+        ".opencode/command/a.md",
+        "---\nname: renamed\n---\nbody\n",
+    );
+    let loaded = oc_command::command::load_from_dir(&proj.join(".opencode")).unwrap();
+    assert_eq!(loaded[0].0, "renamed");
+}
+
+#[test]
+fn command_without_frontmatter_loads_with_template_only() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(&proj, ".opencode/command/plain.md", "just a body\n");
+    let loaded = oc_command::command::load_from_dir(&proj.join(".opencode")).unwrap();
+    let map: std::collections::HashMap<String, oc_command::command::CommandConfig> =
+        loaded.into_iter().collect();
+    assert_eq!(map["plain"].template, "just a body");
+}
+
+#[test]
+fn invalid_command_config_aborts_load() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(
+        &proj,
+        ".opencode/command/bad.md",
+        "---\ndescription: 42\n---\nbody\n",
+    );
+    write(
+        &proj,
+        ".opencode/command/good.md",
+        "---\ndescription: ok\n---\nbody\n",
+    );
+    assert!(oc_command::command::load_from_dir(&proj.join(".opencode")).is_err());
+}
+
+#[test]
+fn unparseable_frontmatter_is_skipped() {
+    let tmp = tempfile::tempdir().unwrap();
+    let proj = tmp.path().join("proj");
+    write(
+        &proj,
+        ".opencode/command/broken.md",
+        "---\n{name: unclosed\n---\nbody\n",
+    );
+    write(
+        &proj,
+        ".opencode/command/fine.md",
+        "---\ndescription: ok\n---\nbody\n",
+    );
+    let loaded = oc_command::command::load_from_dir(&proj.join(".opencode")).unwrap();
+    assert_eq!(loaded.len(), 1);
+    assert_eq!(loaded[0].0, "fine");
+}

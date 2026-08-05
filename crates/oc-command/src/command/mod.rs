@@ -5,7 +5,9 @@
 //! `$ARGUMENTS`/`$1..$9` substitution from
 //! reference/packages/opencode/src/session/prompt.ts (lines 1372-1409).
 
+use crate::frontmatter;
 use crate::skill;
+use crate::util::{scan, ScanOptions};
 use indexmap::IndexMap;
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Serialize, Serializer};
@@ -209,6 +211,90 @@ pub struct CommandConfig {
     pub variant: Option<String>,
     #[serde(default)]
     pub subtask: Option<bool>,
+}
+
+/// Load project command files from a `.opencode` directory.
+///
+/// From reference/packages/opencode/src/config/command.ts (`ConfigCommand.load`):
+/// scans `{command,commands}/**/*.md`, parses frontmatter, and derives the
+/// command name from the file path relative to `dir`. Files with invalid
+/// frontmatter are skipped; files with invalid config fields abort the load.
+///
+/// TODO(integration): oc-config owns this in the reference (`ConfigCommand.load`);
+/// consider moving it there once oc-config is implemented.
+pub fn load_from_dir(dir: &Path) -> anyhow::Result<Vec<(String, CommandConfig)>> {
+    let mut result: Vec<(String, CommandConfig)> = Vec::new();
+    for item in scan(
+        dir,
+        "{command,commands}/**/*.md",
+        &ScanOptions {
+            dot: true,
+            follow: true,
+        },
+    )? {
+        let Some(md) = frontmatter::parse_file(&item).ok() else {
+            continue;
+        };
+        let relative = item.strip_prefix(dir).unwrap_or(&item);
+        let name = config_entry_name_from_path(relative, &["command/", "commands/"]);
+        let (name, config) = merge_command_config(&name, &md).map_err(|error| {
+            anyhow::anyhow!("{}: invalid command config: {}", item.display(), error)
+        })?;
+        result.push((name, config));
+    }
+    Ok(result)
+}
+
+/// `{ name, ...md.data, template: md.content.trim() }` merged and validated.
+fn merge_command_config(
+    name: &str,
+    md: &frontmatter::Markdown,
+) -> Result<(String, CommandConfig), String> {
+    let mut merged = if md.data.is_object() {
+        md.data.clone()
+    } else {
+        serde_json::Value::Object(Default::default())
+    };
+    let mut final_name = name.to_string();
+    if let Some(object) = merged.as_object_mut() {
+        // frontmatter `name` overrides the path-derived name.
+        if let Some(frontmatter_name) = object.get("name").and_then(serde_json::Value::as_str) {
+            final_name = frontmatter_name.to_string();
+        }
+        object.insert(
+            "template".to_string(),
+            serde_json::Value::String(md.content.trim().to_string()),
+        );
+    }
+    let config = serde_json::from_value(merged).map_err(|error| error.to_string())?;
+    Ok((final_name, config))
+}
+
+/// Derive a command name from a path relative to the scanned directory.
+/// From reference/packages/opencode/src/config/entry-name.ts
+/// (`configEntryNameFromPath`).
+fn config_entry_name_from_path(relative: &Path, prefixes: &[&str]) -> String {
+    let normalized = relative.to_string_lossy().replace('\\', "/");
+    let mut candidate: Option<String> = None;
+    for prefix in prefixes {
+        if normalized.starts_with(prefix) {
+            candidate = Some(normalized[prefix.len()..].to_string());
+            break;
+        }
+    }
+    let candidate = match candidate {
+        Some(candidate) => candidate,
+        None => relative
+            .file_name()
+            .map(|name| name.to_string_lossy().to_string())
+            .unwrap_or_default(),
+    };
+    match Path::new(&candidate).extension() {
+        Some(extension) if !extension.is_empty() => {
+            candidate[..candidate.len() - extension.to_string_lossy().len() - 1].to_string()
+        }
+        _ => candidate,
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
