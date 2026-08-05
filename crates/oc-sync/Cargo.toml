@@ -12,9 +12,18 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true }
+uuid = { workspace = true }
+chrono = { workspace = true }
+url = { workspace = true }
+reqwest = { workspace = true }
+async-trait = "0.1"
+tokio-util = { version = "0.7", features = ["io"] }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
 oc-database = { version = "0.1", path = "../oc-database" }
 oc-provider = { version = "0.1", path = "../oc-provider" }
-tokio = { workspace = true }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
