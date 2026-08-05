@@ -47,8 +47,10 @@ impl Drop for EnvGuard {
 /// An isolated environment with a temp home, temp global config dir, and a
 /// temp project directory. Locks the env mutex for the test's duration.
 pub struct TestHome {
-    _guard: std::sync::MutexGuard<'static, ()>,
+    // `_env` must drop before `_guard` so env vars are restored while the lock
+    // is still held (fields drop in declaration order).
     _env: EnvGuard,
+    _guard: std::sync::MutexGuard<'static, ()>,
     pub tmp: tempfile::TempDir,
     pub global_config: PathBuf,
     pub home: PathBuf,
