@@ -80,7 +80,9 @@ impl<'de> Deserialize<'de> for Interleaved {
                         serde_json::Value::String(s) => Some(s),
                         _ => None,
                     })
-                    .ok_or_else(|| serde::de::Error::custom("interleaved object missing `field`"))?;
+                    .ok_or_else(|| {
+                        serde::de::Error::custom("interleaved object missing `field`")
+                    })?;
                 Ok(Interleaved::Struct { field })
             }
             _ => Err(serde::de::Error::custom("invalid interleaved value")),
@@ -174,7 +176,7 @@ pub struct ContextOver200K {
 }
 
 /// Context / output token limits.
-#[derive(Debug, Clone, PartialEq, Deserialize, Serialize)]
+#[derive(Debug, Clone, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub struct Limit {
     #[serde(default)]

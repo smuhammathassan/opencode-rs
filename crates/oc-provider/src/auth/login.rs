@@ -8,7 +8,9 @@
 use std::collections::BTreeMap;
 
 use super::{AuthStore, Info};
-use crate::provider::auth::{AuthCallbackResult, AuthHook, CallbackMethod, MethodType, Prompt as AuthPrompt};
+use crate::provider::auth::{
+    AuthCallbackResult, AuthHook, CallbackMethod, MethodType, Prompt as AuthPrompt,
+};
 
 /// `resolvePluginProviders` from `providers.ts`.
 pub fn resolve_plugin_providers<H>(
@@ -41,7 +43,10 @@ where
                 continue;
             }
         }
-        let name = provider_names.get(id).cloned().unwrap_or_else(|| id.to_string());
+        let name = provider_names
+            .get(id)
+            .cloned()
+            .unwrap_or_else(|| id.to_string());
         result.push((id.to_string(), name));
     }
     result
@@ -63,8 +68,12 @@ pub trait LoginPrompt: Send + Sync {
     fn log_error(&self, message: &str);
     fn log_success(&self, message: &str);
     fn outro(&self, message: &str);
-    fn text(&self, message: &str, placeholder: Option<&str>, validate: Option<&dyn Fn(&str) -> Option<String>>)
-    -> Option<String>;
+    fn text(
+        &self,
+        message: &str,
+        placeholder: Option<&str>,
+        validate: Option<&dyn Fn(&str) -> Option<String>>,
+    ) -> Option<String>;
     fn password(&self, message: &str) -> Option<String>;
     fn select(&self, message: &str, options: &[(String, String)]) -> Option<usize>;
     fn autocomplete(&self, message: &str, options: &[(String, String)]) -> Option<String>;
@@ -106,7 +115,12 @@ pub fn login_url(
     run_command: impl Fn(&[String]) -> Result<(i32, String), anyhow::Error>,
 ) -> Result<(), LoginError> {
     let url = url.trim_end_matches('/');
-    let wellknown = fetch_wellknown(url).map_err(|e| LoginError::from_cli(&format!("Failed to load auth provider metadata from {}: ", url), e))?;
+    let wellknown = fetch_wellknown(url).map_err(|e| {
+        LoginError::from_cli(
+            &format!("Failed to load auth provider metadata from {}: ", url),
+            e,
+        )
+    })?;
     prompt.log_info(&format!("Running `{}`", wellknown.auth.command.join(" ")));
 
     let (exit, token) = run_command(&wellknown.auth.command)
@@ -193,7 +207,8 @@ pub fn login(
             .then_with(|| a.1.name.cmp(&b.1.name))
     });
 
-    let existing: BTreeMap<String, Info> = auth.all().map_err(|e| LoginError::Failed(e.to_string()))?;
+    let existing: BTreeMap<String, Info> =
+        auth.all().map_err(|e| LoginError::Failed(e.to_string()))?;
     let _ = &existing;
 
     let mut options_list: Vec<(String, String)> = providers
@@ -205,7 +220,9 @@ pub fn login(
     let provider = match &options.provider {
         Some(input) => {
             let by_id = providers.iter().find(|(id, _)| id == input);
-            let by_name = providers.iter().find(|(_, p)| p.name.to_lowercase() == input.to_lowercase());
+            let by_name = providers
+                .iter()
+                .find(|(_, p)| p.name.to_lowercase() == input.to_lowercase());
             let matched = by_id.or(by_name).map(|(id, _)| id.clone());
             match matched {
                 Some(id) => id,
@@ -217,7 +234,10 @@ pub fn login(
                     {
                         id.clone()
                     } else {
-                        return Err(LoginError::Failed(format!("Unknown provider \"{}\"", input)));
+                        return Err(LoginError::Failed(format!(
+                            "Unknown provider \"{}\"",
+                            input
+                        )));
                     }
                 }
             }
@@ -226,7 +246,13 @@ pub fn login(
     };
 
     if let Some(hook) = plugin_hooks.get(&provider) {
-        let handled = handle_plugin_auth(auth, prompt, hook.as_ref(), &provider, options.method.as_deref())?;
+        let handled = handle_plugin_auth(
+            auth,
+            prompt,
+            hook.as_ref(),
+            &provider,
+            options.method.as_deref(),
+        )?;
         if handled {
             return Ok(());
         }
@@ -237,7 +263,11 @@ pub fn login(
             "Enter provider id",
             None,
             Some(&|value: &str| {
-                if value.is_empty() || !value.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+                if value.is_empty()
+                    || !value
+                        .chars()
+                        .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+                {
                     Some("a-z, 0-9 and hyphens only".to_string())
                 } else {
                     None
@@ -246,7 +276,13 @@ pub fn login(
         ))?;
         let custom = entered.trim_start_matches("@ai-sdk/").to_string();
         if let Some(hook) = plugin_hooks.get(&custom) {
-            let handled = handle_plugin_auth(auth, prompt, hook.as_ref(), &custom, options.method.as_deref())?;
+            let handled = handle_plugin_auth(
+                auth,
+                prompt,
+                hook.as_ref(),
+                &custom,
+                options.method.as_deref(),
+            )?;
             if handled {
                 return Ok(());
             }
@@ -319,18 +355,30 @@ pub fn handle_plugin_auth(
             if methods.len() <= 1 {
                 0
             } else {
-                prompt_value(prompt.select(
-                    "Login method",
-                    &methods.iter().enumerate().map(|(i, m)| (i.to_string(), m.label.clone())).collect::<Vec<_>>(),
-                ))?
+                prompt_value(
+                    prompt.select(
+                        "Login method",
+                        &methods
+                            .iter()
+                            .enumerate()
+                            .map(|(i, m)| (i.to_string(), m.label.clone()))
+                            .collect::<Vec<_>>(),
+                    ),
+                )?
             }
         }
         Some(name) => {
-            let match_index = methods.iter().position(|m| m.label.to_lowercase() == name.to_lowercase());
+            let match_index = methods
+                .iter()
+                .position(|m| m.label.to_lowercase() == name.to_lowercase());
             match match_index {
                 Some(index) => index,
                 None => {
-                    let available = methods.iter().map(|m| m.label.as_str()).collect::<Vec<_>>().join(", ");
+                    let available = methods
+                        .iter()
+                        .map(|m| m.label.as_str())
+                        .collect::<Vec<_>>()
+                        .join(", ");
                     return Err(LoginError::Failed(format!(
                         "Unknown method \"{}\" for {}. Available: {}",
                         name, provider, available
@@ -411,7 +459,13 @@ pub fn handle_plugin_auth(
                     let code = prompt_value(prompt.text(
                         "Paste the authorization code here: ",
                         None,
-                        Some(&|value: &str| if value.is_empty() { Some("Required".to_string()) } else { None }),
+                        Some(&|value: &str| {
+                            if value.is_empty() {
+                                Some("Required".to_string())
+                            } else {
+                                None
+                            }
+                        }),
                     ))?;
                     let result = hook
                         .callback(Some(&code))
@@ -542,13 +596,17 @@ pub fn logout(
         Some(requested) => options
             .iter()
             .find(|(key, _)| {
-                key == requested || names.get(key).map(|n| n.to_lowercase()) == Some(requested.to_lowercase())
+                key == requested
+                    || names.get(key).map(|n| n.to_lowercase()) == Some(requested.to_lowercase())
             })
             .map(|(key, _)| key.clone())
-            .ok_or_else(|| LoginError::Failed(format!("Unknown configured provider \"{}\"", requested)))?,
+            .ok_or_else(|| {
+                LoginError::Failed(format!("Unknown configured provider \"{}\"", requested))
+            })?,
         None => prompt_value(prompt.autocomplete("Select provider", &options))?,
     };
-    auth.remove(&provider).map_err(|e| LoginError::Failed(e.to_string()))?;
+    auth.remove(&provider)
+        .map_err(|e| LoginError::Failed(e.to_string()))?;
     prompt.outro("Logout successful");
     Ok(())
 }
@@ -582,10 +640,18 @@ pub fn catalog_providers(
 }
 
 /// Registers the given provider as connected (used by `list`/`providers`).
-pub fn connected_providers(catalog: &BTreeMap<String, crate::models_dev::Provider>, envs: &BTreeMap<String, Option<String>>) -> Vec<String> {
+pub fn connected_providers(
+    catalog: &BTreeMap<String, crate::models_dev::Provider>,
+    envs: &BTreeMap<String, Option<String>>,
+) -> Vec<String> {
     catalog
         .iter()
-        .filter(|(_, provider)| provider.env.iter().any(|key| envs.get(key).is_some_and(|v| v.is_some())))
+        .filter(|(_, provider)| {
+            provider
+                .env
+                .iter()
+                .any(|key| envs.get(key).is_some_and(|v| v.is_some()))
+        })
         .map(|(id, _)| id.clone())
         .collect()
 }

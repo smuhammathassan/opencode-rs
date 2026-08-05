@@ -7,12 +7,13 @@ use serde::{Deserialize, Serialize};
 /// Mirrors `ModelStatus` in `provider/model-status.ts` which unions the catalog
 /// status (`alpha | beta | deprecated`) with the `active` status used once a
 /// model is loaded into the provider registry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum ModelStatus {
     Alpha,
     Beta,
     Deprecated,
+    #[default]
     Active,
 }
 

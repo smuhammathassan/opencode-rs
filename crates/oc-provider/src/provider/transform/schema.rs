@@ -15,7 +15,9 @@ fn is_plain_object(value: &Value) -> bool {
 ///
 /// From `sanitizeOpenAISchema()` in `transform.ts`.
 pub fn sanitize_openai_schema(value: &Value) -> Value {
-    const TYPES: [&str; 7] = ["string", "number", "boolean", "integer", "object", "array", "null"];
+    const TYPES: [&str; 7] = [
+        "string", "number", "boolean", "integer", "object", "array", "null",
+    ];
     const COMPOSITION_KEYS: [&str; 3] = ["anyOf", "oneOf", "allOf"];
 
     if value.is_boolean() {
@@ -36,7 +38,10 @@ pub fn sanitize_openai_schema(value: &Value) -> Value {
         result.insert("description".to_string(), Value::from(description.clone()));
     }
     if obj.contains_key("const") {
-        result.insert("enum".to_string(), Value::Array(vec![obj.get("const").cloned().unwrap_or(Value::Null)]));
+        result.insert(
+            "enum".to_string(),
+            Value::Array(vec![obj.get("const").cloned().unwrap_or(Value::Null)]),
+        );
     } else if let Some(Value::Array(enums)) = obj.get("enum") {
         result.insert("enum".to_string(), Value::Array(enums.clone()));
     }
@@ -50,7 +55,11 @@ pub fn sanitize_openai_schema(value: &Value) -> Value {
     }
 
     if let Some(Value::Array(required)) = obj.get("required") {
-        let filtered: Vec<Value> = required.iter().filter(|item| item.is_string()).cloned().collect();
+        let filtered: Vec<Value> = required
+            .iter()
+            .filter(|item| item.is_string())
+            .cloned()
+            .collect();
         result.insert("required".to_string(), Value::Array(filtered));
     }
 
@@ -69,7 +78,10 @@ pub fn sanitize_openai_schema(value: &Value) -> Value {
 
     for key in COMPOSITION_KEYS {
         if let Some(Value::Array(values)) = obj.get(key) {
-            result.insert(key.to_string(), Value::Array(values.iter().map(sanitize_openai_schema).collect()));
+            result.insert(
+                key.to_string(),
+                Value::Array(values.iter().map(sanitize_openai_schema).collect()),
+            );
         }
     }
 
@@ -108,15 +120,27 @@ pub fn sanitize_openai_schema(value: &Value) -> Value {
 
     let inferred_types: Vec<String> = if !schema_types.is_empty() {
         schema_types
-    } else if ["properties", "required", "additionalProperties"].iter().any(|k| obj.contains_key(*k)) {
+    } else if ["properties", "required", "additionalProperties"]
+        .iter()
+        .any(|k| obj.contains_key(*k))
+    {
         vec!["object".to_string()]
-    } else if ["items", "prefixItems"].iter().any(|k| obj.contains_key(*k)) {
+    } else if ["items", "prefixItems"]
+        .iter()
+        .any(|k| obj.contains_key(*k))
+    {
         vec!["array".to_string()]
     } else if result.contains_key("enum") || obj.contains_key("format") {
         vec!["string".to_string()]
-    } else if ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
-        .iter()
-        .any(|k| obj.contains_key(*k))
+    } else if [
+        "minimum",
+        "maximum",
+        "exclusiveMinimum",
+        "exclusiveMaximum",
+        "multipleOf",
+    ]
+    .iter()
+    .any(|k| obj.contains_key(*k))
     {
         vec!["number".to_string()]
     } else {
@@ -132,7 +156,12 @@ pub fn sanitize_openai_schema(value: &Value) -> Value {
     } else {
         result.insert(
             "type".to_string(),
-            Value::Array(inferred_types.iter().map(|t| Value::from(t.clone())).collect()),
+            Value::Array(
+                inferred_types
+                    .iter()
+                    .map(|t| Value::from(t.clone()))
+                    .collect(),
+            ),
         );
     }
     if inferred_types.contains(&"object".to_string()) && !result.contains_key("properties") {
@@ -159,7 +188,10 @@ fn sanitize_moonshot(value: &Value) -> Value {
                     if let Value::Array(items) = sanitized {
                         result.insert(
                             "items".to_string(),
-                            items.into_iter().next().unwrap_or(Value::Object(Map::new())),
+                            items
+                                .into_iter()
+                                .next()
+                                .unwrap_or(Value::Object(Map::new())),
                         );
                         continue;
                     }
@@ -221,7 +253,10 @@ fn sanitize_gemini(value: &Value) -> Value {
                         .map(|v| Value::from(format!("{}", v)))
                         .collect();
                     result.insert(key.clone(), Value::Array(strings));
-                    if result.get("type").is_some_and(|t| t == "integer" || t == "number") {
+                    if result
+                        .get("type")
+                        .is_some_and(|t| t == "integer" || t == "number")
+                    {
                         result.insert("type".to_string(), Value::from("string"));
                     }
                 } else if value.is_object() || value.is_array() {
@@ -233,7 +268,8 @@ fn sanitize_gemini(value: &Value) -> Value {
 
             if let Some(Value::Array(types)) = result.get("type") {
                 let has_null = types.iter().any(|t| t == "null");
-                let non_null: Vec<Value> = types.iter().filter(|t| **t != "null").cloned().collect();
+                let non_null: Vec<Value> =
+                    types.iter().filter(|t| **t != "null").cloned().collect();
                 if non_null.is_empty() {
                     result.insert("type".to_string(), Value::from("null"));
                 } else {
@@ -259,13 +295,17 @@ fn sanitize_gemini(value: &Value) -> Value {
                     .as_array()
                     .unwrap()
                     .iter()
-                    .filter(|field| field.is_string() && properties.contains_key(field.as_str().unwrap()))
+                    .filter(|field| {
+                        field.is_string() && properties.contains_key(field.as_str().unwrap())
+                    })
                     .cloned()
                     .collect();
                 result.insert("required".to_string(), Value::Array(filtered));
             }
 
-            if result.get("type") == Some(&Value::from("array")) && !has_combiner(&Value::Object(result.clone())) {
+            if result.get("type") == Some(&Value::from("array"))
+                && !has_combiner(&Value::Object(result.clone()))
+            {
                 if !result.contains_key("items") {
                     result.insert("items".to_string(), Value::Object(Map::new()));
                 }
@@ -283,7 +323,10 @@ fn sanitize_gemini(value: &Value) -> Value {
             }
 
             let is_object = result.get("type") == Some(&Value::from("object"));
-            if result.contains_key("type") && !is_object && !has_combiner(&Value::Object(result.clone())) {
+            if result.contains_key("type")
+                && !is_object
+                && !has_combiner(&Value::Object(result.clone()))
+            {
                 result.remove("properties");
                 result.remove("required");
             }

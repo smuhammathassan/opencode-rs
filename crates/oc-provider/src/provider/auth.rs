@@ -223,7 +223,11 @@ pub trait AuthHook: Send + Sync {
     /// Validates a text-prompt input for `method_index`/`prompt_key`.
     fn validate(&self, method_index: usize, key: &str, value: &str) -> Option<String>;
     /// Starts an OAuth or API authorization flow.
-    fn authorize(&self, method_index: usize, inputs: &BTreeMap<String, String>) -> Result<AuthOAuthResult, anyhow::Error>;
+    fn authorize(
+        &self,
+        method_index: usize,
+        inputs: &BTreeMap<String, String>,
+    ) -> Result<AuthOAuthResult, anyhow::Error>;
     /// Completes an OAuth authorization with an optional code.
     fn callback(&self, code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error>;
 }
@@ -300,7 +304,9 @@ where
         let result = hook
             .authorize(input.method, &inputs)
             .map_err(ProviderAuthError::Other)?;
-        self.pending.borrow_mut().insert(provider_id.to_string(), result.clone());
+        self.pending
+            .borrow_mut()
+            .insert(provider_id.to_string(), result.clone());
         Ok(Some(Authorization {
             url: result.url,
             method: result.method,
@@ -327,12 +333,11 @@ where
             }));
         }
 
-        let hook = self
-            .hooks
-            .get(provider_id)
-            .ok_or_else(|| ProviderAuthError::OauthMissing(OauthMissing {
+        let hook = self.hooks.get(provider_id).ok_or_else(|| {
+            ProviderAuthError::OauthMissing(OauthMissing {
                 provider_id: provider_id.to_string(),
-            }))?;
+            })
+        })?;
         let result = hook
             .callback(input.code.as_deref())
             .map_err(ProviderAuthError::Other)?;

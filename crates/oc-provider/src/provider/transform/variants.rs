@@ -229,14 +229,14 @@ fn google_thinking_variants(model: &Model) -> VariantMap {
     if id.contains("2.5") {
         result.insert(
             "high".to_string(),
-            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": 16_000 } })
+            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(16_000.0) } })
                 .as_object()
                 .unwrap()
                 .clone(),
         );
         result.insert(
             "max".to_string(),
-            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": google_thinking_budget_max(&id) } })
+            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(google_thinking_budget_max(&id)) } })
                 .as_object()
                 .unwrap()
                 .clone(),
@@ -266,6 +266,16 @@ fn wrap_in_sap_model_params(variants: VariantMap) -> VariantMap {
         .collect()
 }
 
+/// Emits a JSON number as an integer when integral (JS numbers are all f64,
+/// but `JSON.stringify(16000)` yields `16000` not `16000.0`).
+fn jnum(value: f64) -> Value {
+    if value.fract() == 0.0 {
+        Value::from(value as i64)
+    } else {
+        Value::from(value)
+    }
+}
+
 fn from_pairs(pairs: Vec<(&str, Value)>) -> VariantMap {
     pairs
         .into_iter()
@@ -282,7 +292,10 @@ fn effort_map(efforts: Vec<&'static str>, body: impl Fn(&str) -> JsonMap) -> Var
 
 fn reasoning_effort_map(efforts: Vec<&'static str>) -> VariantMap {
     effort_map(efforts, |effort| {
-        json!({ "reasoningEffort": effort }).as_object().unwrap().clone()
+        json!({ "reasoningEffort": effort })
+            .as_object()
+            .unwrap()
+            .clone()
     })
 }
 
@@ -303,12 +316,15 @@ fn adaptive_thinking_map(adaptive_thinking_omitted: bool, effort: &str) -> JsonM
     if adaptive_thinking_omitted {
         thinking.insert("display".to_string(), Value::from("summarized"));
     }
-    json!({ "thinking": thinking, "effort": effort }).as_object().unwrap().clone()
+    json!({ "thinking": thinking, "effort": effort })
+        .as_object()
+        .unwrap()
+        .clone()
 }
 
 fn anthropic_opus45_effort(model: &Model, effort: &str) -> JsonMap {
     json!({
-        "thinking": { "type": "enabled", "budgetTokens": (16_000.0_f64).min((model.limit.output / 2.0 - 1.0).floor()) },
+        "thinking": { "type": "enabled", "budgetTokens": jnum(16_000.0_f64.min((model.limit.output / 2.0 - 1.0).floor())) },
         "effort": effort,
     })
     .as_object()
@@ -325,17 +341,23 @@ pub fn variants(model: &Model) -> VariantMap {
     }
 
     let id = model.id.to_lowercase();
-    let glm52 = ["glm-5.2", "glm-5-2", "glm-5p2"].iter().any(|name| {
-        id.contains(name) || model.api.id.to_lowercase().contains(name)
-    });
+    let glm52 = ["glm-5.2", "glm-5-2", "glm-5p2"]
+        .iter()
+        .any(|name| id.contains(name) || model.api.id.to_lowercase().contains(name));
 
     if model.api.id.to_lowercase().contains("minimax-m3")
         && ["@ai-sdk/anthropic", "@ai-sdk/openai-compatible"].contains(&model.api.npm.as_str())
     {
         if ["nvidia", "lilac"].contains(&model.provider_id.as_str()) {
             return from_pairs(vec![
-                ("none", json!({ "chat_template_kwargs": { "thinking_mode": "disabled" } })),
-                ("thinking", json!({ "chat_template_kwargs": { "thinking_mode": "enabled" } })),
+                (
+                    "none",
+                    json!({ "chat_template_kwargs": { "thinking_mode": "disabled" } }),
+                ),
+                (
+                    "thinking",
+                    json!({ "chat_template_kwargs": { "thinking_mode": "enabled" } }),
+                ),
             ]);
         }
         return from_pairs(vec![
@@ -367,7 +389,8 @@ pub fn variants(model: &Model) -> VariantMap {
     }
 
     if is_kimi_family(model)
-        && ["@ai-sdk/anthropic", "@ai-sdk/google-vertex/anthropic"].contains(&model.api.npm.as_str())
+        && ["@ai-sdk/anthropic", "@ai-sdk/google-vertex/anthropic"]
+            .contains(&model.api.npm.as_str())
     {
         return effort_map(vec!["low", "medium", "high", "xhigh", "max"], |effort| {
             json!({ "thinking": { "type": "adaptive", "display": "summarized" }, "effort": effort })
@@ -412,7 +435,10 @@ pub fn variants(model: &Model) -> VariantMap {
                 WIDELY_SUPPORTED_EFFORTS.to_vec()
             };
             effort_map(efforts, |effort| {
-                json!({ "reasoning": { "effort": effort } }).as_object().unwrap().clone()
+                json!({ "reasoning": { "effort": effort } })
+                    .as_object()
+                    .unwrap()
+                    .clone()
             })
         }
         "ai-gateway-provider" => {
@@ -430,22 +456,34 @@ pub fn variants(model: &Model) -> VariantMap {
                     });
                 }
                 return from_pairs(vec![
-                    ("high", json!({ "thinking": { "type": "enabled", "budgetTokens": 16_000 } })),
-                    ("max", json!({ "thinking": { "type": "enabled", "budgetTokens": 31_999 } })),
+                    (
+                        "high",
+                        json!({ "thinking": { "type": "enabled", "budgetTokens": 16_000 } }),
+                    ),
+                    (
+                        "max",
+                        json!({ "thinking": { "type": "enabled", "budgetTokens": 31_999 } }),
+                    ),
                 ]);
             }
             if model.api.id.contains("google") {
                 if model.api.id.contains("2.5") {
                     return from_pairs(vec![
-                        ("high", json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": 16_000 } })),
+                        (
+                            "high",
+                            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(16_000.0) } }),
+                        ),
                         (
                             "max",
-                            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": google_thinking_budget_max(&model.api.id.to_lowercase()) } }),
+                            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(google_thinking_budget_max(&model.api.id.to_lowercase())) } }),
                         ),
                     ]);
                 }
                 return effort_map(vec!["low", "high"], |effort| {
-                    json!({ "includeThoughts": true, "thinkingLevel": effort }).as_object().unwrap().clone()
+                    json!({ "includeThoughts": true, "thinkingLevel": effort })
+                        .as_object()
+                        .unwrap()
+                        .clone()
                 });
             }
             reasoning_effort_map(openai_compatible_reasoning_efforts(&model.api.id))
@@ -515,7 +553,9 @@ pub fn variants(model: &Model) -> VariantMap {
                     }
                     efforts.retain(|v| *v != "max" && *v != "xhigh");
                 }
-                return effort_map(efforts, |effort| adaptive_thinking_map(adaptive_thinking_omitted, effort));
+                return effort_map(efforts, |effort| {
+                    adaptive_thinking_map(adaptive_thinking_omitted, effort)
+                });
             }
             if anthropic_opus45(&model.api.id) {
                 return effort_map(WIDELY_SUPPORTED_EFFORTS.to_vec(), |effort| {
@@ -525,11 +565,11 @@ pub fn variants(model: &Model) -> VariantMap {
             from_pairs(vec![
                 (
                     "high",
-                    json!({ "thinking": { "type": "enabled", "budgetTokens": (16_000.0_f64).min((model.limit.output / 2.0 - 1.0).floor()) } }),
+                    json!({ "thinking": { "type": "enabled", "budgetTokens": jnum(16_000.0_f64.min((model.limit.output / 2.0 - 1.0).floor())) } }),
                 ),
                 (
                     "max",
-                    json!({ "thinking": { "type": "enabled", "budgetTokens": (31_999.0_f64).min(model.limit.output - 1.0) } }),
+                    json!({ "thinking": { "type": "enabled", "budgetTokens": jnum(31_999.0_f64.min(model.limit.output - 1.0)) } }),
                 ),
             ])
         }
@@ -542,13 +582,22 @@ pub fn variants(model: &Model) -> VariantMap {
                     if adaptive_thinking_omitted {
                         reasoning_config.insert("display".to_string(), Value::from("summarized"));
                     }
-                    json!({ "reasoningConfig": reasoning_config }).as_object().unwrap().clone()
+                    json!({ "reasoningConfig": reasoning_config })
+                        .as_object()
+                        .unwrap()
+                        .clone()
                 });
             }
             if model.api.id.contains("anthropic") {
                 return from_pairs(vec![
-                    ("high", json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": 16_000 } })),
-                    ("max", json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": 31_999 } })),
+                    (
+                        "high",
+                        json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": 16_000 } }),
+                    ),
+                    (
+                        "max",
+                        json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": 31_999 } }),
+                    ),
                 ]);
             }
             effort_map(WIDELY_SUPPORTED_EFFORTS.to_vec(), |effort| {
@@ -564,7 +613,10 @@ pub fn variants(model: &Model) -> VariantMap {
                 return VariantMap::new();
             }
             let mistral_id = model.api.id.to_lowercase();
-            if !MISTRAL_REASONING_IDS.iter().any(|id| mistral_id.contains(id)) {
+            if !MISTRAL_REASONING_IDS
+                .iter()
+                .any(|id| mistral_id.contains(id))
+            {
                 return VariantMap::new();
             }
             from_pairs(vec![("high", json!({ "reasoningEffort": "high" }))])
@@ -592,8 +644,14 @@ pub fn variants(model: &Model) -> VariantMap {
                     return wrap_in_sap_model_params(result);
                 }
                 return wrap_in_sap_model_params(from_pairs(vec![
-                    ("high", json!({ "thinking": { "type": "enabled", "budget_tokens": 16_000 } })),
-                    ("max", json!({ "thinking": { "type": "enabled", "budget_tokens": 31_999 } })),
+                    (
+                        "high",
+                        json!({ "thinking": { "type": "enabled", "budget_tokens": 16_000 } }),
+                    ),
+                    (
+                        "max",
+                        json!({ "thinking": { "type": "enabled", "budget_tokens": 31_999 } }),
+                    ),
                 ]));
             }
             if id.contains("gemini") && id.contains("2.5") {
@@ -602,11 +660,17 @@ pub fn variants(model: &Model) -> VariantMap {
             if id.contains("gpt") || sap_o_model_re().is_match(&id) {
                 let efforts = openai_reasoning_efforts(&id, &model.release_date);
                 return wrap_in_sap_model_params(effort_map(efforts, |effort| {
-                    json!({ "reasoning_effort": effort }).as_object().unwrap().clone()
+                    json!({ "reasoning_effort": effort })
+                        .as_object()
+                        .unwrap()
+                        .clone()
                 }));
             }
             wrap_in_sap_model_params(effort_map(vec!["low", "medium", "high"], |effort| {
-                json!({ "reasoning_effort": effort }).as_object().unwrap().clone()
+                json!({ "reasoning_effort": effort })
+                    .as_object()
+                    .unwrap()
+                    .clone()
             }))
         }
         _ => VariantMap::new(),
@@ -718,9 +782,12 @@ fn reasoning_toggle(model: &Model) -> VariantMap {
 
 fn reasoning_effort(model: &Model, effort: &str) -> Option<JsonMap> {
     match model.api.npm.as_str() {
-        "@openrouter/ai-sdk-provider" => {
-            Some(json!({ "reasoning": { "effort": effort } }).as_object().unwrap().clone())
-        }
+        "@openrouter/ai-sdk-provider" => Some(
+            json!({ "reasoning": { "effort": effort } })
+                .as_object()
+                .unwrap()
+                .clone(),
+        ),
         "@ai-sdk/anthropic" | "@ai-sdk/google-vertex/anthropic" => anthropic_effort(model, effort)
             .or_else(|| Some(json!({ "effort": effort }).as_object().unwrap().clone())),
         "@ai-sdk/google" | "@ai-sdk/google-vertex" => Some(
@@ -737,14 +804,19 @@ fn reasoning_effort(model: &Model, effort: &str) -> Option<JsonMap> {
                 if anthropic_omits_thinking(&model.api.id) {
                     config.insert("display".to_string(), Value::from("summarized"));
                 }
-                return Some(json!({ "reasoningConfig": config }).as_object().unwrap().clone());
+                return Some(
+                    json!({ "reasoningConfig": config })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                );
             }
             if anthropic_opus45(&model.api.id) {
                 return Some(
                     json!({
                         "reasoningConfig": {
                             "type": "enabled",
-                            "budgetTokens": (16_000.0_f64).min((model.limit.output / 2.0 - 1.0).floor()),
+                            "budgetTokens": jnum(16_000.0_f64.min((model.limit.output / 2.0 - 1.0).floor())),
                             "maxReasoningEffort": effort,
                         }
                     })
@@ -779,14 +851,24 @@ fn reasoning_effort(model: &Model, effort: &str) -> Option<JsonMap> {
                         .clone(),
                 )
             } else {
-                Some(json!({ "reasoningEffort": effort }).as_object().unwrap().clone())
+                Some(
+                    json!({ "reasoningEffort": effort })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                )
             }
         }
         "@ai-sdk/github-copilot" => {
             if model.id.contains("gemini") {
                 None
             } else if model.id.contains("claude") {
-                Some(json!({ "reasoningEffort": effort }).as_object().unwrap().clone())
+                Some(
+                    json!({ "reasoningEffort": effort })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                )
             } else {
                 Some(
                     json!({
@@ -828,10 +910,14 @@ fn reasoning_effort(model: &Model, effort: &str) -> Option<JsonMap> {
         | "@ai-sdk/deepinfra"
         | "@ai-sdk/togetherai"
         | "venice-ai-sdk-provider"
-        | "ai-gateway-provider" => Some(json!({ "reasoningEffort": effort }).as_object().unwrap().clone()),
-        "@ai-sdk/cohere" | "@ai-sdk/perplexity" | "@ai-sdk/vercel" | "@ai-sdk/alibaba" | "gitlab-ai-provider" => {
-            None
-        }
+        | "ai-gateway-provider" => Some(
+            json!({ "reasoningEffort": effort })
+                .as_object()
+                .unwrap()
+                .clone(),
+        ),
+        "@ai-sdk/cohere" | "@ai-sdk/perplexity" | "@ai-sdk/vercel" | "@ai-sdk/alibaba"
+        | "gitlab-ai-provider" => None,
         _ => None,
     }
 }
@@ -851,37 +937,40 @@ fn anthropic_effort(model: &Model, effort: &str) -> Option<JsonMap> {
     if anthropic_adaptive_efforts(&model.api.id).is_none() {
         return None;
     }
-    Some(adaptive_thinking_map(anthropic_omits_thinking(&model.api.id), effort))
+    Some(adaptive_thinking_map(
+        anthropic_omits_thinking(&model.api.id),
+        effort,
+    ))
 }
 
 fn reasoning_budget(model: &Model, budget: f64) -> Option<JsonMap> {
     match model.api.npm.as_str() {
         "@openrouter/ai-sdk-provider" => {
-            Some(json!({ "reasoning": { "max_tokens": budget } }).as_object().unwrap().clone())
+            Some(json!({ "reasoning": { "max_tokens": jnum(budget) } }).as_object().unwrap().clone())
         }
         "@ai-sdk/anthropic" | "@ai-sdk/google-vertex/anthropic" => {
-            Some(json!({ "thinking": { "type": "enabled", "budgetTokens": budget } }).as_object().unwrap().clone())
+            Some(json!({ "thinking": { "type": "enabled", "budgetTokens": jnum(budget) } }).as_object().unwrap().clone())
         }
         "@ai-sdk/google" | "@ai-sdk/google-vertex" => Some(
-            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": budget } })
+            json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(budget) } })
                 .as_object()
                 .unwrap()
                 .clone(),
         ),
         "@ai-sdk/amazon-bedrock" => {
-            Some(json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": budget } }).as_object().unwrap().clone())
+            Some(json!({ "reasoningConfig": { "type": "enabled", "budgetTokens": jnum(budget) } }).as_object().unwrap().clone())
         }
         "@ai-sdk/gateway" => {
             if model.id.contains("anthropic") {
                 Some(
-                    json!({ "thinking": { "type": "enabled", "budgetTokens": budget } })
+                    json!({ "thinking": { "type": "enabled", "budgetTokens": jnum(budget) } })
                         .as_object()
                         .unwrap()
                         .clone(),
                 )
             } else if model.id.contains("google") {
                 Some(
-                    json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": budget } })
+                    json!({ "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(budget) } })
                         .as_object()
                         .unwrap()
                         .clone(),
@@ -891,22 +980,22 @@ fn reasoning_budget(model: &Model, budget: f64) -> Option<JsonMap> {
             }
         }
         "@ai-sdk/cohere" => {
-            Some(json!({ "thinking": { "type": "enabled", "tokenBudget": budget } }).as_object().unwrap().clone())
+            Some(json!({ "thinking": { "type": "enabled", "tokenBudget": jnum(budget) } }).as_object().unwrap().clone())
         }
         "@ai-sdk/alibaba" => {
-            Some(json!({ "enableThinking": true, "thinkingBudget": budget }).as_object().unwrap().clone())
+            Some(json!({ "enableThinking": true, "thinkingBudget": jnum(budget) }).as_object().unwrap().clone())
         }
         "@jerome-benoit/sap-ai-provider-v2" => {
             if model.id.contains("anthropic") {
                 Some(
-                    json!({ "modelParams": { "thinking": { "type": "enabled", "budget_tokens": budget } } })
+                    json!({ "modelParams": { "thinking": { "type": "enabled", "budget_tokens": jnum(budget) } } })
                         .as_object()
                         .unwrap()
                         .clone(),
                 )
             } else if model.id.contains("gemini") {
                 Some(
-                    json!({ "modelParams": { "thinkingConfig": { "includeThoughts": true, "thinkingBudget": budget } } })
+                    json!({ "modelParams": { "thinkingConfig": { "includeThoughts": true, "thinkingBudget": jnum(budget) } } })
                         .as_object()
                         .unwrap()
                         .clone(),

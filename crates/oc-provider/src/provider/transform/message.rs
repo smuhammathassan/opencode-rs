@@ -59,7 +59,11 @@ fn sanitize_tool_result_output(part: &mut JsonMap) {
     let Value::Object(output) = output else {
         return;
     };
-    let output_type = output.get("type").and_then(|v| v.as_str()).unwrap_or_default().to_string();
+    let output_type = output
+        .get("type")
+        .and_then(|v| v.as_str())
+        .unwrap_or_default()
+        .to_string();
     match output_type.as_str() {
         "text" | "error-text" => {
             if let Some(Value::String(value)) = output.get_mut("value") {
@@ -175,7 +179,10 @@ fn normalize_messages(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessag
                     MessageContent::Text(text) => *text = sanitize_surrogates(text),
                     MessageContent::Parts(parts) => {
                         for part in parts {
-                            let is_text = matches!(part.get("type").and_then(|v| v.as_str()), Some("text") | Some("reasoning"));
+                            let is_text = matches!(
+                                part.get("type").and_then(|v| v.as_str()),
+                                Some("text") | Some("reasoning")
+                            );
                             if is_text {
                                 if let Some(Value::String(text)) = part.get_mut("text") {
                                     *text = sanitize_surrogates(text);
@@ -194,16 +201,28 @@ fn normalize_messages(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessag
         .collect();
 
     if model.api.npm == "@ai-sdk/anthropic" {
-        msgs = msgs.into_iter().filter_map(|msg| filter_empty_content(msg, "anthropic")).collect();
+        msgs = msgs
+            .into_iter()
+            .filter_map(|msg| filter_empty_content(msg, "anthropic"))
+            .collect();
     }
     if model.api.npm == "@ai-sdk/amazon-bedrock" {
-        msgs = msgs.into_iter().filter_map(|msg| filter_empty_content(msg, "bedrock")).collect();
+        msgs = msgs
+            .into_iter()
+            .filter_map(|msg| filter_empty_content(msg, "bedrock"))
+            .collect();
     }
 
     if model.api.id.contains("claude") {
         let scrub = |id: &str| -> String {
             id.chars()
-                .map(|c| if c.is_ascii_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+                .map(|c| {
+                    if c.is_ascii_alphanumeric() || c == '_' || c == '-' {
+                        c
+                    } else {
+                        '_'
+                    }
+                })
                 .collect()
         };
         for msg in &mut msgs {
@@ -229,17 +248,35 @@ fn normalize_messages(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessag
             }
             match &mut msg.content {
                 MessageContent::Parts(parts) => {
-                    if parts.iter().any(|part| part_type(part) == Some("reasoning")) {
+                    if parts
+                        .iter()
+                        .any(|part| part_type(part) == Some("reasoning"))
+                    {
                         continue;
                     }
-                    parts.push(json!({ "type": "reasoning", "text": "" }).as_object().unwrap().clone());
+                    parts.push(
+                        json!({ "type": "reasoning", "text": "" })
+                            .as_object()
+                            .unwrap()
+                            .clone(),
+                    );
                 }
                 MessageContent::Text(text) => {
                     let mut new_parts = Vec::new();
                     if !text.is_empty() {
-                        new_parts.push(json!({ "type": "text", "text": text.clone() }).as_object().unwrap().clone());
+                        new_parts.push(
+                            json!({ "type": "text", "text": text.clone() })
+                                .as_object()
+                                .unwrap()
+                                .clone(),
+                        );
                     }
-                    new_parts.push(json!({ "type": "reasoning", "text": "" }).as_object().unwrap().clone());
+                    new_parts.push(
+                        json!({ "type": "reasoning", "text": "" })
+                            .as_object()
+                            .unwrap()
+                            .clone(),
+                    );
                     msg.content = MessageContent::Parts(new_parts);
                 }
             }
@@ -288,7 +325,11 @@ fn normalize_messages(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessag
 /// From the Mistral block of `normalizeMessages()` in `transform.ts`.
 fn normalize_mistral(msgs: Vec<ModelMessage>) -> Vec<ModelMessage> {
     let scrub = |id: &str| -> String {
-        let alnum: String = id.chars().filter(|c| c.is_ascii_alphanumeric()).take(9).collect();
+        let alnum: String = id
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .take(9)
+            .collect();
         let mut padded = alnum;
         while padded.len() < 9 {
             padded.push('0');
@@ -302,14 +343,18 @@ fn normalize_mistral(msgs: Vec<ModelMessage>) -> Vec<ModelMessage> {
             scrub_tool_call_ids(&mut msg, &scrub);
         }
         let is_tool = msg.role == "tool";
-        let next_is_user = msgs.get(i + 1).map(|next| next.role == "user").unwrap_or(false);
+        let next_is_user = msgs
+            .get(i + 1)
+            .map(|next| next.role == "user")
+            .unwrap_or(false);
         result.push(msg);
         if is_tool && next_is_user {
             result.push(ModelMessage {
                 role: "assistant".to_string(),
-                content: MessageContent::Parts(vec![
-                    json!({ "type": "text", "text": "Done." }).as_object().unwrap().clone(),
-                ]),
+                content: MessageContent::Parts(vec![json!({ "type": "text", "text": "Done." })
+                    .as_object()
+                    .unwrap()
+                    .clone()]),
                 provider_options: None,
             });
         }
@@ -357,11 +402,15 @@ fn apply_caching(msgs: &mut Vec<ModelMessage>, model: &Model) {
         let use_message_level_options = model.provider_id == "anthropic"
             || model.provider_id.contains("bedrock")
             || model.api.npm == "@ai-sdk/amazon-bedrock";
-        let should_use_content_options =
-            !use_message_level_options && matches!(&msgs[index].content, MessageContent::Parts(parts) if !parts.is_empty());
+        let should_use_content_options = !use_message_level_options
+            && matches!(&msgs[index].content, MessageContent::Parts(parts) if !parts.is_empty());
 
         if should_use_content_options {
-            let last_content = msgs[index].content.as_parts().and_then(|parts| parts.last()).cloned();
+            let last_content = msgs[index]
+                .content
+                .as_parts()
+                .and_then(|parts| parts.last())
+                .cloned();
             if let Some(mut last_content) = last_content {
                 let is_approval = matches!(
                     part_type(&last_content),
@@ -373,7 +422,10 @@ fn apply_caching(msgs: &mut Vec<ModelMessage>, model: &Model) {
                         .and_then(|v| v.as_object())
                         .cloned()
                         .unwrap_or_default();
-                    let merged = crate::provider::merge_deep(Value::Object(existing), Value::Object(provider_options.clone()));
+                    let merged = crate::provider::merge_deep(
+                        Value::Object(existing),
+                        Value::Object(provider_options.clone()),
+                    );
                     last_content.insert("providerOptions".to_string(), merged);
                     if let MessageContent::Parts(parts) = &mut msgs[index].content {
                         if let Some(last) = parts.last_mut() {
@@ -387,15 +439,21 @@ fn apply_caching(msgs: &mut Vec<ModelMessage>, model: &Model) {
 
         let existing = msgs[index].provider_options.clone().unwrap_or_default();
         msgs[index].provider_options = Some(
-            crate::provider::merge_deep(Value::Object(existing), Value::Object(provider_options.clone()))
-                .as_object()
-                .unwrap()
-                .clone(),
+            crate::provider::merge_deep(
+                Value::Object(existing),
+                Value::Object(provider_options.clone()),
+            )
+            .as_object()
+            .unwrap()
+            .clone(),
         );
     }
 }
 
-fn map_provider_options(msgs: Vec<ModelMessage>, transform: &impl Fn(Option<JsonMap>) -> Option<JsonMap>) -> Vec<ModelMessage> {
+fn map_provider_options(
+    msgs: Vec<ModelMessage>,
+    transform: &impl Fn(Option<JsonMap>) -> Option<JsonMap>,
+) -> Vec<ModelMessage> {
     msgs.into_iter()
         .map(|mut msg| {
             msg.provider_options = transform(msg.provider_options.take());
@@ -414,7 +472,10 @@ fn map_provider_options(msgs: Vec<ModelMessage>, transform: &impl Fn(Option<Json
                         .cloned();
                     match transform(existing) {
                         Some(provider_options) => {
-                            part.insert("providerOptions".to_string(), Value::Object(provider_options));
+                            part.insert(
+                                "providerOptions".to_string(),
+                                Value::Object(provider_options),
+                            );
                         }
                         None => {
                             part.remove("providerOptions");
@@ -448,7 +509,7 @@ fn unsupported_parts(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessage
                     }
 
                     if part_type == Some("image") {
-                        let image = part.get("image").map(|v| format!("{}", v)).unwrap_or_default();
+                        let image = part.get("image").and_then(|v| v.as_str()).unwrap_or_default().to_string();
                         if image.starts_with("data:") {
                             let (_, base64) = match image.split_once(";base64,") {
                                 Some((prefix, base64)) => (prefix, base64),
@@ -468,8 +529,8 @@ fn unsupported_parts(msgs: Vec<ModelMessage>, model: &Model) -> Vec<ModelMessage
 
                     let mime = if part_type == Some("image") {
                         part.get("image")
-                            .map(|v| format!("{}", v))
-                            .and_then(|s| s.split(';').next().map(str::to_string))
+                            .and_then(|v| v.as_str())
+                            .and_then(|s| s.split(';').next())
                             .unwrap_or_default()
                             .replacen("data:", "", 1)
                     } else {
@@ -513,7 +574,8 @@ pub fn message(msgs: Vec<ModelMessage>, model: &Model, options: &JsonMap) -> Vec
     msgs = normalize_messages(msgs, model);
 
     let uses_anthropic_automatic_caching = options.contains_key("cacheControl")
-        && (model.api.npm == "@ai-sdk/anthropic" || model.api.npm == "@ai-sdk/google-vertex/anthropic");
+        && (model.api.npm == "@ai-sdk/anthropic"
+            || model.api.npm == "@ai-sdk/google-vertex/anthropic");
     let is_anthropic_family = model.provider_id == "anthropic"
         || model.provider_id == "google-vertex-anthropic"
         || model.api.id.contains("anthropic")
@@ -522,7 +584,10 @@ pub fn message(msgs: Vec<ModelMessage>, model: &Model, options: &JsonMap) -> Vec
         || model.id.contains("claude")
         || model.api.npm == "@ai-sdk/anthropic"
         || model.api.npm == "@ai-sdk/alibaba";
-    if is_anthropic_family && model.api.npm != "@ai-sdk/gateway" && !uses_anthropic_automatic_caching {
+    if is_anthropic_family
+        && model.api.npm != "@ai-sdk/gateway"
+        && !uses_anthropic_automatic_caching
+    {
         apply_caching(&mut msgs, model);
     }
 

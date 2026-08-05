@@ -21,11 +21,11 @@ use serde_json::{json, Map, Value};
 
 use crate::auth::Info as AuthInfo;
 use crate::models_dev;
-use crate::provider::{
-    self, from_models_dev_provider, merge_deep, merge_provider, ApiInfo, Capabilities, Cost, ExperimentalOver200K,
-    Info, InterleavedField, Limit, Modalities, Model, ModelStatus, Source,
-};
 use crate::provider::transform::{self, VariantMap};
+use crate::provider::{
+    self, from_models_dev_provider, merge_deep, merge_provider, ApiInfo, Capabilities, Cost,
+    ExperimentalOver200K, Info, InterleavedField, Limit, Modalities, Model, ModelStatus, Source,
+};
 
 /// `ConfigProviderV1.Info` from reference/packages/core/src/v1/config/provider.ts.
 #[derive(Debug, Clone, Default, Deserialize)]
@@ -191,6 +191,18 @@ pub struct ConfigInput<'a> {
     pub enabled_providers: Option<&'a [String]>,
 }
 
+impl<'a> Default for ConfigInput<'a> {
+    fn default() -> Self {
+        static EMPTY: std::sync::OnceLock<IndexMap<String, ConfigProvider>> =
+            std::sync::OnceLock::new();
+        ConfigInput {
+            provider: EMPTY.get_or_init(IndexMap::new),
+            disabled_providers: None,
+            enabled_providers: None,
+        }
+    }
+}
+
 /// Inputs to [`build_registry`].
 #[derive(Debug, Clone)]
 pub struct RegistryInput<'a> {
@@ -227,7 +239,7 @@ fn env_get<'a>(envs: &'a BTreeMap<String, Option<String>>, key: &str) -> Option<
 /// (`google-auth-library`) are native-runtime concerns.
 fn custom_loader(
     provider_id: &str,
-    provider: &Info,
+    provider: &mut Info,
     input: &RegistryInput,
 ) -> Result<Option<LoaderResult>, anyhow::Error> {
     let envs = input.envs;
@@ -255,12 +267,11 @@ fn custom_loader(
                 .and_then(|v| v.as_str())
                 .is_some_and(|k| !k.is_empty());
             let ok = has_key || has_auth || config_api_key;
-            let mut models = provider.models.clone();
             if !ok {
-                models.retain(|_, model| model.cost.input != 0.0);
+                provider.models.retain(|_, model| model.cost.input != 0.0);
             }
             LoaderResult {
-                autoload: !models.is_empty(),
+                autoload: !provider.models.is_empty(),
                 options: if ok {
                     Map::new()
                 } else {
@@ -682,7 +693,10 @@ fn custom_loader(
     Ok(Some(loader))
 }
 
-fn google_vertex_anthropic_base_url(project: Option<&str>, location: Option<&str>) -> Option<String> {
+fn google_vertex_anthropic_base_url(
+    project: Option<&str>,
+    location: Option<&str>,
+) -> Option<String> {
     let project = project?;
     if location != Some("eu") && location != Some("us") {
         return None;
@@ -702,6 +716,7 @@ fn merge_config_model(
     parsed: &mut Info,
     model_id: &str,
     model: &ConfigModel,
+    provider: Option<&ConfigProvider>,
     models_dev: Option<&models_dev::Provider>,
 ) {
     let lookup = model.id.as_deref().unwrap_or(model_id);
@@ -715,7 +730,7 @@ fn merge_config_model(
         .provider
         .as_ref()
         .and_then(|p| p.npm.clone())
-        .or_else(|| models_dev.and_then(|p| p.npm.clone()))
+        .or_else(|| provider.and_then(|p| p.npm.clone()))
         .or_else(|| existing_model.as_ref().map(|m| m.api.npm.clone()))
         .or_else(|| models_dev.and_then(|p| p.npm.clone()))
         .unwrap_or_else(|| "@ai-sdk/openai-compatible".to_string());
@@ -725,10 +740,16 @@ fn merge_config_model(
         if id != model_id {
             model_id.to_string()
         } else {
-            existing_model.as_ref().map(|m| m.name.clone()).unwrap_or_else(|| model_id.to_string())
+            existing_model
+                .as_ref()
+                .map(|m| m.name.clone())
+                .unwrap_or_else(|| model_id.to_string())
         }
     } else {
-        existing_model.as_ref().map(|m| m.name.clone()).unwrap_or_else(|| model_id.to_string())
+        existing_model
+            .as_ref()
+            .map(|m| m.name.clone())
+            .unwrap_or_else(|| model_id.to_string())
     };
 
     let modalities_input = model
@@ -746,7 +767,9 @@ fn merge_config_model(
     let interleaved_config = match &model.interleaved {
         Some(Interleaved::Bool(b)) => Some(InterleavedField::Bool(*b)),
         Some(Interleaved::Field(f)) => Some(InterleavedField::Field { field: f.clone() }),
-        Some(Interleaved::Struct { field }) => Some(InterleavedField::Field { field: field.clone() }),
+        Some(Interleaved::Struct { field }) => Some(InterleavedField::Field {
+            field: field.clone(),
+        }),
         None => None,
     };
     let interleaved_default = if existing_model.is_none()
@@ -760,7 +783,11 @@ fn merge_config_model(
         None
     };
     let interleaved = interleaved_config
-        .or_else(|| existing_model.as_ref().map(|m| m.capabilities.interleaved.clone()))
+        .or_else(|| {
+            existing_model
+                .as_ref()
+                .map(|m| m.capabilities.interleaved.clone())
+        })
         .or(interleaved_default)
         .unwrap_or(InterleavedField::Bool(false));
 
@@ -793,7 +820,7 @@ fn merge_config_model(
                 .provider
                 .as_ref()
                 .and_then(|p| p.api.clone())
-                .or_else(|| models_dev.and_then(|p| p.api.clone()))
+                .or_else(|| provider.and_then(|p| p.api.clone()))
                 .or_else(|| existing_model.as_ref().map(|m| m.api.url.clone()))
                 .or_else(|| models_dev.and_then(|p| p.api.clone()))
                 .unwrap_or_default(),
@@ -840,16 +867,40 @@ fn merge_config_model(
         cost: {
             let existing_cost = existing_model.as_ref().map(|m| m.cost.clone());
             let mut cost = Cost {
-                input: model.cost.as_ref().and_then(|c| c.input).or_else(|| existing_cost.as_ref().map(|c| c.input)).unwrap_or(0.0),
-                output: model.cost.as_ref().and_then(|c| c.output).or_else(|| existing_cost.as_ref().map(|c| c.output)).unwrap_or(0.0),
+                input: model
+                    .cost
+                    .as_ref()
+                    .and_then(|c| c.input)
+                    .or_else(|| existing_cost.as_ref().map(|c| c.input))
+                    .unwrap_or(0.0),
+                output: model
+                    .cost
+                    .as_ref()
+                    .and_then(|c| c.output)
+                    .or_else(|| existing_cost.as_ref().map(|c| c.output))
+                    .unwrap_or(0.0),
                 cache: provider::CacheCost {
-                    read: model.cost.as_ref().and_then(|c| c.cache_read).or_else(|| existing_cost.as_ref().map(|c| c.cache.read)).unwrap_or(0.0),
-                    write: model.cost.as_ref().and_then(|c| c.cache_write).or_else(|| existing_cost.as_ref().map(|c| c.cache.write)).unwrap_or(0.0),
+                    read: model
+                        .cost
+                        .as_ref()
+                        .and_then(|c| c.cache_read)
+                        .or_else(|| existing_cost.as_ref().map(|c| c.cache.read))
+                        .unwrap_or(0.0),
+                    write: model
+                        .cost
+                        .as_ref()
+                        .and_then(|c| c.cache_write)
+                        .or_else(|| existing_cost.as_ref().map(|c| c.cache.write))
+                        .unwrap_or(0.0),
                 },
                 tiers: existing_cost.as_ref().and_then(|c| c.tiers.clone()),
                 experimental_over_200k: None,
             };
-            if let Some(over) = &model.cost.as_ref().and_then(|c| c.context_over_200k.clone()) {
+            if let Some(over) = &model
+                .cost
+                .as_ref()
+                .and_then(|c| c.context_over_200k.clone())
+            {
                 cost.experimental_over_200k = Some(ExperimentalOver200K {
                     input: over.input.unwrap_or(0.0),
                     output: over.output.unwrap_or(0.0),
@@ -862,7 +913,12 @@ fn merge_config_model(
             cost
         },
         options: merge_deep(
-            Value::Object(existing_model.as_ref().map(|m| m.options.clone()).unwrap_or_default()),
+            Value::Object(
+                existing_model
+                    .as_ref()
+                    .map(|m| m.options.clone())
+                    .unwrap_or_default(),
+            ),
             Value::Object(model.options.clone().unwrap_or_default()),
         )
         .as_object()
@@ -941,7 +997,11 @@ fn merge_config_model(
         .as_object()
         .map(|map| {
             map.iter()
-                .filter(|(_, v)| v.as_object().map(|o| o.get("disabled") != Some(&Value::Bool(true))).unwrap_or(true))
+                .filter(|(_, v)| {
+                    v.as_object()
+                        .map(|o| o.get("disabled") != Some(&Value::Bool(true)))
+                        .unwrap_or(true)
+                })
                 .map(|(k, v)| {
                     let mut value = v.clone();
                     if let Value::Object(o) = &mut value {
@@ -1007,7 +1067,12 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
                 .or_else(|| existing.as_ref().map(|e| e.env.clone()))
                 .unwrap_or_default(),
             options: merge_deep(
-                Value::Object(existing.as_ref().map(|e| e.options.clone()).unwrap_or_default()),
+                Value::Object(
+                    existing
+                        .as_ref()
+                        .map(|e| e.options.clone())
+                        .unwrap_or_default(),
+                ),
                 Value::Object(provider.options.clone().unwrap_or_default()),
             )
             .as_object()
@@ -1015,12 +1080,15 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
             .clone(),
             source: Source::Config,
             key: None,
-            models: existing.as_ref().map(|e| e.models.clone()).unwrap_or_default(),
+            models: existing
+                .as_ref()
+                .map(|e| e.models.clone())
+                .unwrap_or_default(),
         };
 
         if let Some(models) = &provider.models {
             for (model_id, model) in models {
-                merge_config_model(&mut parsed, model_id, model, models_dev);
+                merge_config_model(&mut parsed, model_id, model, Some(provider), models_dev);
             }
         }
         database.insert(provider_id.clone(), parsed);
@@ -1042,18 +1110,13 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
         if api_key.is_none() {
             continue;
         }
-        let patch = provider::partial_info(
-            id,
-            Source::Env,
-            if provider.env.len() == 1 {
-                api_key.map(str::to_string)
-            } else {
-                None
-            },
-            None,
-            None,
-            None,
-        );
+        let mut patch = Map::new();
+        patch.insert("source".to_string(), Value::from("env"));
+        if provider.env.len() == 1 {
+            if let Some(api_key) = api_key {
+                patch.insert("key".to_string(), Value::from(api_key));
+            }
+        }
         merge_provider(&mut providers, &database, id, &patch);
     }
 
@@ -1063,39 +1126,46 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
             continue;
         }
         if let AuthInfo::Api(api) = provider {
-            let patch = provider::partial_info(id, Source::Api, Some(api.key.clone()), None, None, None);
+            let mut patch = Map::new();
+            patch.insert("source".to_string(), Value::from("api"));
+            patch.insert("key".to_string(), Value::from(api.key.clone()));
             merge_provider(&mut providers, &database, id, &patch);
         }
     }
 
-    // custom loaders
-    for (id, provider) in database.iter() {
+    // custom loaders (may mutate the database entry, e.g. opencode pruning)
+    let mut loader_results: Vec<(String, LoaderResult)> = Vec::new();
+    for (id, provider) in database.iter_mut() {
         if disabled.contains(id.as_str()) {
             continue;
         }
         if let Some(result) = custom_loader(id, provider, input)? {
             if result.autoload || providers.contains_key(id) {
-                let patch = if providers.contains_key(id) {
-                    provider::partial_info(id, Source::Custom, None, Some(result.options), None, None)
-                } else {
-                    provider::partial_info(id, Source::Custom, None, Some(result.options), None, None)
-                };
-                merge_provider(&mut providers, &database, id, &patch);
+                loader_results.push((id.clone(), result));
             }
         }
+    }
+    for (id, result) in loader_results {
+        let mut patch = Map::new();
+        patch.insert("options".to_string(), Value::Object(result.options));
+        if !providers.contains_key(&id) {
+            patch.insert("source".to_string(), Value::from("custom"));
+        }
+        merge_provider(&mut providers, &database, &id, &patch);
     }
 
     // re-apply config over the merged registry
     for (id, provider) in input.config.provider.iter() {
-        let mut patch = provider::partial_info(id, Source::Config, None, None, None, None);
+        let mut patch = Map::new();
+        patch.insert("source".to_string(), Value::from("config"));
         if let Some(env) = &provider.env {
-            patch.env = env.clone();
+            patch.insert("env".to_string(), Value::from(env.clone()));
         }
         if let Some(name) = &provider.name {
-            patch.name = name.clone();
+            patch.insert("name".to_string(), Value::from(name.clone()));
         }
         if let Some(options) = &provider.options {
-            patch.options = options.clone();
+            patch.insert("options".to_string(), Value::Object(options.clone()));
         }
         merge_provider(&mut providers, &database, id, &patch);
     }
@@ -1170,7 +1240,9 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
                         .map(|map| {
                             map.iter()
                                 .filter(|(_, v)| {
-                                    v.as_object().map(|o| o.get("disabled") != Some(&Value::Bool(true))).unwrap_or(true)
+                                    v.as_object()
+                                        .map(|o| o.get("disabled") != Some(&Value::Bool(true)))
+                                        .unwrap_or(true)
                                 })
                                 .map(|(k, v)| {
                                     let mut value = v.clone();
@@ -1201,4 +1273,3 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
 
     Ok(result)
 }
-

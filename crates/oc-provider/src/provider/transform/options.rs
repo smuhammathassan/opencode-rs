@@ -97,7 +97,9 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
         result.insert("store".to_string(), Value::from(false));
     }
 
-    if model.api.npm == "@openrouter/ai-sdk-provider" || model.api.npm == "@llmgateway/ai-sdk-provider" {
+    if model.api.npm == "@openrouter/ai-sdk-provider"
+        || model.api.npm == "@llmgateway/ai-sdk-provider"
+    {
         result.insert("usage".to_string(), json!({ "include": true }));
         if model.api.id.contains("gemini-3") {
             result.insert("reasoning".to_string(), json!({ "effort": "high" }));
@@ -105,15 +107,24 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
     }
 
     if model.provider_id == "baseten"
-        || (model.provider_id == "opencode" && ["kimi-k2-thinking", "glm-4.6"].contains(&model.api.id.as_str()))
+        || (model.provider_id == "opencode"
+            && ["kimi-k2-thinking", "glm-4.6"].contains(&model.api.id.as_str()))
     {
-        result.insert("chat_template_args".to_string(), json!({ "enable_thinking": true }));
+        result.insert(
+            "chat_template_args".to_string(),
+            json!({ "enable_thinking": true }),
+        );
     }
 
-    if ["zai", "zhipuai"].iter().any(|id| model.provider_id.contains(id))
+    if ["zai", "zhipuai"]
+        .iter()
+        .any(|id| model.provider_id.contains(id))
         && model.api.npm == "@ai-sdk/openai-compatible"
     {
-        result.insert("thinking".to_string(), json!({ "type": "enabled", "clear_thinking": false }));
+        result.insert(
+            "thinking".to_string(),
+            json!({ "type": "enabled", "clear_thinking": false }),
+        );
     }
 
     if model.provider_id == "meta" && model.api.npm == "@ai-sdk/openai" {
@@ -142,7 +153,10 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
         && is_kimi_family(model)
         && model.capabilities.reasoning
     {
-        result.insert("thinking".to_string(), json!({ "type": "adaptive", "display": "summarized" }));
+        result.insert(
+            "thinking".to_string(),
+            json!({ "type": "adaptive", "display": "summarized" }),
+        );
         result.insert("effort".to_string(), Value::from("high"));
     }
 
@@ -178,7 +192,9 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
 
     let (gpt_major, gpt_minor) = gpt_version(&model.api.id);
     let is_gpt55_or_newer = gpt_major > 5 || (gpt_major == 5 && gpt_minor >= 5);
-    if model.api.npm == "@ai-sdk/azure" && provider_options.is_some_and(|o| o.get("useCompletionUrls").is_some()) {
+    if model.api.npm == "@ai-sdk/azure"
+        && provider_options.is_some_and(|o| o.get("useCompletionUrls").is_some())
+    {
         if !is_gpt55_or_newer {
             result.insert("reasoningEffort".to_string(), Value::from("medium"));
         }
@@ -198,7 +214,8 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
             {
                 result.insert("reasoningSummary".to_string(), Value::from("auto"));
             }
-            if ["@ai-sdk/openai", "@ai-sdk/amazon-bedrock/mantle"].contains(&model.api.npm.as_str()) {
+            if ["@ai-sdk/openai", "@ai-sdk/amazon-bedrock/mantle"].contains(&model.api.npm.as_str())
+            {
                 result.insert("include".to_string(), include_encrypted_reasoning());
             }
         }
@@ -234,14 +251,20 @@ pub fn small_options(model: &Model) -> JsonMap {
     }
     if model.provider_id == "openrouter" || model.provider_id == "llmgateway" {
         if small.is_empty() && model.api.id.contains("google") {
-            return json!({ "reasoning": { "enabled": false } }).as_object().unwrap().clone();
+            return json!({ "reasoning": { "enabled": false } })
+                .as_object()
+                .unwrap()
+                .clone();
         }
     }
     if model.provider_id == "venice" {
         if !small.is_empty() {
             return small;
         }
-        return json!({ "veniceParameters": { "disableThinking": true } }).as_object().unwrap().clone();
+        return json!({ "veniceParameters": { "disableThinking": true } })
+            .as_object()
+            .unwrap()
+            .clone();
     }
     small
 }
@@ -259,17 +282,19 @@ pub fn provider_options(model: &Model, options: &JsonMap) -> JsonMap {
         "@ai-sdk/amazon-bedrock/mantle",
     ]
     .contains(&model.api.npm.as_str());
-    let has_reasoning_input = options.contains_key("reasoningEffort") || options.contains_key("reasoningSummary");
-    let normalized: JsonMap = if uses_openai_reasoning_gate && (model.capabilities.reasoning || has_reasoning_input) {
-        let mut normalized = options.clone();
-        normalized.insert("forceReasoning".to_string(), Value::from(true));
-        normalized
-    } else {
-        options.clone()
-    };
+    let has_reasoning_input =
+        options.contains_key("reasoningEffort") || options.contains_key("reasoningSummary");
+    let normalized: JsonMap =
+        if uses_openai_reasoning_gate && (model.capabilities.reasoning || has_reasoning_input) {
+            let mut normalized = options.clone();
+            normalized.insert("forceReasoning".to_string(), Value::from(true));
+            normalized
+        } else {
+            options.clone()
+        };
 
     if model.api.npm == "@ai-sdk/gateway" {
-        let raw_slug = model.api.id.split('/').next().filter(|s| !s.is_empty());
+        let raw_slug = model.api.id.split_once('/').map(|(head, _)| head);
         let slug = raw_slug.map(|raw| {
             SLUG_OVERRIDES
                 .iter()
@@ -310,13 +335,20 @@ pub fn provider_options(model: &Model, options: &JsonMap) -> JsonMap {
         "@ai-sdk/anthropic",
     ]
     .contains(&model.api.npm.as_str());
-    let key = sdk_key(&model.api.npm).map(str::to_string).unwrap_or_else(|| {
-        if uses_dot_split_options {
-            model.provider_id.split('.').next().unwrap_or(&model.provider_id).to_string()
-        } else {
-            model.provider_id.clone()
-        }
-    });
+    let key = sdk_key(&model.api.npm)
+        .map(str::to_string)
+        .unwrap_or_else(|| {
+            if uses_dot_split_options {
+                model
+                    .provider_id
+                    .split('.')
+                    .next()
+                    .unwrap_or(&model.provider_id)
+                    .to_string()
+            } else {
+                model.provider_id.clone()
+            }
+        });
 
     if model.api.npm == "@ai-sdk/azure" {
         let mut result = JsonMap::new();

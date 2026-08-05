@@ -7,7 +7,7 @@ pub mod error;
 pub mod model_status;
 pub mod transform;
 
-pub(crate) mod registry;
+pub mod registry;
 
 pub use model_status::{CatalogModelStatus, ModelStatus};
 
@@ -19,11 +19,13 @@ use std::collections::BTreeMap;
 use crate::models_dev;
 
 /// `Provider.api` info: the wire identifier, base URL and npm package.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ApiInfo {
     pub id: String,
+    #[serde(default)]
     pub url: String,
+    #[serde(default)]
     pub npm: String,
 }
 
@@ -65,15 +67,22 @@ impl Default for InterleavedField {
 }
 
 /// Model capabilities as stored in the provider registry.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Capabilities {
+    #[serde(default)]
     pub temperature: bool,
+    #[serde(default)]
     pub reasoning: bool,
+    #[serde(default)]
     pub attachment: bool,
+    #[serde(default)]
     pub toolcall: bool,
+    #[serde(default)]
     pub input: Modalities,
+    #[serde(default)]
     pub output: Modalities,
+    #[serde(default)]
     pub interleaved: InterleavedField,
 }
 
@@ -81,7 +90,9 @@ pub struct Capabilities {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheCost {
+    #[serde(default)]
     pub read: f64,
+    #[serde(default)]
     pub write: f64,
 }
 
@@ -107,12 +118,18 @@ pub struct CostTierSize {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Cost {
+    #[serde(default)]
     pub input: f64,
+    #[serde(default)]
     pub output: f64,
+    #[serde(default)]
     pub cache: CacheCost,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tiers: Option<Vec<CostTier>>,
-    #[serde(skip_serializing_if = "Option::is_none", rename = "experimentalOver200K")]
+    #[serde(
+        skip_serializing_if = "Option::is_none",
+        rename = "experimentalOver200K"
+    )]
     pub experimental_over_200k: Option<ExperimentalOver200K>,
 }
 
@@ -129,9 +146,11 @@ pub struct ExperimentalOver200K {
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct Limit {
+    #[serde(default)]
     pub context: f64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub input: Option<f64>,
+    #[serde(default)]
     pub output: f64,
 }
 
@@ -140,21 +159,31 @@ pub struct Limit {
 /// Mirrors `Model` in `provider.ts`. `variants` is always present after
 /// conversion, mirroring the reference where `fromModelsDevModel` and the
 /// config path both assign it.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
+    #[serde(default)]
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
     pub api: ApiInfo,
+    #[serde(default)]
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub family: Option<String>,
+    #[serde(default)]
     pub capabilities: Capabilities,
+    #[serde(default)]
     pub cost: Cost,
+    #[serde(default)]
     pub limit: Limit,
+    #[serde(default)]
     pub status: ModelStatus,
+    #[serde(default)]
     pub options: serde_json::Map<String, Value>,
+    #[serde(default)]
     pub headers: std::collections::BTreeMap<String, String>,
+    #[serde(default, rename = "release_date")]
     pub release_date: String,
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     pub variants: IndexMap<String, serde_json::Map<String, Value>>,
@@ -248,7 +277,11 @@ fn fuzzy_match(query: &str, candidates: &[String]) -> Vec<String> {
 
 /// Computes model suggestions for a `ModelNotFoundError`, mirroring
 /// `modelSuggestions` in `provider.ts`.
-pub fn model_suggestions(provider: &Info, model_id: &str, enable_experimental_models: bool) -> Vec<String> {
+pub fn model_suggestions(
+    provider: &Info,
+    model_id: &str,
+    enable_experimental_models: bool,
+) -> Vec<String> {
     let available: Vec<String> = provider
         .models
         .iter()
@@ -282,7 +315,10 @@ pub fn model_suggestions(provider: &Info, model_id: &str, enable_experimental_mo
     let mut items: Vec<(usize, String)> = available
         .into_iter()
         .filter_map(|id| {
-            let score = query.iter().filter(|part| id.to_lowercase().contains(part.as_str())).count();
+            let score = query
+                .iter()
+                .filter(|part| id.to_lowercase().contains(part.as_str()))
+                .count();
             if score > 0 {
                 Some((score, id))
             } else {
@@ -305,17 +341,27 @@ pub struct ModelNotFoundError {
 impl std::fmt::Display for ModelNotFoundError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let suggestions = match &self.suggestions {
-            Some(suggestions) if !suggestions.is_empty() => format!(" Did you mean: {}?", suggestions.join(", ")),
+            Some(suggestions) if !suggestions.is_empty() => {
+                format!(" Did you mean: {}?", suggestions.join(", "))
+            }
             _ => String::new(),
         };
-        write!(f, "Model not found: {}/{}.{}", self.provider_id, self.model_id, suggestions)
+        write!(
+            f,
+            "Model not found: {}/{}.{}",
+            self.provider_id, self.model_id, suggestions
+        )
     }
 }
 
 impl std::error::Error for ModelNotFoundError {}
 
 impl ModelNotFoundError {
-    pub fn new(provider_id: impl Into<String>, model_id: impl Into<String>, suggestions: Option<Vec<String>>) -> Self {
+    pub fn new(
+        provider_id: impl Into<String>,
+        model_id: impl Into<String>,
+        suggestions: Option<Vec<String>>,
+    ) -> Self {
         ModelNotFoundError {
             provider_id: provider_id.into(),
             model_id: model_id.into(),
@@ -455,8 +501,12 @@ pub fn from_models_dev_model(provider: &models_dev::Provider, model: &models_dev
             output: modalities(&model.modalities, "output"),
             interleaved: match &model.interleaved {
                 Some(models_dev::Interleaved::Bool(b)) => InterleavedField::Bool(*b),
-                Some(models_dev::Interleaved::Field(f)) => InterleavedField::Field { field: f.clone() },
-                Some(models_dev::Interleaved::Struct { field }) => InterleavedField::Field { field: field.clone() },
+                Some(models_dev::Interleaved::Field(f)) => {
+                    InterleavedField::Field { field: f.clone() }
+                }
+                Some(models_dev::Interleaved::Struct { field }) => InterleavedField::Field {
+                    field: field.clone(),
+                },
                 None => InterleavedField::Bool(false),
             },
         },
@@ -506,17 +556,24 @@ pub fn from_models_dev_provider(provider: &models_dev::Provider) -> Info {
                     variant.name = {
                         let mut chars = mode.chars();
                         let capitalized = match chars.next() {
-                            Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+                            Some(first) => {
+                                first.to_uppercase().collect::<String>() + chars.as_str()
+                            }
                             None => String::new(),
                         };
                         format!("{} {}", model.name, capitalized)
                     };
                     if let Some(opts_cost) = &opts.cost {
                         let base_cost = serde_json::to_value(&variant.cost).unwrap_or(Value::Null);
-                        let merged = merge_deep(base_cost, serde_json::to_value(cost(opts_cost)).unwrap_or(Value::Null));
-                        variant.cost = serde_json::from_value(merged).unwrap_or_else(|_| variant.cost.clone());
+                        let merged = merge_deep(
+                            base_cost,
+                            serde_json::to_value(cost(opts_cost)).unwrap_or(Value::Null),
+                        );
+                        variant.cost =
+                            serde_json::from_value(merged).unwrap_or_else(|_| variant.cost.clone());
                     }
-                    variant.options = mode_options(&base, opts.provider.as_ref().and_then(|p| p.body.as_ref()));
+                    variant.options =
+                        mode_options(&base, opts.provider.as_ref().and_then(|p| p.body.as_ref()));
                     if let Some(headers) = opts.provider.as_ref().and_then(|p| p.headers.as_ref()) {
                         variant.headers = headers.clone();
                     }
@@ -539,7 +596,10 @@ pub fn from_models_dev_provider(provider: &models_dev::Provider) -> Info {
 /// Computes the `options` for an experimental-mode model.
 ///
 /// From `modeOptions()` in `provider.ts`.
-pub fn mode_options(model: &Model, body: Option<&BTreeMap<String, Value>>) -> serde_json::Map<String, Value> {
+pub fn mode_options(
+    model: &Model,
+    body: Option<&BTreeMap<String, Value>>,
+) -> serde_json::Map<String, Value> {
     let Some(body) = body else {
         return model.options.clone();
     };
@@ -551,7 +611,8 @@ pub fn mode_options(model: &Model, body: Option<&BTreeMap<String, Value>>) -> se
     let reasoning = body.get("reasoning");
     let is_openai_npm = model.api.npm == "@ai-sdk/openai";
     let is_reasoning_record = matches!(reasoning, Some(Value::Object(_)));
-    let reason_mode_is_string = matches!(reasoning, Some(Value::Object(o)) if o.get("mode").is_some_and(|m| m.is_string()));
+    let reason_mode_is_string =
+        matches!(reasoning, Some(Value::Object(o)) if o.get("mode").is_some_and(|m| m.is_string()));
     if !is_openai_npm || !is_reasoning_record || !reason_mode_is_string {
         return options;
     }
@@ -686,68 +747,48 @@ pub fn merge_deep(a: Value, b: Value) -> Value {
     }
 }
 
-/// Merges a partial provider into `providers[provider_id]`, using the catalog
-/// database entry as the base when no provider exists yet.
+/// Merges a partial provider patch into `providers[provider_id]`, using the
+/// catalog database entry as the base when no provider exists yet.
 ///
-/// From `mergeProvider()` in `provider.ts`.
+/// From `mergeProvider()` in `provider.ts`. `patch` is a partial object (any
+/// subset of the `Info` fields); absent keys leave the base unchanged.
 pub(crate) fn merge_provider(
     providers: &mut IndexMap<String, Info>,
     database: &IndexMap<String, Info>,
     provider_id: &str,
-    patch: &Info,
+    patch: &serde_json::Map<String, Value>,
 ) {
     let existing = providers.get_mut(provider_id);
     let base = match existing {
         Some(_) => None,
         None => database.get(provider_id),
     };
-    if existing.is_none() && base.is_none() {
-        return;
-    }
-    let merged = if let Some(existing) = existing {
-        merge_deep(
-            serde_json::to_value(existing).unwrap_or(Value::Object(serde_json::Map::new())),
-            serde_json::to_value(patch).unwrap_or(Value::Object(serde_json::Map::new())),
-        )
-    } else {
-        merge_deep(
-            serde_json::to_value(base.unwrap()).unwrap_or(Value::Object(serde_json::Map::new())),
-            serde_json::to_value(patch).unwrap_or(Value::Object(serde_json::Map::new())),
-        )
+    let base = match (existing, base) {
+        (Some(existing), _) => {
+            Some(serde_json::to_value(&*existing).unwrap_or(Value::Object(serde_json::Map::new())))
+        }
+        (None, Some(base)) => {
+            Some(serde_json::to_value(base).unwrap_or(Value::Object(serde_json::Map::new())))
+        }
+        (None, None) => return,
     };
+    let merged = merge_deep(base.unwrap(), Value::Object(patch.clone()));
     let info: Info = serde_json::from_value(merged).unwrap_or_else(|_| {
-        let base = base.cloned().or_else(|| providers.get(provider_id).cloned());
-        base.unwrap_or_else(|| Info {
-            id: provider_id.to_string(),
-            name: provider_id.to_string(),
-            source: Source::Config,
-            env: Vec::new(),
-            key: None,
-            options: serde_json::Map::new(),
-            models: IndexMap::new(),
+        // The patch always merges over a complete base, so this only runs if a
+        // patch overwrote a required field with an incompatible value.
+        database.get(provider_id).cloned().unwrap_or_else(|| {
+            providers.get(provider_id).cloned().unwrap_or_else(|| Info {
+                id: provider_id.to_string(),
+                name: provider_id.to_string(),
+                source: Source::Config,
+                env: Vec::new(),
+                key: None,
+                options: serde_json::Map::new(),
+                models: IndexMap::new(),
+            })
         })
     });
     providers.insert(provider_id.to_string(), info);
-}
-
-/// Builds a partial `Info` from registry inputs (used for merge patches).
-pub(crate) fn partial_info(
-    provider_id: &str,
-    source: Source,
-    key: Option<String>,
-    options: Option<serde_json::Map<String, Value>>,
-    env: Option<Vec<String>>,
-    name: Option<String>,
-) -> Info {
-    Info {
-        id: provider_id.to_string(),
-        name: name.unwrap_or_else(|| provider_id.to_string()),
-        source,
-        env: env.unwrap_or_default(),
-        key,
-        options: options.unwrap_or_default(),
-        models: IndexMap::new(),
-    }
 }
 
 pub use registry::{build_registry, RegistryInput};

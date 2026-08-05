@@ -138,7 +138,10 @@ pub fn temperature(model: &Model) -> Option<f64> {
         return Some(1.0);
     }
     if id.contains("kimi-k2") {
-        if ["thinking", "k2.", "k2p", "k2-5"].iter().any(|s| id.contains(s)) {
+        if ["thinking", "k2.", "k2p", "k2-5"]
+            .iter()
+            .any(|s| id.contains(s))
+        {
             return Some(1.0);
         }
         return Some(0.6);
@@ -194,4 +197,3 @@ pub fn max_output_tokens(model: &Model, output_token_max: f64) -> f64 {
         value
     }
 }
-

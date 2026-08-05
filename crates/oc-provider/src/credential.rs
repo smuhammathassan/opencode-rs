@@ -75,7 +75,12 @@ pub trait CredentialStore: Send + Sync {
     fn all(&self) -> Result<Vec<Info>, CredentialError>;
     fn list(&self, integration_id: &str) -> Result<Vec<Info>, CredentialError>;
     fn get(&self, id: &Id) -> Result<Option<Info>, CredentialError>;
-    fn create(&mut self, integration_id: &str, value: Value, label: Option<&str>) -> Result<Info, CredentialError>;
+    fn create(
+        &mut self,
+        integration_id: &str,
+        value: Value,
+        label: Option<&str>,
+    ) -> Result<Info, CredentialError>;
     fn update(&mut self, id: &Id, updates: CredentialUpdate) -> Result<(), CredentialError>;
     fn remove(&mut self, id: &Id) -> Result<(), CredentialError>;
 }
@@ -141,7 +146,12 @@ impl CredentialStore for MemoryCredentialStore {
             .cloned())
     }
 
-    fn create(&mut self, integration_id: &str, value: Value, label: Option<&str>) -> Result<Info, CredentialError> {
+    fn create(
+        &mut self,
+        integration_id: &str,
+        value: Value,
+        label: Option<&str>,
+    ) -> Result<Info, CredentialError> {
         let mut inner = self.inner.lock().unwrap();
         inner.retain(|info| info.integration_id != integration_id);
         let info = Info {
@@ -203,13 +213,17 @@ mod tests {
     fn roundtrip() {
         let mut store = MemoryCredentialStore::new();
         let created = store
-            .create("anthropic", Value::OAuth(OAuth {
-                method_id: "oauth2".to_string(),
-                refresh: "refresh".to_string(),
-                access: "access".to_string(),
-                expires: 100,
-                metadata: None,
-            }), Some("work"))
+            .create(
+                "anthropic",
+                Value::OAuth(OAuth {
+                    method_id: "oauth2".to_string(),
+                    refresh: "refresh".to_string(),
+                    access: "access".to_string(),
+                    expires: 100,
+                    metadata: None,
+                }),
+                Some("work"),
+            )
             .unwrap();
         assert_eq!(store.get(&created.id).unwrap().unwrap().label, "work");
         assert_eq!(store.list("anthropic").unwrap().len(), 1);

@@ -179,7 +179,10 @@ fn error_message(input: &ApiCallErrorInput, status_text: Option<&str>) -> String
         .as_deref()
         .and_then(|b| serde_json::from_str::<Value>(b).ok());
     if let Some(body) = body {
-        let err_msg = body.get("message").and_then(|m| m.as_str()).filter(|m| !m.is_empty());
+        let err_msg = body
+            .get("message")
+            .and_then(|m| m.as_str())
+            .filter(|m| !m.is_empty());
         if let Some(err_msg) = err_msg {
             return format!("{}: {}", msg, err_msg);
         }
@@ -228,17 +231,26 @@ pub fn parse_api_call_error(input: &ApiCallErrorInput) -> ParsedApiCallError {
         (503, "Service Unavailable"),
         (504, "Gateway Timeout"),
     ];
-    let status_text = input
-        .status_code
-        .and_then(|code| STATUS_CODES.iter().find(|(c, _)| *c == code).map(|(_, s)| *s));
+    let status_text = input.status_code.and_then(|code| {
+        STATUS_CODES
+            .iter()
+            .find(|(c, _)| *c == code)
+            .map(|(_, s)| *s)
+    });
 
     let message = error_message(input, status_text);
-    let body = input.response_body.as_deref().and_then(|b| serde_json::from_str::<Value>(b).ok());
+    let body = input
+        .response_body
+        .as_deref()
+        .and_then(|b| serde_json::from_str::<Value>(b).ok());
 
     let is_context_overflow = is_context_overflow(&message)
         || input.status_code == Some(413)
         || body.as_ref().is_some_and(|body| {
-            body.get("error").and_then(|e| e.get("code")).and_then(|c| c.as_str()) == Some("context_length_exceeded")
+            body.get("error")
+                .and_then(|e| e.get("code"))
+                .and_then(|c| c.as_str())
+                == Some("context_length_exceeded")
         });
     if is_context_overflow {
         return ParsedApiCallError::ContextOverflow {

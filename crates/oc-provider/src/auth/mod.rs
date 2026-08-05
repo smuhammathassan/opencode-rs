@@ -268,7 +268,10 @@ mod tests {
             )
             .unwrap();
         let data = store.all().unwrap();
-        let keys: Vec<&String> = data.keys().filter(|key| key.contains("example.com")).collect();
+        let keys: Vec<&String> = data
+            .keys()
+            .filter(|key| key.contains("example.com"))
+            .collect();
         assert_eq!(keys, vec!["https://example.com"]);
         assert_eq!(
             data["https://example.com"],
