@@ -8,7 +8,7 @@
 pub mod command;
 pub mod frontmatter;
 pub mod global;
-pub mod id;
+mod id;
 pub mod question;
 pub mod skill;
 mod util;

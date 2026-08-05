@@ -41,7 +41,8 @@ pub fn hints(template: &str) -> Vec<String> {
 /// numbered placeholders map to positional arguments (the highest-numbered
 /// placeholder consumes the remaining arguments), `$ARGUMENTS` is replaced
 /// verbatim, and when the template has no placeholders the arguments are
-/// appended. Shell (`!`cmd``) expansion is not performed here.
+/// appended. Shell (`!`cmd``) expansion is performed separately with
+/// [`expand_shell`]; callers then trim the result.
 pub fn render(template: &str, arguments: &str) -> String {
     let args: Vec<String> = args_regex()
         .find_iter(arguments)
@@ -82,6 +83,27 @@ pub fn render(template: &str, arguments: &str) -> String {
         result.push_str(arguments);
     }
     result.trim().to_string()
+}
+
+/// Expand `!`cmd`` segments by running each command (nothrow semantics: a
+/// failing command contributes an empty string).
+/// From reference/packages/opencode/src/session/prompt.ts (lines 1397-1408)
+/// and reference/packages/opencode/src/config/markdown.ts (`SHELL_REGEX`).
+pub fn expand_shell(
+    template: &str,
+    run: &dyn Fn(&str) -> anyhow::Result<String>,
+) -> anyhow::Result<String> {
+    let mut result = String::with_capacity(template.len());
+    let mut last_end = 0;
+    for captures in shell_regex().captures_iter(template) {
+        let whole = captures.get(0).expect("whole match");
+        result.push_str(&template[last_end..whole.start()]);
+        let command = captures.get(1).expect("command group").as_str();
+        result.push_str(&run(command).unwrap_or_default());
+        last_end = whole.end();
+    }
+    result.push_str(&template[last_end..]);
+    Ok(result)
 }
 
 /// Command source, mirroring the `source` literal union in `Command.Info`.
@@ -433,4 +455,10 @@ fn args_regex() -> &'static regex::Regex {
         regex::Regex::new(r#"(?i)\[Image\s+\d+\]|"[^"]*"|'[^']*'|[^\s"']+"#)
             .expect("valid args regex")
     })
+}
+
+/// `SHELL_REGEX` from reference/packages/opencode/src/config/markdown.ts.
+fn shell_regex() -> &'static regex::Regex {
+    static RE: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
+    RE.get_or_init(|| regex::Regex::new(r"!`([^`]+)`").expect("valid shell regex"))
 }

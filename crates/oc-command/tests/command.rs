@@ -1,4 +1,4 @@
-use oc_command::command::{hints, render, Registry, Source};
+use oc_command::command::{expand_shell, hints, render, Registry, Source};
 use serde_json::json;
 
 #[test]
@@ -77,6 +77,24 @@ fn render_handles_image_attachments_as_one_token() {
 fn render_trims_result() {
     let out = render("  $1  ", "x");
     assert_eq!(out, "x");
+}
+
+#[test]
+fn expand_shell_replaces_commands_with_output() {
+    let out = expand_shell("current dir: !`pwd`", &|cmd| Ok(format!("[{cmd}]"))).unwrap();
+    assert_eq!(out, "current dir: [pwd]");
+}
+
+#[test]
+fn expand_shell_failed_command_yields_empty_string() {
+    let out = expand_shell("a !`boom` b", &|_| Err(anyhow::anyhow!("boom"))).unwrap();
+    assert_eq!(out, "a  b");
+}
+
+#[test]
+fn expand_shell_preserves_non_matching_text() {
+    let out = expand_shell("no shell here", &|_| Ok("x".to_string())).unwrap();
+    assert_eq!(out, "no shell here");
 }
 
 #[test]
