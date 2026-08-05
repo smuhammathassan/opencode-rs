@@ -39,11 +39,11 @@ UX-001,High,YES,20-AG-16,OPEN,No control-char sanitization before rendering.,WAV
 UX-002,High,YES,20-AG-16,OPEN,Missing cleanup hooks.,WAVE4,,,,,,,OPEN,Panic hook + signal handlers restoring terminal state.
 UX-003,Medium,NO,20-AG-16,OPEN,Unwired keymap entries.,WAVE4,,,,,,,OPEN,Wire or remove no-op bindings.
 SUPPLY-001,High,YES,20-AG-15,OPEN,Ancient vendored engine.,WAVE1,,,,,,,OPEN,Upgrade to a maintained QuickJS (quickjs-ng / boa) with active maintenance.
-SUPPLY-002,High,YES,20-AG-19,OPEN,Lockfile excluded during scaffold.,WAVE1,,,,,,,OPEN,Commit Cargo.lock.
-SUPPLY-003,High,YES,20-AG-19,OPEN,License file and attribution omitted.,WAVE1,,,,,,,OPEN,"Add LICENSE (MIT, with upstream copyright notice) and per-asset attribution."
-SUPPLY-004,Medium,NO,20-AG-19,OPEN,Default release profile.,WAVE1,,,,,,,OPEN,"Add [profile.release] with lto=true, strip=true, panic=abort (after auditing panic paths)."
-RELEASE-001,High,YES,20-AG-19,OPEN,Logging never wired.,WAVE1,,,,,,,OPEN,Install a tracing subscriber honoring --print-logs/--log-level; write opencode.log.
-RELEASE-002,Medium,NO,20-AG-19,OPEN,Version injection omitted.,WAVE1,,,,,,,OPEN,Inject a distinct port version (e.g. 0.1.0-opencode-1.18.13) via build metadata.
+SUPPLY-002,High,YES,20-AG-19,ACTIVE,Lockfile excluded during scaffold.,WAVE1,,Cargo.lock committed (ad663d5) and enforced via --locked,cargo build --workspace --locked; git ls-files shows Cargo.lock,,,,FIXED_STATIC_ONLY,Commit Cargo.lock.
+SUPPLY-003,High,YES,20-AG-19,ACTIVE,License file and attribution omitted.,WAVE1,,"LICENSE (MIT, dual copyright) + NOTICE added (b9fa933)",LICENSE and NOTICE present at root,,,,FIXED_STATIC_ONLY,"Add LICENSE (MIT, with upstream copyright notice) and per-asset attribution."
+SUPPLY-004,Medium,NO,20-AG-19,ACTIVE,Default release profile.,WAVE1,,"[profile.release] lto=thin, codegen-units=1, strip, line-tables; panic=abort deferred (b3e5505)",cargo build --release passes,,,,FIXED_STATIC_ONLY,"Add [profile.release] with lto=true, strip=true, panic=abort (after auditing panic paths)."
+RELEASE-001,High,YES,20-AG-19,ACTIVE,Logging never wired.,WAVE1,,tracing subsystem in oc-util + wired in oc-cli main; file layer + --print-logs + --log-level (73b819a),RUNTIME: log file written with DEBUG level; --version stdout still byte-parity,,,,FIXED_STATIC_ONLY,Install a tracing subscriber honoring --print-logs/--log-level; write opencode.log.
+RELEASE-002,Medium,NO,20-AG-19,ACTIVE,Version injection omitted.,WAVE1,,"oc-util version module (REFERENCE_VERSION=1.18.13, PORT_VERSION, GIT_COMMIT, BUILD_PROFILE) (73b819a)",--version prints exactly 1.18.13,,,,FIXED_STATIC_ONLY,Inject a distinct port version (e.g. 0.1.0-opencode-1.18.13) via build metadata.
 RELEASE-003,Medium,NO,20-AG-17,OPEN,Update/install engineering omitted.,WAVE4,,,,,,,OPEN,Implement signed updates and full uninstall.
 RELEASE-004,Medium,NO,20-AG-19,OPEN,Release engineering omitted.,WAVE5,,,,,,,OPEN,Add CI (build/clippy/test on Linux/macOS/Windows) and a release pipeline with SBOM.
 ASYNC-005,Medium,NO,20-AG-07,OPEN,Missing cleanup on disconnect.,WAVE2,,,,,,,OPEN,Remove closed senders.
