@@ -12,6 +12,9 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+regex = { workspace = true }
+chrono = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
 oc-session = { version = "0.1", path = "../oc-session" }
 oc-llm = { version = "0.1", path = "../oc-llm" }
 oc-tool = { version = "0.1", path = "../oc-tool" }
