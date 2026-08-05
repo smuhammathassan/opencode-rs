@@ -257,11 +257,12 @@ async fn stdio_wire_messages_match_reference() {
         .map(str::to_string)
         .collect();
 
-    // initialize request (params keys are sorted because serde_json is
-    // BTreeMap-backed in this workspace).
+    // initialize request (params keys are insertion-ordered because the
+    // workspace enables serde_json preserve_order, matching the reference JS
+    // object literal order).
     assert_eq!(
         client_lines[0],
-        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"roots":{}},"clientInfo":{"name":"opencode","version":"0.1.0"},"protocolVersion":"2025-06-18"}}"#
+        r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{"roots":{}},"clientInfo":{"name":"opencode","version":"0.1.0"}}}"#
     );
     assert_eq!(
         client_lines[1],
@@ -275,7 +276,7 @@ async fn stdio_wire_messages_match_reference() {
     // tools/call carries `_meta.progressToken` (onprogress hook is present).
     assert_eq!(
         client_lines[3],
-        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"_meta":{"progressToken":1},"arguments":{"text":"hi"},"name":"echo"}}"#
+        r#"{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"echo","arguments":{"text":"hi"},"_meta":{"progressToken":1}}}"#
     );
 
     let _ = std::fs::remove_dir_all(&dir);

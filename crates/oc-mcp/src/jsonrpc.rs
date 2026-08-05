@@ -179,10 +179,10 @@ mod tests {
     /// `@modelcontextprotocol/sdk@1.29.0` request/response shapes used by
     /// `reference/packages/opencode/src/mcp/index.ts`.
     ///
-    /// Note: `serde_json` is configured without the `preserve_order` feature in
-    /// this workspace, so object keys inside `params` (a `serde_json::Value`)
-    /// are emitted in sorted order. Field order does not affect MCP wire
-    /// semantics (JSON objects are unordered).
+    /// Note: the workspace enables serde_json `preserve_order`, so keys inside
+    /// `params` (a `serde_json::Value`) are emitted in insertion order, matching
+    /// the reference JS object literal order. Field order does not affect MCP
+    /// wire semantics (JSON objects are unordered).
     #[test]
     fn request_with_params_serializes_exactly() {
         let msg = Message::request(
@@ -196,7 +196,7 @@ mod tests {
         );
         assert_eq!(
             msg.to_line(),
-            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"capabilities":{"roots":{}},"clientInfo":{"name":"opencode","version":"0.1.0"},"protocolVersion":"2025-06-18"}}"#
+            r#"{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18","capabilities":{"roots":{}},"clientInfo":{"name":"opencode","version":"0.1.0"}}}"#
         );
     }
 

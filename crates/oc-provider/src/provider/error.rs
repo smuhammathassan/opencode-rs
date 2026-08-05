@@ -312,7 +312,7 @@ mod tests {
         .unwrap();
         assert_eq!(err, ParsedStreamError::ContextOverflow {
             message: "Input exceeds context window of this model".to_string(),
-            response_body: "{\"error\":{\"code\":\"context_length_exceeded\",\"message\":\"This model's maximum context length is 128000 tokens.\"},\"type\":\"error\"}".to_string(),
+            response_body: "{\"type\":\"error\",\"error\":{\"code\":\"context_length_exceeded\",\"message\":\"This model's maximum context length is 128000 tokens.\"}}".to_string(),
         });
     }
 
@@ -328,7 +328,7 @@ mod tests {
             ParsedStreamError::ApiError {
                 message: "Quota exceeded. Check your plan and billing details.".to_string(),
                 is_retryable: false,
-                response_body: "{\"error\":{\"code\":\"insufficient_quota\"},\"type\":\"error\"}"
+                response_body: "{\"type\":\"error\",\"error\":{\"code\":\"insufficient_quota\"}}"
                     .to_string(),
             }
         );

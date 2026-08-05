@@ -357,7 +357,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             read_text(file.to_str().unwrap()).await.unwrap(),
-            "{\n  \"a\": 1,\n  \"b\": 2\n}"
+            "{\n  \"b\": 2,\n  \"a\": 1\n}"
         );
     }
 
