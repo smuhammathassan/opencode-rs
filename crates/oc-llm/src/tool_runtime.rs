@@ -30,12 +30,20 @@ pub struct DispatchResult {
 /// From reference/packages/llm/src/tool-runtime.ts (`dispatch`)
 pub async fn dispatch(tools: &BTreeMap<String, Tool>, call: &ToolCallPart) -> DispatchResult {
     let Some(tool) = tools.get(&call.name) else {
-        return result(call, &ToolResultValue::Error { value: Value::String(format!("Unknown tool: {}", call.name)) }, None);
+        return result(
+            call,
+            &ToolResultValue::Error {
+                value: Value::String(format!("Unknown tool: {}", call.name)),
+            },
+            None,
+        );
     };
     if tool.execute.is_none() {
         return result(
             call,
-            &ToolResultValue::Error { value: Value::String(format!("Tool has no execute handler: {}", call.name)) },
+            &ToolResultValue::Error {
+                value: Value::String(format!("Tool has no execute handler: {}", call.name)),
+            },
             None,
         );
     }
@@ -43,24 +51,40 @@ pub async fn dispatch(tools: &BTreeMap<String, Tool>, call: &ToolCallPart) -> Di
     match decode_and_execute(tool, call).await {
         Ok(settlement) => result(call, &settlement.result, settlement.output),
         Err(failure) => {
-            let value = ToolResultValue::Error { value: Value::String(failure.message.clone()) };
+            let value = ToolResultValue::Error {
+                value: Value::String(failure.message.clone()),
+            };
             result_with_error(call, &value, Some(&failure))
         }
     }
 }
 
-async fn decode_and_execute(tool: &Tool, call: &ToolCallPart) -> Result<ToolSettlement, ToolFailure> {
+async fn decode_and_execute(
+    tool: &Tool,
+    call: &ToolCallPart,
+) -> Result<ToolSettlement, ToolFailure> {
     let decoded = (tool.decode)(&call.input)
         .map_err(|error| ToolFailure::new(format!("Invalid tool input: {}", error)))?;
     let execute = tool.execute.as_ref().unwrap();
-    let value = execute(decoded.clone(), crate::tool::ToolExecuteContext { id: call.id.clone(), name: call.name.clone() })
-        .await
-        .map_err(|failure| failure)?;
-    let encoded = (tool.encode)(&value)
-        .map_err(|error| ToolFailure::new(format!("Tool returned an invalid value for its success schema: {}", error)))?;
+    let value = execute(
+        decoded.clone(),
+        crate::tool::ToolExecuteContext {
+            id: call.id.clone(),
+            name: call.name.clone(),
+        },
+    )
+    .await
+    .map_err(|failure| failure)?;
+    let encoded = (tool.encode)(&value).map_err(|error| {
+        ToolFailure::new(format!(
+            "Tool returned an invalid value for its success schema: {}",
+            error
+        ))
+    })?;
 
     if tool.legacy_result && ToolResultValue::is(&encoded) {
-        let result = serde_json::from_value(encoded).unwrap_or(ToolResultValue::Json { value: Value::Null });
+        let result =
+            serde_json::from_value(encoded).unwrap_or(ToolResultValue::Json { value: Value::Null });
         let output = ToolOutput::from_result_value(&result);
         return Ok(ToolSettlement { result, output });
     }
@@ -73,13 +97,23 @@ async fn decode_and_execute(tool: &Tool, call: &ToolCallPart) -> Result<ToolSett
     );
     let result = output.to_result_value();
     if result.is_error() {
-        Ok(ToolSettlement { result, output: None })
+        Ok(ToolSettlement {
+            result,
+            output: None,
+        })
     } else {
-        Ok(ToolSettlement { result, output: Some(output) })
+        Ok(ToolSettlement {
+            result,
+            output: Some(output),
+        })
     }
 }
 
-fn result(call: &ToolCallPart, value: &ToolResultValue, output: Option<ToolOutput>) -> DispatchResult {
+fn result(
+    call: &ToolCallPart,
+    value: &ToolResultValue,
+    output: Option<ToolOutput>,
+) -> DispatchResult {
     let events = if value.is_error() {
         vec![
             LlmEvent::ToolError {
@@ -113,7 +147,11 @@ fn result(call: &ToolCallPart, value: &ToolResultValue, output: Option<ToolOutpu
             provider_metadata: None,
         }]
     };
-    DispatchResult { result: value.clone(), output: events_tool_output(&events), events }
+    DispatchResult {
+        result: value.clone(),
+        output: events_tool_output(&events),
+        events,
+    }
 }
 
 fn events_tool_output(events: &[LlmEvent]) -> Option<ToolOutput> {
@@ -123,7 +161,11 @@ fn events_tool_output(events: &[LlmEvent]) -> Option<ToolOutput> {
     })
 }
 
-fn result_with_error(call: &ToolCallPart, value: &ToolResultValue, failure: Option<&ToolFailure>) -> DispatchResult {
+fn result_with_error(
+    call: &ToolCallPart,
+    value: &ToolResultValue,
+    failure: Option<&ToolFailure>,
+) -> DispatchResult {
     let mut dispatch = result(call, value, None);
     if let Some(failure) = failure {
         if let Some(LlmEvent::ToolError { message, .. }) = dispatch.events.first_mut() {

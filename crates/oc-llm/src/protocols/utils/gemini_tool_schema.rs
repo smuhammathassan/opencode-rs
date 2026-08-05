@@ -27,7 +27,9 @@ fn has_combiner(schema: &Value) -> bool {
         return false;
     }
     let obj = schema.as_object().unwrap();
-    ["anyOf", "oneOf", "allOf"].iter().any(|key| obj.get(*key).map(|v| v.is_array()).unwrap_or(false))
+    ["anyOf", "oneOf", "allOf"]
+        .iter()
+        .any(|key| obj.get(*key).map(|v| v.is_array()).unwrap_or(false))
 }
 
 fn has_schema_intent(schema: &Value) -> bool {
@@ -49,14 +51,7 @@ fn sanitize_node(schema: &Value) -> Value {
     let mut result = Map::new();
     for (key, value) in obj {
         let value = if key == "enum" && value.is_array() {
-            Value::Array(
-                value
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .map(js_string)
-                    .collect(),
-            )
+            Value::Array(value.as_array().unwrap().iter().map(js_string).collect())
         } else {
             sanitize_node(value)
         };
@@ -64,7 +59,10 @@ fn sanitize_node(schema: &Value) -> Value {
     }
 
     if result.get("enum").map(|v| v.is_array()).unwrap_or(false)
-        && matches!(result.get("type").and_then(Value::as_str), Some("integer") | Some("number"))
+        && matches!(
+            result.get("type").and_then(Value::as_str),
+            Some("integer") | Some("number")
+        )
     {
         result.insert("type".to_string(), Value::String("string".to_string()));
     }
@@ -87,8 +85,13 @@ fn sanitize_node(schema: &Value) -> Value {
         }
     }
 
-    if result.get("type").and_then(Value::as_str) == Some("array") && !has_combiner(&Value::Object(result.clone())) {
-        let items = result.get("items").cloned().unwrap_or(Value::Object(Map::new()));
+    if result.get("type").and_then(Value::as_str) == Some("array")
+        && !has_combiner(&Value::Object(result.clone()))
+    {
+        let items = result
+            .get("items")
+            .cloned()
+            .unwrap_or(Value::Object(Map::new()));
         let mut items = items;
         if is_record(&items) && !has_schema_intent(&items) {
             if let Value::Object(mut map) = items {

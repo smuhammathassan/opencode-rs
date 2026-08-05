@@ -11,7 +11,10 @@ pub struct Breakpoints {
 
 /// `newBreakpoints(cap)`.
 pub fn new_breakpoints(cap: usize) -> Breakpoints {
-    Breakpoints { remaining: cap, dropped: 0 }
+    Breakpoints {
+        remaining: cap,
+        dropped: 0,
+    }
 }
 
 /// `ttlBucket(ttlSeconds)` — `"1h"` for any `ttlSeconds >= 3600`, else `None`

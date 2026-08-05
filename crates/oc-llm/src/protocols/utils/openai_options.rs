@@ -7,7 +7,8 @@ use std::collections::BTreeMap;
 use crate::schema::LlmRequest;
 use crate::shared::is_record;
 
-pub const OPENAI_REASONING_EFFORTS: [&str; 6] = ["none", "minimal", "low", "medium", "high", "xhigh"];
+pub const OPENAI_REASONING_EFFORTS: [&str; 6] =
+    ["none", "minimal", "low", "medium", "high", "xhigh"];
 
 pub const OPENAI_RESPONSE_INCLUDABLES: [&str; 8] = [
     "file_search_call.results",
@@ -125,7 +126,15 @@ pub fn project_openai_options(input: &Value) -> Option<serde_json::Map<String, V
     }
     let obj = input.as_object().unwrap();
     let mut openai = serde_json::Map::new();
-    for key in ["store", "promptCacheKey", "reasoningEffort", "reasoningSummary", "include", "textVerbosity", "serviceTier"] {
+    for key in [
+        "store",
+        "promptCacheKey",
+        "reasoningEffort",
+        "reasoningSummary",
+        "include",
+        "textVerbosity",
+        "serviceTier",
+    ] {
         if let Some(value) = obj.get(key) {
             openai.insert(key.to_string(), value.clone());
         }
@@ -133,6 +142,9 @@ pub fn project_openai_options(input: &Value) -> Option<serde_json::Map<String, V
     if openai.is_empty() {
         None
     } else {
-        Some(serde_json::Map::from_iter([("openai".to_string(), Value::Object(openai))]))
+        Some(serde_json::Map::from_iter([(
+            "openai".to_string(),
+            Value::Object(openai),
+        )]))
     }
 }

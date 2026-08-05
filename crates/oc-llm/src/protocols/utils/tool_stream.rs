@@ -65,7 +65,11 @@ impl ToolStream {
         append_existing(route, tools, key, text, missing_tool_message)
     }
 
-    pub fn finish<K: Ord + Clone>(route: &str, tools: &State<K>, key: &K) -> Result<FinishOutcome<K>, LlmError> {
+    pub fn finish<K: Ord + Clone>(
+        route: &str,
+        tools: &State<K>,
+        key: &K,
+    ) -> Result<FinishOutcome<K>, LlmError> {
         finish(route, tools, key)
     }
 
@@ -78,7 +82,10 @@ impl ToolStream {
         finish_with_input(route, tools, key, input)
     }
 
-    pub fn finish_all<K: Ord + Clone>(route: &str, tools: &State<K>) -> Result<FinishOutcome<K>, LlmError> {
+    pub fn finish_all<K: Ord + Clone>(
+        route: &str,
+        tools: &State<K>,
+    ) -> Result<FinishOutcome<K>, LlmError> {
         finish_all(route, tools)
     }
 
@@ -105,21 +112,38 @@ fn input_start(tool: &PendingTool) -> LlmEvent {
 }
 
 fn input_delta(tool: &PendingTool, text: &str) -> LlmEvent {
-    LlmEvent::ToolInputDelta { id: tool.id.clone(), name: tool.name.clone(), text: text.to_string() }
+    LlmEvent::ToolInputDelta {
+        id: tool.id.clone(),
+        name: tool.name.clone(),
+        text: text.to_string(),
+    }
 }
 
-fn tool_call(route: &str, tool: &PendingTool, input_override: Option<&str>) -> Result<LlmEvent, LlmError> {
+fn tool_call(
+    route: &str,
+    tool: &PendingTool,
+    input_override: Option<&str>,
+) -> Result<LlmEvent, LlmError> {
     let input = parse_tool_input(route, &tool.name, input_override.unwrap_or(&tool.input))?;
     Ok(LlmEvent::ToolCall {
         id: tool.id.clone(),
         name: tool.name.clone(),
         input,
-        provider_executed: if tool.provider_executed == Some(true) { Some(true) } else { None },
+        provider_executed: if tool.provider_executed == Some(true) {
+            Some(true)
+        } else {
+            None
+        },
         provider_metadata: tool.provider_metadata.clone(),
     })
 }
 
-fn append_tool<K: Ord + Clone>(tools: &State<K>, key: &K, tool: &PendingTool, text: &str) -> AppendOutcome<K> {
+fn append_tool<K: Ord + Clone>(
+    tools: &State<K>,
+    key: &K,
+    tool: &PendingTool,
+    text: &str,
+) -> AppendOutcome<K> {
     let mut events = Vec::new();
     if !tools.contains_key(key) {
         events.push(input_start(tool));
@@ -129,16 +153,16 @@ fn append_tool<K: Ord + Clone>(tools: &State<K>, key: &K, tool: &PendingTool, te
     }
     let mut next = tools.clone();
     next.insert(key.clone(), tool.clone());
-    AppendOutcome { tools: next, tool: tool.clone(), events }
+    AppendOutcome {
+        tools: next,
+        tool: tool.clone(),
+        events,
+    }
 }
 
 /// `ToolStream.start(tools, key, tool)`.
 /// From reference/packages/llm/src/protocols/utils/tool-stream.ts (`start`)
-pub fn start<K: Ord + Clone>(
-    tools: &State<K>,
-    key: K,
-    tool: PendingToolInput,
-) -> State<K> {
+pub fn start<K: Ord + Clone>(tools: &State<K>, key: K, tool: PendingToolInput) -> State<K> {
     let mut next = tools.clone();
     let mut input = tool.input.unwrap_or_default();
     if input.is_empty() {
@@ -176,11 +200,18 @@ pub fn append_or_start<K: Ord + Clone>(
 ) -> Result<AppendOutcome<K>, LlmError> {
     let current = tools.get(&key);
     let id = delta.id.clone().or_else(|| current.map(|c| c.id.clone()));
-    let name = delta.name.clone().or_else(|| current.map(|c| c.name.clone()));
+    let name = delta
+        .name
+        .clone()
+        .or_else(|| current.map(|c| c.name.clone()));
     let (Some(id), Some(name)) = (id, name) else {
         return Err(event_error(route, missing_tool_message, None));
     };
-    let input = format!("{}{}", current.map(|c| c.input.as_str()).unwrap_or(""), delta.text);
+    let input = format!(
+        "{}{}",
+        current.map(|c| c.input.as_str()).unwrap_or(""),
+        delta.text
+    );
     let tool = PendingTool {
         id,
         name,
@@ -190,7 +221,11 @@ pub fn append_or_start<K: Ord + Clone>(
     };
     if let Some(current) = current {
         if delta.text.is_empty() && current.id == tool.id && current.name == tool.name {
-            return Ok(AppendOutcome { tools: tools.clone(), tool: current.clone(), events: vec![] });
+            return Ok(AppendOutcome {
+                tools: tools.clone(),
+                tool: current.clone(),
+                events: vec![],
+            });
         }
     }
     Ok(append_tool(tools, &key, &tool, &delta.text))
@@ -217,7 +252,11 @@ pub fn append_existing<K: Ord + Clone>(
         return Err(event_error(route, missing_tool_message, None));
     };
     if text.is_empty() {
-        return Ok(AppendOutcome { tools: tools.clone(), tool: current.clone(), events: vec![] });
+        return Ok(AppendOutcome {
+            tools: tools.clone(),
+            tool: current.clone(),
+            events: vec![],
+        });
     }
     let mut next_tool = current.clone();
     next_tool.input.push_str(text);
@@ -226,9 +265,16 @@ pub fn append_existing<K: Ord + Clone>(
 
 /// `ToolStream.finish(route, tools, key)`.
 /// From reference/packages/llm/src/protocols/utils/tool-stream.ts (`finish`)
-pub fn finish<K: Ord + Clone>(route: &str, tools: &State<K>, key: &K) -> Result<FinishOutcome<K>, LlmError> {
+pub fn finish<K: Ord + Clone>(
+    route: &str,
+    tools: &State<K>,
+    key: &K,
+) -> Result<FinishOutcome<K>, LlmError> {
     let Some(tool) = tools.get(key) else {
-        return Ok(FinishOutcome { tools: tools.clone(), events: vec![] });
+        return Ok(FinishOutcome {
+            tools: tools.clone(),
+            events: vec![],
+        });
     };
     let mut next = tools.clone();
     next.remove(key);
@@ -238,7 +284,10 @@ pub fn finish<K: Ord + Clone>(route: &str, tools: &State<K>, key: &K) -> Result<
         provider_metadata: tool.provider_metadata.clone(),
     }];
     events.push(tool_call(route, tool, None)?);
-    Ok(FinishOutcome { tools: next, events })
+    Ok(FinishOutcome {
+        tools: next,
+        events,
+    })
 }
 
 /// `ToolStream.finishWithInput(...)`.
@@ -250,7 +299,10 @@ pub fn finish_with_input<K: Ord + Clone>(
     input: &str,
 ) -> Result<FinishOutcome<K>, LlmError> {
     let Some(tool) = tools.get(key) else {
-        return Ok(FinishOutcome { tools: tools.clone(), events: vec![] });
+        return Ok(FinishOutcome {
+            tools: tools.clone(),
+            events: vec![],
+        });
     };
     let mut next = tools.clone();
     next.remove(key);
@@ -260,12 +312,18 @@ pub fn finish_with_input<K: Ord + Clone>(
         provider_metadata: tool.provider_metadata.clone(),
     }];
     events.push(tool_call(route, tool, Some(input))?);
-    Ok(FinishOutcome { tools: next, events })
+    Ok(FinishOutcome {
+        tools: next,
+        events,
+    })
 }
 
 /// `ToolStream.finishAll(route, tools)`.
 /// From reference/packages/llm/src/protocols/utils/tool-stream.ts (`finishAll`)
-pub fn finish_all<K: Ord + Clone>(route: &str, tools: &State<K>) -> Result<FinishOutcome<K>, LlmError> {
+pub fn finish_all<K: Ord + Clone>(
+    route: &str,
+    tools: &State<K>,
+) -> Result<FinishOutcome<K>, LlmError> {
     let pending: Vec<&PendingTool> = tools.values().collect();
     let mut events = Vec::new();
     for tool in pending {
@@ -276,7 +334,10 @@ pub fn finish_all<K: Ord + Clone>(route: &str, tools: &State<K>) -> Result<Finis
         });
         events.push(tool_call(route, tool, None)?);
     }
-    Ok(FinishOutcome { tools: empty(), events })
+    Ok(FinishOutcome {
+        tools: empty(),
+        events,
+    })
 }
 
 /// Result of finalizing one or more pending tool calls.

@@ -17,7 +17,9 @@ pub struct MissingCredentialError {
 
 impl MissingCredentialError {
     pub fn new(source: impl Into<String>) -> Self {
-        Self { source: source.into() }
+        Self {
+            source: source.into(),
+        }
     }
 }
 
@@ -153,9 +155,7 @@ impl Auth {
                 Ok(headers)
             }
             Auth::Credential { credential, render } => {
-                let value = credential
-                    .load()
-                    .map_err(|error| to_llm_error(&error))?;
+                let value = credential.load().map_err(|error| to_llm_error(&error))?;
                 let mut headers = input.headers.clone();
                 match render {
                     HeaderRender::Bearer => {
@@ -172,7 +172,10 @@ impl Auth {
             }
             Auth::AndThen(a, b) => {
                 let merged = a.apply(input)?;
-                let next = AuthInput { headers: merged, ..input.clone() };
+                let next = AuthInput {
+                    headers: merged,
+                    ..input.clone()
+                };
                 b.apply(&next)
             }
             Auth::OrElse(a, b) => match a.apply(input) {
@@ -221,7 +224,9 @@ pub fn remove(name: impl Into<String>) -> Auth {
 }
 
 /// `Auth.custom(apply)`.
-pub fn custom(apply: impl Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync + 'static) -> Auth {
+pub fn custom(
+    apply: impl Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync + 'static,
+) -> Auth {
     Auth::Custom(Arc::new(apply))
 }
 
@@ -265,7 +270,10 @@ pub fn header(name: impl Into<String>, source: Credential) -> Auth {
 
 /// `Auth.bearerHeader(name, source)`.
 pub fn bearer_header(name: impl Into<String>, source: Credential) -> Auth {
-    from_credential(credential_input(source), HeaderRender::BearerHeader(name.into()))
+    from_credential(
+        credential_input(source),
+        HeaderRender::BearerHeader(name.into()),
+    )
 }
 
 impl Credential {
@@ -320,7 +328,9 @@ impl Auth {
     }
 
     /// `Auth.custom(apply)`.
-    pub fn custom(apply: impl Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync + 'static) -> Auth {
+    pub fn custom(
+        apply: impl Fn(&AuthInput) -> Result<HeaderMap, LlmError> + Send + Sync + 'static,
+    ) -> Auth {
         custom(apply)
     }
 

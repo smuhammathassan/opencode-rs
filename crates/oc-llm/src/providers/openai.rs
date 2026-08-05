@@ -30,7 +30,11 @@ pub struct Config {
 }
 
 fn auth_for(options: &Config) -> Auth {
-    AuthOptions::bearer(options.auth.clone(), options.api_key.clone(), &["OPENAI_API_KEY"])
+    AuthOptions::bearer(
+        options.auth.clone(),
+        options.api_key.clone(),
+        &["OPENAI_API_KEY"],
+    )
 }
 
 fn configure_route(route: &Route, options: &Config) -> Route {
@@ -54,14 +58,28 @@ pub fn configure(input: Config) -> OpenAIProvider {
     let responses = move |model_id: String| -> Model {
         let options = with_openai_options(&model_id, provider_options.clone(), true);
         let route = responses_route.with(route_patch_with_options(options));
-        route.model(crate::route::RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+        route
+            .model(crate::route::RouteModelInput {
+                id: model_id,
+                provider: None,
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
     let responses = Arc::new(responses);
 
     let chat = move |model_id: String| -> Model {
         let options = with_openai_options(&model_id, None, false);
         let route = chat_route.with(route_patch_with_options(options));
-        route.model(crate::route::RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+        route
+            .model(crate::route::RouteModelInput {
+                id: model_id,
+                provider: None,
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
     let chat = Arc::new(chat);
 

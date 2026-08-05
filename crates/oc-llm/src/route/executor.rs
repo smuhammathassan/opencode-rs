@@ -7,8 +7,8 @@ use reqwest::StatusCode;
 
 use super::transport::HttpRequestValue;
 use crate::schema::{
-    AuthKind, HttpContext, HttpRateLimitDetails, HttpRequestDetails, HttpResponseDetails, LlmError, LlmErrorReason,
-    ProviderFailureClassification,
+    AuthKind, HttpContext, HttpRateLimitDetails, HttpRequestDetails, HttpResponseDetails, LlmError,
+    LlmErrorReason, ProviderFailureClassification,
 };
 use crate::shared;
 
@@ -109,9 +109,11 @@ fn urlencoding(value: &str) -> String {
 }
 
 fn redact_body(body: &str, request: &HttpRequestValue) -> String {
-    let mut text = sensitive_body_field_regex().replace_all(body, |caps: &regex::Captures| {
-        format!("{}{}", &caps[1], REDACTED)
-    }).to_string();
+    let mut text = sensitive_body_field_regex()
+        .replace_all(body, |caps: &regex::Captures| {
+            format!("{}{}", &caps[1], REDACTED)
+        })
+        .to_string();
     for secret in secret_values(request) {
         text = text.replace(&secret, REDACTED);
     }
@@ -119,11 +121,21 @@ fn redact_body(body: &str, request: &HttpRequestValue) -> String {
 }
 
 fn normalized_headers(headers: &BTreeMap<String, String>) -> BTreeMap<String, String> {
-    headers.iter().map(|(k, v)| (k.to_lowercase(), v.clone())).collect()
+    headers
+        .iter()
+        .map(|(k, v)| (k.to_lowercase(), v.clone()))
+        .collect()
 }
 
 fn request_id(headers: &BTreeMap<String, String>) -> Option<String> {
-    for name in ["x-request-id", "request-id", "x-amzn-requestid", "x-amz-request-id", "x-goog-request-id", "cf-ray"] {
+    for name in [
+        "x-request-id",
+        "request-id",
+        "x-amzn-requestid",
+        "x-amz-request-id",
+        "x-goog-request-id",
+        "cf-ray",
+    ] {
         if let Some(value) = headers.get(name) {
             return Some(value.clone());
         }
@@ -153,7 +165,10 @@ fn retry_after_ms(headers: &BTreeMap<String, String>) -> Option<i64> {
     None
 }
 
-fn rate_limit_details(headers: &BTreeMap<String, String>, retry_after: Option<i64>) -> Option<HttpRateLimitDetails> {
+fn rate_limit_details(
+    headers: &BTreeMap<String, String>,
+    retry_after: Option<i64>,
+) -> Option<HttpRateLimitDetails> {
     let mut limit = BTreeMap::new();
     let mut remaining = BTreeMap::new();
     let mut reset = BTreeMap::new();
@@ -184,7 +199,11 @@ fn rate_limit_details(headers: &BTreeMap<String, String>, retry_after: Option<i6
     Some(HttpRateLimitDetails {
         retry_after_ms: retry_after,
         limit: if limit.is_empty() { None } else { Some(limit) },
-        remaining: if remaining.is_empty() { None } else { Some(remaining) },
+        remaining: if remaining.is_empty() {
+            None
+        } else {
+            Some(remaining)
+        },
         reset: if reset.is_empty() { None } else { Some(reset) },
     })
 }
@@ -200,7 +219,11 @@ fn anthropic_ratelimit(name: &str) -> Option<(String, String, String)> {
 }
 fn provider_message(status: StatusCode, body: &str) -> String {
     if body.len() <= 500 && !body.is_empty() {
-        return format!("Provider request failed with HTTP {}: {}", status.as_u16(), body);
+        return format!(
+            "Provider request failed with HTTP {}: {}",
+            status.as_u16(),
+            body
+        );
     }
     format!("Provider request failed with HTTP {}", status.as_u16())
 }
@@ -217,9 +240,14 @@ fn status_reason(
     rate_limit: Option<HttpRateLimitDetails>,
     http: HttpContext,
 ) -> LlmErrorReason {
-    let content_policy = regex::Regex::new(r"(?i)content[-_\s]?policy|content_filter|safety").unwrap();
+    let content_policy =
+        regex::Regex::new(r"(?i)content[-_\s]?policy|content_filter|safety").unwrap();
     if content_policy.is_match(body) {
-        return LlmErrorReason::ContentPolicy { message: message.to_string(), provider_metadata: None, http: Some(http) };
+        return LlmErrorReason::ContentPolicy {
+            message: message.to_string(),
+            provider_metadata: None,
+            http: Some(http),
+        };
     }
     match status.as_u16() {
         401 => LlmErrorReason::Authentication {
@@ -235,8 +263,15 @@ fn status_reason(
             http: Some(http),
         },
         429 => {
-            if regex::Regex::new(r"(?i)insufficient[-_\s]?quota|quota[-_\s]?exceeded").unwrap().is_match(body) {
-                LlmErrorReason::QuotaExceeded { message: message.to_string(), provider_metadata: None, http: Some(http) }
+            if regex::Regex::new(r"(?i)insufficient[-_\s]?quota|quota[-_\s]?exceeded")
+                .unwrap()
+                .is_match(body)
+            {
+                LlmErrorReason::QuotaExceeded {
+                    message: message.to_string(),
+                    provider_metadata: None,
+                    http: Some(http),
+                }
             } else {
                 LlmErrorReason::RateLimit {
                     message: message.to_string(),
@@ -258,13 +293,15 @@ fn status_reason(
             provider_metadata: None,
             http: Some(http),
         },
-        _ if status.as_u16() >= 500 || retryable_status(status) => LlmErrorReason::ProviderInternal {
-            message: message.to_string(),
-            status: status.as_u16() as i64,
-            retry_after_ms,
-            provider_metadata: None,
-            http: Some(http),
-        },
+        _ if status.as_u16() >= 500 || retryable_status(status) => {
+            LlmErrorReason::ProviderInternal {
+                message: message.to_string(),
+                status: status.as_u16() as i64,
+                retry_after_ms,
+                provider_metadata: None,
+                http: Some(http),
+            }
+        }
         _ => LlmErrorReason::UnknownProvider {
             message: message.to_string(),
             status: Some(status.as_u16() as i64),
@@ -283,7 +320,10 @@ fn request_details(request: &HttpRequestValue) -> HttpRequestDetails {
 }
 
 fn response_details(status: StatusCode, headers: &BTreeMap<String, String>) -> HttpResponseDetails {
-    HttpResponseDetails { status: status.as_u16() as i64, headers: redact_headers(headers) }
+    HttpResponseDetails {
+        status: status.as_u16() as i64,
+        headers: redact_headers(headers),
+    }
 }
 
 fn response_body_text(body: &str, request: &HttpRequestValue) -> (Option<String>, Option<bool>) {
@@ -294,13 +334,21 @@ fn response_body_text(body: &str, request: &HttpRequestValue) -> (Option<String>
     if redacted.len() <= BODY_LIMIT {
         (Some(redacted), None)
     } else {
-        (Some(redacted.chars().take(BODY_LIMIT).collect()), Some(true))
+        (
+            Some(redacted.chars().take(BODY_LIMIT).collect()),
+            Some(true),
+        )
     }
 }
 
 /// Build a `LlmError` from a non-2xx response.
 /// From reference/packages/llm/src/route/executor.ts (`statusError`)
-pub fn status_error(request: &HttpRequestValue, status: StatusCode, body: &str, headers: &BTreeMap<String, String>) -> LlmError {
+pub fn status_error(
+    request: &HttpRequestValue,
+    status: StatusCode,
+    body: &str,
+    headers: &BTreeMap<String, String>,
+) -> LlmError {
     let normalized = normalized_headers(headers);
     let retry_after = retry_after_ms(&normalized);
     let rate_limit = rate_limit_details(&normalized, retry_after);
@@ -340,7 +388,12 @@ fn transport_error(message: String, kind: Option<String>, url: Option<String>) -
     LlmError::new(
         "RequestExecutor",
         "execute",
-        LlmErrorReason::Transport { message, kind, url: url.map(|u| redact_url(&u)), http },
+        LlmErrorReason::Transport {
+            message,
+            kind,
+            url: url.map(|u| redact_url(&u)),
+            http,
+        },
     )
 }
 
@@ -369,7 +422,10 @@ impl Executor {
         &self.client
     }
 
-    async fn execute_once(&self, request: &HttpRequestValue) -> Result<reqwest::Response, LlmError> {
+    async fn execute_once(
+        &self,
+        request: &HttpRequestValue,
+    ) -> Result<reqwest::Response, LlmError> {
         let response = self
             .client
             .post(&request.url)
@@ -391,7 +447,12 @@ impl Executor {
         let headers = response
             .headers()
             .iter()
-            .map(|(name, value)| (name.as_str().to_string(), value.to_str().unwrap_or_default().to_string()))
+            .map(|(name, value)| {
+                (
+                    name.as_str().to_string(),
+                    value.to_str().unwrap_or_default().to_string(),
+                )
+            })
             .collect::<BTreeMap<_, _>>();
         let body = response.text().await.unwrap_or_default();
         Err(status_error(request, status, &body, &headers))

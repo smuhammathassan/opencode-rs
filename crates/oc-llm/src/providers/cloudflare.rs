@@ -13,7 +13,8 @@ use crate::schema::{GenerationOptions, HttpOptions, Model, ModelLimits, Provider
 pub const AI_GATEWAY_ID: &str = "cloudflare-ai-gateway";
 pub const WORKERS_AI_ID: &str = "cloudflare-workers-ai";
 pub const AI_GATEWAY_AUTH_ENV_VARS: [&str; 2] = ["CLOUDFLARE_API_TOKEN", "CF_AIG_TOKEN"];
-pub const WORKERS_AI_AUTH_ENV_VARS: [&str; 2] = ["CLOUDFLARE_API_KEY", "CLOUDFLARE_WORKERS_AI_TOKEN"];
+pub const WORKERS_AI_AUTH_ENV_VARS: [&str; 2] =
+    ["CLOUDFLARE_API_KEY", "CLOUDFLARE_WORKERS_AI_TOKEN"];
 
 /// `GatewayURL` — `accountId` or `baseURL` (at least one) plus optional gatewayId.
 /// From reference/packages/llm/src/providers/cloudflare.ts (`GatewayURL`)
@@ -63,8 +64,17 @@ pub fn ai_gateway_base_url(input: &GatewayUrl) -> Result<String, String> {
     let account_id = input.account_id.as_ref().ok_or_else(|| {
         "CloudflareAIGateway.configure requires accountId unless baseURL is supplied".to_string()
     })?;
-    let gateway_id = input.gateway_id.clone().unwrap_or_default().trim().to_string();
-    let gateway_id = if gateway_id.is_empty() { "default".to_string() } else { gateway_id };
+    let gateway_id = input
+        .gateway_id
+        .clone()
+        .unwrap_or_default()
+        .trim()
+        .to_string();
+    let gateway_id = if gateway_id.is_empty() {
+        "default".to_string()
+    } else {
+        gateway_id
+    };
     Ok(format!(
         "https://gateway.ai.cloudflare.com/v1/{}/{}/compat",
         urlencode(account_id),
@@ -91,9 +101,9 @@ fn ai_gateway_auth(input: &AIGatewayOptions) -> Auth {
         return Credential::Value(input.api_key.clone().unwrap()).bearer_auth();
     }
     let gateway_key = input.gateway_api_key.clone().unwrap();
-    gateway = Credential::Value(gateway_key).bearer_header_auth("cf-aig-authorization").and_then(
-        Credential::Value(input.api_key.clone().unwrap()).bearer_auth(),
-    );
+    gateway = Credential::Value(gateway_key)
+        .bearer_header_auth("cf-aig-authorization")
+        .and_then(Credential::Value(input.api_key.clone().unwrap()).bearer_auth());
     gateway
 }
 
@@ -106,11 +116,18 @@ pub fn workers_ai_base_url(input: &WorkersAIOptions) -> Result<String, String> {
     let account_id = input.account_id.as_ref().ok_or_else(|| {
         "CloudflareWorkersAI.configure requires accountId unless baseURL is supplied".to_string()
     })?;
-    Ok(format!("https://api.cloudflare.com/client/v4/accounts/{}/ai/v1", urlencode(account_id)))
+    Ok(format!(
+        "https://api.cloudflare.com/client/v4/accounts/{}/ai/v1",
+        urlencode(account_id)
+    ))
 }
 
 fn workers_ai_auth(input: &WorkersAIOptions) -> Auth {
-    AuthOptions::bearer(input.auth.clone(), input.api_key.clone(), &WORKERS_AI_AUTH_ENV_VARS)
+    AuthOptions::bearer(
+        input.auth.clone(),
+        input.api_key.clone(),
+        &WORKERS_AI_AUTH_ENV_VARS,
+    )
 }
 
 /// `aiGatewayRoute`.
@@ -145,9 +162,19 @@ pub fn configure_ai_gateway(options: AIGatewayOptions) -> CloudflareProvider {
     patch.http = options.http.clone();
     let route = Arc::new(ai_gateway_route().with(patch));
     let model = move |model_id: String| -> Model {
-        route.model(RouteModelInput { id: model_id, provider: Some(AI_GATEWAY_ID.to_string()), defaults: None, compatibility: None }).unwrap()
+        route
+            .model(RouteModelInput {
+                id: model_id,
+                provider: Some(AI_GATEWAY_ID.to_string()),
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
-    CloudflareProvider { id: AI_GATEWAY_ID.to_string(), model: Arc::new(model) }
+    CloudflareProvider {
+        id: AI_GATEWAY_ID.to_string(),
+        model: Arc::new(model),
+    }
 }
 
 /// `CloudflareWorkersAI.configure(options)`.
@@ -164,9 +191,19 @@ pub fn configure_workers_ai(options: WorkersAIOptions) -> CloudflareProvider {
     patch.http = options.http.clone();
     let route = Arc::new(workers_ai_route().with(patch));
     let model = move |model_id: String| -> Model {
-        route.model(RouteModelInput { id: model_id, provider: Some(WORKERS_AI_ID.to_string()), defaults: None, compatibility: None }).unwrap()
+        route
+            .model(RouteModelInput {
+                id: model_id,
+                provider: Some(WORKERS_AI_ID.to_string()),
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
-    CloudflareProvider { id: WORKERS_AI_ID.to_string(), model: Arc::new(model) }
+    CloudflareProvider {
+        id: WORKERS_AI_ID.to_string(),
+        model: Arc::new(model),
+    }
 }
 
 /// Provider handle.

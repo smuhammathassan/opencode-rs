@@ -49,5 +49,6 @@ pub fn is_context_overflow(message: &str) -> bool {
 /// From reference/packages/llm/src/provider-error.ts
 pub fn is_context_overflow_failure(failure: &crate::schema::LlmError) -> bool {
     failure.is_invalid_request()
-        && failure.reason.classification() == Some(crate::schema::ProviderFailureClassification::ContextOverflow)
+        && failure.reason.classification()
+            == Some(crate::schema::ProviderFailureClassification::ContextOverflow)
 }

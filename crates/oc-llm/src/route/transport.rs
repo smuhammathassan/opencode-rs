@@ -94,7 +94,9 @@ fn apply_query(url: &Url, query: Option<&BTreeMap<String, String>>) -> Url {
 }
 
 fn forbidden_body_overlay_keys(body: &Value) -> Vec<String> {
-    let Some(obj) = body.as_object() else { return vec![] };
+    let Some(obj) = body.as_object() else {
+        return vec![];
+    };
     obj.keys()
         .filter(|key| PROTOCOL_BODY_OVERLAY_DENYLIST.contains(&key.as_str()))
         .cloned()
@@ -112,7 +114,10 @@ pub fn json_request_parts(
 ) -> Result<JsonRequestParts, LlmError> {
     let endpoint_input = endpoint::EndpointInput { request, body };
     let rendered = endpoint::render(endpoint, &endpoint_input)?;
-    let url = apply_query(&rendered, request.http.as_ref().and_then(|http| http.query.as_ref()));
+    let url = apply_query(
+        &rendered,
+        request.http.as_ref().and_then(|http| http.query.as_ref()),
+    );
     let url = url.to_string();
 
     let (json_body, body_text) = match &request.http.as_ref().and_then(|http| http.body.as_ref()) {
@@ -127,7 +132,8 @@ pub fn json_request_parts(
             }
             if shared::is_record(body) {
                 let merged = crate::schema::merge_json_records(
-                    body.as_object().map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect()),
+                    body.as_object()
+                        .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect()),
                     &overlay
                         .as_object()
                         .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
@@ -137,7 +143,9 @@ pub fn json_request_parts(
                 .unwrap_or(Value::Null);
                 (merged.clone(), encode_json(&merged))
             } else {
-                return Err(shared::invalid_request("http.body can only overlay JSON object request bodies"));
+                return Err(shared::invalid_request(
+                    "http.body can only overlay JSON object request bodies",
+                ));
             }
         }
     };
@@ -162,7 +170,11 @@ pub fn json_request_parts(
     let headers = auth.apply(&auth_input)?;
 
     let _ = json_body;
-    Ok(JsonRequestParts { url, body_text, headers })
+    Ok(JsonRequestParts {
+        url,
+        body_text,
+        headers,
+    })
 }
 
 fn encode_json(value: &Value) -> String {
@@ -185,7 +197,9 @@ pub fn frames(
             })
             .map(FramePayload::Json)
         })),
-        Framing::AwsEventStream => Box::pin(AwsEventStream::new(response_body).map(move |value| value)),
+        Framing::AwsEventStream => {
+            Box::pin(AwsEventStream::new(response_body).map(move |value| value))
+        }
     }
 }
 
@@ -199,12 +213,18 @@ pub struct SseStream {
 
 impl SseStream {
     pub fn new(inner: Pin<Box<dyn Stream<Item = Result<Bytes, LlmError>> + Send>>) -> SseStream {
-        SseStream { inner, buf: Vec::new(), pending: std::collections::VecDeque::new() }
+        SseStream {
+            inner,
+            buf: Vec::new(),
+            pending: std::collections::VecDeque::new(),
+        }
     }
 
     fn process(&mut self) {
         loop {
-            let Some(delim) = find_delim(&self.buf) else { break };
+            let Some(delim) = find_delim(&self.buf) else {
+                break;
+            };
             let (start, len) = delim;
             let event_bytes = &self.buf[..start];
             let event = String::from_utf8_lossy(event_bytes).replace('\r', "");
@@ -286,8 +306,15 @@ pub struct AwsEventStream {
 }
 
 impl AwsEventStream {
-    pub fn new(inner: Pin<Box<dyn Stream<Item = Result<Bytes, LlmError>> + Send>>) -> AwsEventStream {
-        AwsEventStream { inner, buf: Vec::new(), pending: std::collections::VecDeque::new(), route: "bedrock-converse".to_string() }
+    pub fn new(
+        inner: Pin<Box<dyn Stream<Item = Result<Bytes, LlmError>> + Send>>,
+    ) -> AwsEventStream {
+        AwsEventStream {
+            inner,
+            buf: Vec::new(),
+            pending: std::collections::VecDeque::new(),
+            route: "bedrock-converse".to_string(),
+        }
     }
 
     fn process(&mut self) -> Result<(), LlmError> {
@@ -295,7 +322,8 @@ impl AwsEventStream {
             if self.buf.len() < 4 {
                 break;
             }
-            let total_length = u32::from_be_bytes([self.buf[0], self.buf[1], self.buf[2], self.buf[3]]) as usize;
+            let total_length =
+                u32::from_be_bytes([self.buf[0], self.buf[1], self.buf[2], self.buf[3]]) as usize;
             if self.buf.len() < total_length {
                 break;
             }
@@ -339,12 +367,20 @@ impl Stream for AwsEventStream {
 /// padding field is dropped.
 fn decode_frame(frame: &[u8], route: &str) -> Result<Option<Value>, LlmError> {
     if frame.len() < 12 {
-        return Err(crate::shared::event_error(route, "Failed to decode Bedrock Converse event-stream frame: frame too short", None));
+        return Err(crate::shared::event_error(
+            route,
+            "Failed to decode Bedrock Converse event-stream frame: frame too short",
+            None,
+        ));
     }
     let headers_length = u32::from_be_bytes([frame[4], frame[5], frame[6], frame[7]]) as usize;
     let total_length = u32::from_be_bytes([frame[0], frame[1], frame[2], frame[3]]) as usize;
     if 12 + headers_length > total_length {
-        return Err(crate::shared::event_error(route, "Failed to decode Bedrock Converse event-stream frame: invalid header length", None));
+        return Err(crate::shared::event_error(
+            route,
+            "Failed to decode Bedrock Converse event-stream frame: invalid header length",
+            None,
+        ));
     }
     let prelude_crc = u32::from_be_bytes([frame[8], frame[9], frame[10], frame[11]]);
     let computed = crc32(&frame[..8]);
@@ -410,7 +446,9 @@ fn decode_frame(frame: &[u8], route: &str) -> Result<Option<Value>, LlmError> {
     if message_type.as_deref() != Some("event") {
         return Ok(None);
     }
-    let Some(event_type) = event_type else { return Ok(None) };
+    let Some(event_type) = event_type else {
+        return Ok(None);
+    };
     if payload.is_empty() {
         return Ok(None);
     }

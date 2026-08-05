@@ -14,11 +14,17 @@ use super::utils::lifecycle;
 use super::utils::tool_schema::ToolSchemaProjection;
 use super::utils::tool_stream::{self, ToolStream};
 use crate::provider_error::is_context_overflow;
-use crate::route::Protocol;
 use crate::route::protocol::ProtocolStream;
-use crate::schema::messages::{ContentPart, MediaPart, ReasoningPart, ToolCallPart, ToolContent, ToolDefinition, ToolResultPart};
+use crate::route::Protocol;
+use crate::schema::messages::{
+    ContentPart, MediaPart, ReasoningPart, ToolCallPart, ToolContent, ToolDefinition,
+    ToolResultPart,
+};
 use crate::schema::CacheHint;
-use crate::schema::{FinishReason, LlmError, LlmEvent, LlmRequest, ModelToolSchemaCompatibility, ToolChoiceType, Usage};
+use crate::schema::{
+    FinishReason, LlmError, LlmEvent, LlmRequest, ModelToolSchemaCompatibility, ToolChoiceType,
+    Usage,
+};
 use crate::shared;
 
 pub const ADAPTER: &str = "bedrock-converse";
@@ -161,7 +167,10 @@ fn lower_tool_spec(tool: &ToolDefinition, input_schema: &Value) -> Value {
         "toolSpec".to_string(),
         Value::Object(Map::from_iter([
             ("name".to_string(), Value::String(tool.name.clone())),
-            ("description".to_string(), Value::String(tool.description.clone())),
+            (
+                "description".to_string(),
+                Value::String(tool.description.clone()),
+            ),
             (
                 "inputSchema".to_string(),
                 Value::Object(Map::from_iter([("json".to_string(), input_schema.clone())])),
@@ -177,7 +186,10 @@ fn lower_tools(
 ) -> Vec<Value> {
     let mut result = Vec::new();
     for tool in tools {
-        result.push(lower_tool_spec(tool, &ToolSchemaProjection::model_compatibility(&tool.input_schema, compatibility)));
+        result.push(lower_tool_spec(
+            tool,
+            &ToolSchemaProjection::model_compatibility(&tool.input_schema, compatibility),
+        ));
         if let Some(cache_point) = BedrockCache::block(breakpoints, tool.cache.as_ref()) {
             result.push(cache_point);
         }
@@ -191,7 +203,10 @@ fn text_with_cache(
     cache: Option<&CacheHint>,
 ) -> Vec<Value> {
     let cache_point = BedrockCache::block(breakpoints, cache);
-    let mut result = vec![Value::Object(Map::from_iter([("text".to_string(), Value::String(text.to_string()))]))];
+    let mut result = vec![Value::Object(Map::from_iter([(
+        "text".to_string(),
+        Value::String(text.to_string()),
+    )]))];
     if let Some(cache_point) = cache_point {
         result.push(cache_point);
     }
@@ -200,16 +215,27 @@ fn text_with_cache(
 
 fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, LlmError> {
     match tool_choice.kind {
-        ToolChoiceType::Auto => Ok(Value::Object(Map::from_iter([("auto".to_string(), Value::Object(Map::new()))]))),
+        ToolChoiceType::Auto => Ok(Value::Object(Map::from_iter([(
+            "auto".to_string(),
+            Value::Object(Map::new()),
+        )]))),
         ToolChoiceType::None => Ok(Value::Null),
-        ToolChoiceType::Required => Ok(Value::Object(Map::from_iter([("any".to_string(), Value::Object(Map::new()))]))),
+        ToolChoiceType::Required => Ok(Value::Object(Map::from_iter([(
+            "any".to_string(),
+            Value::Object(Map::new()),
+        )]))),
         ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(shared::invalid_request("Bedrock Converse tool choice requires a tool name"));
+                return Err(shared::invalid_request(
+                    "Bedrock Converse tool choice requires a tool name",
+                ));
             };
             Ok(Value::Object(Map::from_iter([(
                 "tool".to_string(),
-                Value::Object(Map::from_iter([("name".to_string(), Value::String(name.clone()))])),
+                Value::Object(Map::from_iter([(
+                    "name".to_string(),
+                    Value::String(name.clone()),
+                )])),
             )])))
         }
     }
@@ -220,9 +246,15 @@ fn bedrock_metadata(metadata: Map<String, Value>) -> crate::schema::ProviderMeta
 }
 
 fn reasoning_signature(part: &ReasoningPart) -> Option<String> {
-    let bedrock = part.provider_metadata.as_ref().and_then(|m| m.get("bedrock"));
+    let bedrock = part
+        .provider_metadata
+        .as_ref()
+        .and_then(|m| m.get("bedrock"));
     part.encrypted.clone().or_else(|| {
-        bedrock.and_then(|b| b.get("signature")).and_then(Value::as_str).map(|s| s.to_string())
+        bedrock
+            .and_then(|b| b.get("signature"))
+            .and_then(Value::as_str)
+            .map(|s| s.to_string())
     })
 }
 
@@ -239,25 +271,33 @@ fn lower_tool_call(part: &ToolCallPart) -> Value {
 
 fn lower_tool_result_content(part: &ToolResultPart) -> Result<Vec<Value>, LlmError> {
     match &part.result {
-        crate::schema::ToolResultValue::Text { value: _ } | crate::schema::ToolResultValue::Error { value: _ } => {
+        crate::schema::ToolResultValue::Text { value: _ }
+        | crate::schema::ToolResultValue::Error { value: _ } => {
             Ok(vec![Value::Object(Map::from_iter([(
                 "text".to_string(),
                 Value::String(shared::tool_result_text(part)),
             )]))])
         }
-        crate::schema::ToolResultValue::Json { value } => {
-            Ok(vec![Value::Object(Map::from_iter([("json".to_string(), value.clone())]))])
-        }
+        crate::schema::ToolResultValue::Json { value } => Ok(vec![Value::Object(Map::from_iter(
+            [("json".to_string(), value.clone())],
+        ))]),
         crate::schema::ToolResultValue::Content { value } => {
             let mut content = Vec::new();
             for item in value {
                 match item {
                     ToolContent::Text { text } => {
-                        content.push(Value::Object(Map::from_iter([("text".to_string(), Value::String(text.clone()))])));
+                        content.push(Value::Object(Map::from_iter([(
+                            "text".to_string(),
+                            Value::String(text.clone()),
+                        )])));
                     }
                     ToolContent::File { .. } => {
                         let media = BedrockMedia::lower(&media_from_tool_file(item))?;
-                        if !media.as_object().map(|obj| obj.contains_key("image")).unwrap_or(false) {
+                        if !media
+                            .as_object()
+                            .map(|obj| obj.contains_key("image"))
+                            .unwrap_or(false)
+                        {
                             return Err(shared::invalid_request(
                                 "Bedrock Converse only supports image media in tool results",
                             ));
@@ -274,15 +314,31 @@ fn lower_tool_result_content(part: &ToolResultPart) -> Result<Vec<Value>, LlmErr
 fn lower_tool_result(part: &ToolResultPart) -> Result<Value, LlmError> {
     let mut tool_result = Map::new();
     tool_result.insert("toolUseId".to_string(), Value::String(part.id.clone()));
-    tool_result.insert("content".to_string(), Value::Array(lower_tool_result_content(part)?));
+    tool_result.insert(
+        "content".to_string(),
+        Value::Array(lower_tool_result_content(part)?),
+    );
     tool_result.insert(
         "status".to_string(),
-        Value::String(if part.result.is_error() { "error" } else { "success" }.to_string()),
+        Value::String(
+            if part.result.is_error() {
+                "error"
+            } else {
+                "success"
+            }
+            .to_string(),
+        ),
     );
-    Ok(Value::Object(Map::from_iter([("toolResult".to_string(), Value::Object(tool_result))])))
+    Ok(Value::Object(Map::from_iter([(
+        "toolResult".to_string(),
+        Value::Object(tool_result),
+    )])))
 }
 
-fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoints) -> Result<Vec<Value>, LlmError> {
+fn lower_messages(
+    request: &LlmRequest,
+    breakpoints: &mut BedrockCache::Breakpoints,
+) -> Result<Vec<Value>, LlmError> {
     let mut messages: Vec<Value> = Vec::new();
 
     for message in &request.messages {
@@ -314,9 +370,15 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoi
                     ContentPart::Text { text, cache, .. } => {
                         content.extend(text_with_cache(breakpoints, text, cache.as_ref()));
                     }
-                    ContentPart::Media { .. } => content.push(BedrockMedia::lower(&media_part(part))?),
+                    ContentPart::Media { .. } => {
+                        content.push(BedrockMedia::lower(&media_part(part))?)
+                    }
                     _ => {
-                        return Err(shared::unsupported("Bedrock Converse", "user", &["text", "media"]));
+                        return Err(shared::unsupported(
+                            "Bedrock Converse",
+                            "user",
+                            &["text", "media"],
+                        ));
                     }
                 }
             }
@@ -334,7 +396,12 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoi
                     ContentPart::Text { text, cache, .. } => {
                         content.extend(text_with_cache(breakpoints, text, cache.as_ref()));
                     }
-                    ContentPart::Reasoning { text, encrypted, provider_metadata, .. } => {
+                    ContentPart::Reasoning {
+                        text,
+                        encrypted,
+                        provider_metadata,
+                        ..
+                    } => {
                         let reasoning_part = ReasoningPart {
                             part_type: "reasoning".to_string(),
                             text: text.clone(),
@@ -348,12 +415,21 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoi
                         crate::jset_opt!(reasoning_text, "signature", signature);
                         content.push(Value::Object(Map::from_iter([(
                             "reasoningContent".to_string(),
-                            Value::Object(Map::from_iter([("reasoningText".to_string(), Value::Object(reasoning_text))])),
+                            Value::Object(Map::from_iter([(
+                                "reasoningText".to_string(),
+                                Value::Object(reasoning_text),
+                            )])),
                         )])));
                     }
-                    ContentPart::ToolCall { .. } => content.push(lower_tool_call(&tool_call_part(part))),
+                    ContentPart::ToolCall { .. } => {
+                        content.push(lower_tool_call(&tool_call_part(part)))
+                    }
                     _ => {
-                        return Err(shared::unsupported("Bedrock Converse", "assistant", &["text", "reasoning", "tool-call"]));
+                        return Err(shared::unsupported(
+                            "Bedrock Converse",
+                            "assistant",
+                            &["text", "reasoning", "tool-call"],
+                        ));
                     }
                 }
             }
@@ -367,7 +443,11 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoi
         let mut content: Vec<Value> = Vec::new();
         for part in &message.content {
             let ContentPart::ToolResult { .. } = part else {
-                return Err(shared::unsupported("Bedrock Converse", "tool", &["tool-result"]));
+                return Err(shared::unsupported(
+                    "Bedrock Converse",
+                    "tool",
+                    &["tool-result"],
+                ));
             };
             let part = tool_result_part(part);
             content.push(lower_tool_result(&part)?);
@@ -384,10 +464,17 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut BedrockCache::Breakpoi
     Ok(messages)
 }
 
-fn lower_system(breakpoints: &mut BedrockCache::Breakpoints, system: &[crate::schema::SystemPart]) -> Vec<Value> {
+fn lower_system(
+    breakpoints: &mut BedrockCache::Breakpoints,
+    system: &[crate::schema::SystemPart],
+) -> Vec<Value> {
     let mut blocks = Vec::new();
     for part in system {
-        blocks.extend(text_with_cache(breakpoints, &part.text, part.cache.as_ref()));
+        blocks.extend(text_with_cache(
+            breakpoints,
+            &part.text,
+            part.cache.as_ref(),
+        ));
     }
     blocks
 }
@@ -408,11 +495,25 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     };
     let generation = request.generation.clone();
     let mut breakpoints = BedrockCache::breakpoints();
-    let tool_config = if !request.tools.is_empty() && request.tool_choice.as_ref().map(|tc| tc.kind != ToolChoiceType::None).unwrap_or(true) {
+    let tool_config = if !request.tools.is_empty()
+        && request
+            .tool_choice
+            .as_ref()
+            .map(|tc| tc.kind != ToolChoiceType::None)
+            .unwrap_or(true)
+    {
         let mut config = Map::new();
         config.insert(
             "tools".to_string(),
-            Value::Array(lower_tools(request.model.compatibility.as_ref().and_then(|c| c.tool_schema), &mut breakpoints, &request.tools)),
+            Value::Array(lower_tools(
+                request
+                    .model
+                    .compatibility
+                    .as_ref()
+                    .and_then(|c| c.tool_schema),
+                &mut breakpoints,
+                &request.tools,
+            )),
         );
         crate::jset_opt!(config, "toolChoice", tool_choice);
         Some(Value::Object(config))
@@ -422,7 +523,10 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     let system = if request.system.is_empty() {
         None
     } else {
-        Some(Value::Array(lower_system(&mut breakpoints, &request.system)))
+        Some(Value::Array(lower_system(
+            &mut breakpoints,
+            &request.system,
+        )))
     };
     let messages = lower_messages(request, &mut breakpoints)?;
     if breakpoints.dropped > 0 {
@@ -434,26 +538,61 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     }
 
     let mut inference_config = Map::new();
-    crate::jset_opt!(inference_config, "maxTokens", generation.as_ref().and_then(|g| g.max_tokens));
-    crate::jset_opt!(inference_config, "temperature", generation.as_ref().and_then(|g| g.temperature));
-    crate::jset_opt!(inference_config, "topP", generation.as_ref().and_then(|g| g.top_p));
-    crate::jset_opt!(inference_config, "stopSequences", generation.as_ref().and_then(|g| {
-        let stop = g.stop.clone()?;
-        if stop.is_empty() { None } else { Some(stop) }
-    }));
+    crate::jset_opt!(
+        inference_config,
+        "maxTokens",
+        generation.as_ref().and_then(|g| g.max_tokens)
+    );
+    crate::jset_opt!(
+        inference_config,
+        "temperature",
+        generation
+            .as_ref()
+            .and_then(|g| g.temperature)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        inference_config,
+        "topP",
+        generation
+            .as_ref()
+            .and_then(|g| g.top_p)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        inference_config,
+        "stopSequences",
+        generation.as_ref().and_then(|g| {
+            let stop = g.stop.clone()?;
+            if stop.is_empty() {
+                None
+            } else {
+                Some(stop)
+            }
+        })
+    );
 
     let mut body = Map::new();
-    body.insert("modelId".to_string(), Value::String(request.model.id.0.clone()));
+    body.insert(
+        "modelId".to_string(),
+        Value::String(request.model.id.0.clone()),
+    );
     body.insert("messages".to_string(), Value::Array(messages));
     crate::jset_opt!(body, "system", system);
     if !inference_config.is_empty() {
-        body.insert("inferenceConfig".to_string(), Value::Object(inference_config));
+        body.insert(
+            "inferenceConfig".to_string(),
+            Value::Object(inference_config),
+        );
     }
     crate::jset_opt!(body, "toolConfig", tool_config);
     if let Some(top_k) = generation.as_ref().and_then(|g| g.top_k) {
         body.insert(
             "additionalModelRequestFields".to_string(),
-            Value::Object(Map::from_iter([("top_k".to_string(), Value::Number(top_k.into()))])),
+            Value::Object(Map::from_iter([(
+                "top_k".to_string(),
+                Value::Number(top_k.into()),
+            )])),
         );
     }
     Ok(Value::Object(body))
@@ -474,7 +613,8 @@ fn map_finish_reason(reason: &str) -> FinishReason {
 }
 
 fn map_usage(usage: &BedrockUsage) -> Option<Usage> {
-    let cache_total = usage.cache_read_input_tokens.unwrap_or(0) + usage.cache_write_input_tokens.unwrap_or(0);
+    let cache_total =
+        usage.cache_read_input_tokens.unwrap_or(0) + usage.cache_write_input_tokens.unwrap_or(0);
     let non_cached = shared::subtract_tokens(usage.input_tokens, Some(cache_total));
     let raw = serde_json::to_value(usage).unwrap_or(Value::Null);
     Some(Usage {
@@ -484,7 +624,11 @@ fn map_usage(usage: &BedrockUsage) -> Option<Usage> {
         cache_read_input_tokens: usage.cache_read_input_tokens,
         cache_write_input_tokens: usage.cache_write_input_tokens,
         reasoning_tokens: None,
-        total_tokens: shared::total_tokens(usage.input_tokens, usage.output_tokens, usage.total_tokens),
+        total_tokens: shared::total_tokens(
+            usage.input_tokens,
+            usage.output_tokens,
+            usage.total_tokens,
+        ),
         provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([(
             "bedrock".to_string(),
             raw.as_object().cloned().unwrap_or_default(),
@@ -496,20 +640,32 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
     let mut events = Vec::new();
 
     if let Some(block) = &event.content_block_start {
-        if let Some(tool_use) = block.start.as_ref().and_then(|start| start.tool_use.as_ref()) {
+        if let Some(tool_use) = block
+            .start
+            .as_ref()
+            .and_then(|start| start.tool_use.as_ref())
+        {
             let index = block.content_block_index.unwrap_or(0);
             let lifecycle = lifecycle::step_start(&state.lifecycle, &mut events);
             let id = tool_use.tool_use_id.clone().unwrap_or_default();
             let name = tool_use.name.clone().unwrap_or_default();
-            state.tools = ToolStream::start(&state.tools, index, tool_stream::PendingToolInput {
-                id: id.clone(),
-                name: name.clone(),
-                input: None,
-                provider_executed: None,
+            state.tools = ToolStream::start(
+                &state.tools,
+                index,
+                tool_stream::PendingToolInput {
+                    id: id.clone(),
+                    name: name.clone(),
+                    input: None,
+                    provider_executed: None,
+                    provider_metadata: None,
+                },
+            );
+            state.lifecycle = lifecycle;
+            events.push(LlmEvent::ToolInputStart {
+                id,
+                name,
                 provider_metadata: None,
             });
-            state.lifecycle = lifecycle;
-            events.push(LlmEvent::ToolInputStart { id, name, provider_metadata: None });
             return Ok(events);
         }
     }
@@ -517,13 +673,28 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
     if let Some(block) = &event.content_block_delta {
         if let Some(text) = block.delta.as_ref().and_then(|d| d.text.clone()) {
             let index = block.content_block_index.unwrap_or(0);
-            state.lifecycle = lifecycle::text_delta(&state.lifecycle, &mut events, &format!("text-{}", index), &text);
+            state.lifecycle = lifecycle::text_delta(
+                &state.lifecycle,
+                &mut events,
+                &format!("text-{}", index),
+                &text,
+            );
             return Ok(events);
         }
-        if let Some(reasoning) = block.delta.as_ref().and_then(|d| d.reasoning_content.as_ref()) {
+        if let Some(reasoning) = block
+            .delta
+            .as_ref()
+            .and_then(|d| d.reasoning_content.as_ref())
+        {
             let index = block.content_block_index.unwrap_or(0);
             if let Some(text) = &reasoning.text {
-                state.lifecycle = lifecycle::reasoning_delta(&state.lifecycle, &mut events, &format!("reasoning-{}", index), text, None);
+                state.lifecycle = lifecycle::reasoning_delta(
+                    &state.lifecycle,
+                    &mut events,
+                    &format!("reasoning-{}", index),
+                    text,
+                    None,
+                );
             }
             if let Some(signature) = &reasoning.signature {
                 state.reasoning_signatures.insert(index, signature.clone());
@@ -560,17 +731,28 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
             lifecycle::step_start(&state.lifecycle, &mut events)
         } else {
             let metadata = state.reasoning_signatures.get(&index).map(|signature| {
-                bedrock_metadata(Map::from_iter([("signature".to_string(), Value::String(signature.clone()))]))
+                bedrock_metadata(Map::from_iter([(
+                    "signature".to_string(),
+                    Value::String(signature.clone()),
+                )]))
             });
             lifecycle::reasoning_end(
-                &lifecycle::text_end(&state.lifecycle, &mut events, &format!("text-{}", index), None),
+                &lifecycle::text_end(
+                    &state.lifecycle,
+                    &mut events,
+                    &format!("text-{}", index),
+                    None,
+                ),
                 &mut events,
                 &format!("reasoning-{}", index),
                 metadata.as_ref(),
             )
         };
         events.extend(result_events);
-        state.has_tool_calls = events.iter().any(|e| matches!(e, LlmEvent::ToolCall { .. })) || state.has_tool_calls;
+        state.has_tool_calls = events
+            .iter()
+            .any(|e| matches!(e, LlmEvent::ToolCall { .. }))
+            || state.has_tool_calls;
         state.lifecycle = lifecycle;
         state.tools = result.tools;
         state.reasoning_signatures.remove(&index);
@@ -588,13 +770,20 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
     if let Some(metadata) = &event.metadata {
         let usage = metadata.usage.as_ref().and_then(map_usage);
         state.pending_finish = Some(PendingFinish {
-            reason: state.pending_finish.as_ref().map(|p| p.reason).unwrap_or(FinishReason::Stop),
+            reason: state
+                .pending_finish
+                .as_ref()
+                .map(|p| p.reason)
+                .unwrap_or(FinishReason::Stop),
             usage,
         });
         return Ok(vec![]);
     }
 
-    if event.internal_server_exception.is_some() || event.model_stream_error_exception.is_some() || event.service_unavailable_exception.is_some() {
+    if event.internal_server_exception.is_some()
+        || event.model_stream_error_exception.is_some()
+        || event.service_unavailable_exception.is_some()
+    {
         let message = event
             .internal_server_exception
             .as_ref()
@@ -602,7 +791,12 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
             .or(event.service_unavailable_exception.as_ref())
             .and_then(|e| e.message.clone())
             .unwrap_or_else(|| "Bedrock Converse stream error".to_string());
-        return Ok(vec![LlmEvent::ProviderError { message, classification: None, retryable: Some(true), provider_metadata: None }]);
+        return Ok(vec![LlmEvent::ProviderError {
+            message,
+            classification: None,
+            retryable: Some(true),
+            provider_metadata: None,
+        }]);
     }
 
     if event.validation_exception.is_some() || event.throttling_exception.is_some() {
@@ -612,11 +806,12 @@ fn step(state: &mut ParserState, event: &BedrockEvent) -> Result<Vec<LlmEvent>, 
             .or(event.throttling_exception.as_ref())
             .and_then(|e| e.message.clone())
             .unwrap_or_else(|| "Bedrock Converse error".to_string());
-        let classification = if event.validation_exception.is_some() && is_context_overflow(&message) {
-            Some(crate::schema::ProviderFailureClassification::ContextOverflow)
-        } else {
-            None
-        };
+        let classification =
+            if event.validation_exception.is_some() && is_context_overflow(&message) {
+                Some(crate::schema::ProviderFailureClassification::ContextOverflow)
+            } else {
+                None
+            };
         return Ok(vec![LlmEvent::ProviderError {
             message,
             classification,
@@ -638,7 +833,13 @@ fn on_halt(state: &ParserState) -> Vec<LlmEvent> {
     } else {
         pending_finish.reason
     };
-    lifecycle::finish(&state.lifecycle, &mut events, reason, pending_finish.usage.as_ref(), None);
+    lifecycle::finish(
+        &state.lifecycle,
+        &mut events,
+        reason,
+        pending_finish.usage.as_ref(),
+        None,
+    );
     events
 }
 
@@ -664,9 +865,9 @@ impl ProtocolStream for BedrockConverseStream {
         state: Box<dyn Any + Send>,
         event: &Value,
     ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError> {
-        let mut state = *state.downcast::<ParserState>().map_err(|_| {
-            shared::invalid_request("Bedrock Converse parser state mismatch")
-        })?;
+        let mut state = *state
+            .downcast::<ParserState>()
+            .map_err(|_| shared::invalid_request("Bedrock Converse parser state mismatch"))?;
         let event: BedrockEvent = serde_json::from_value(event.clone()).unwrap_or_default();
         let events = step(&mut state, &event)?;
         Ok((Box::new(state), events))
@@ -687,7 +888,11 @@ impl ProtocolStream for BedrockConverseStream {
 /// `BedrockConverse.protocol`.
 /// From reference/packages/llm/src/protocols/bedrock-converse.ts (`protocol`)
 pub fn protocol() -> Protocol {
-    Protocol::make(ADAPTER, Arc::new(|request| from_request(request)), Arc::new(BedrockConverseStream))
+    Protocol::make(
+        ADAPTER,
+        Arc::new(|request| from_request(request)),
+        Arc::new(BedrockConverseStream),
+    )
 }
 
 /// `BedrockConverse.route`.
@@ -698,7 +903,18 @@ pub fn route() -> crate::route::Route {
         provider: Some("bedrock".to_string()),
         protocol: protocol(),
         endpoint: crate::route::endpoint::path_dynamic(
-            |input| format!("/model/{}/converse-stream", urlencode_model(&input.body.get("modelId").and_then(Value::as_str).unwrap_or_default())),
+            |input| {
+                format!(
+                    "/model/{}/converse-stream",
+                    urlencode_model(
+                        &input
+                            .body
+                            .get("modelId")
+                            .and_then(Value::as_str)
+                            .unwrap_or_default()
+                    )
+                )
+            },
             crate::route::EndpointOptions::none(),
         ),
         auth: Some(crate::route::Auth::custom(|_input| {
@@ -722,7 +938,12 @@ fn urlencode_model(value: &str) -> String {
 
 fn media_part(part: &ContentPart) -> MediaPart {
     match part {
-        ContentPart::Media { media_type, data, filename, metadata } => MediaPart {
+        ContentPart::Media {
+            media_type,
+            data,
+            filename,
+            metadata,
+        } => MediaPart {
             part_type: "media".to_string(),
             media_type: media_type.clone(),
             data: data.clone(),
@@ -735,7 +956,14 @@ fn media_part(part: &ContentPart) -> MediaPart {
 
 fn tool_call_part(part: &ContentPart) -> ToolCallPart {
     match part {
-        ContentPart::ToolCall { id, name, input, provider_executed, metadata, provider_metadata } => ToolCallPart {
+        ContentPart::ToolCall {
+            id,
+            name,
+            input,
+            provider_executed,
+            metadata,
+            provider_metadata,
+        } => ToolCallPart {
             part_type: "tool-call".to_string(),
             id: id.clone(),
             name: name.clone(),
@@ -750,18 +978,24 @@ fn tool_call_part(part: &ContentPart) -> ToolCallPart {
 
 fn tool_result_part(part: &ContentPart) -> ToolResultPart {
     match part {
-        ContentPart::ToolResult { id, name, result, provider_executed, cache, metadata, provider_metadata } => {
-            ToolResultPart {
-                part_type: "tool-result".to_string(),
-                id: id.clone(),
-                name: name.clone(),
-                result: result.clone(),
-                provider_executed: *provider_executed,
-                cache: cache.clone(),
-                metadata: metadata.clone(),
-                provider_metadata: provider_metadata.clone(),
-            }
-        }
+        ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache,
+            metadata,
+            provider_metadata,
+        } => ToolResultPart {
+            part_type: "tool-result".to_string(),
+            id: id.clone(),
+            name: name.clone(),
+            result: result.clone(),
+            provider_executed: *provider_executed,
+            cache: cache.clone(),
+            metadata: metadata.clone(),
+            provider_metadata: provider_metadata.clone(),
+        },
         _ => unreachable!(),
     }
 }

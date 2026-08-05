@@ -11,9 +11,12 @@ use super::utils::lifecycle;
 use super::utils::openai_options as OpenAIOptions;
 use super::utils::tool_schema::ToolSchemaProjection;
 use super::utils::tool_stream::{self, ToolStream};
-use crate::route::Protocol;
 use crate::route::protocol::ProtocolStream;
-use crate::schema::messages::{ContentPart, Message, MediaPart, ReasoningPart, ToolCallPart, ToolContent, ToolDefinition, TextPart, ToolResultPart};
+use crate::route::Protocol;
+use crate::schema::messages::{
+    ContentPart, MediaPart, Message, ReasoningPart, TextPart, ToolCallPart, ToolContent,
+    ToolDefinition, ToolResultPart,
+};
 use crate::schema::{FinishReason, LlmError, LlmEvent, LlmRequest, ToolChoiceType, Usage};
 use crate::shared;
 
@@ -106,8 +109,14 @@ pub struct ParserState {
 fn lower_tool(tool: &ToolDefinition, input_schema: &Value) -> Value {
     let mut function = Map::new();
     function.insert("name".to_string(), Value::String(tool.name.clone()));
-    function.insert("description".to_string(), Value::String(tool.description.clone()));
-    function.insert("parameters".to_string(), ToolSchemaProjection::open_ai(input_schema));
+    function.insert(
+        "description".to_string(),
+        Value::String(tool.description.clone()),
+    );
+    function.insert(
+        "parameters".to_string(),
+        ToolSchemaProjection::open_ai(input_schema),
+    );
     let mut obj = Map::new();
     obj.insert("type".to_string(), Value::String("function".to_string()));
     obj.insert("function".to_string(), Value::Object(function));
@@ -121,7 +130,9 @@ fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
         ToolChoiceType::Required => Ok(Value::String("required".to_string())),
         ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(shared::invalid_request("OpenAI Chat tool choice requires a tool name"));
+                return Err(shared::invalid_request(
+                    "OpenAI Chat tool choice requires a tool name",
+                ));
             };
             let mut function = Map::new();
             function.insert("name".to_string(), Value::String(name.clone()));
@@ -136,7 +147,10 @@ fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
 fn lower_tool_call(part: &ToolCallPart) -> Value {
     let mut function = Map::new();
     function.insert("name".to_string(), Value::String(part.name.clone()));
-    function.insert("arguments".to_string(), Value::String(shared::encode_json(&part.input)));
+    function.insert(
+        "arguments".to_string(),
+        Value::String(shared::encode_json(&part.input)),
+    );
     let mut obj = Map::new();
     obj.insert("id".to_string(), Value::String(part.id.clone()));
     obj.insert("type".to_string(), Value::String("function".to_string()));
@@ -145,7 +159,8 @@ fn lower_tool_call(part: &ToolCallPart) -> Value {
 }
 
 fn lower_media(part: &MediaPart) -> Result<Value, LlmError> {
-    let supported: std::collections::HashSet<String> = shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
+    let supported: std::collections::HashSet<String> =
+        shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
     let media = shared::validate_media("OpenAI Chat", part, &supported)?;
     let mut image_url = Map::new();
     image_url.insert("url".to_string(), Value::String(media.data_url));
@@ -155,7 +170,9 @@ fn lower_media(part: &MediaPart) -> Result<Value, LlmError> {
     Ok(Value::Object(obj))
 }
 
-fn openai_compatible_reasoning_content(native: &Option<serde_json::Map<String, Value>>) -> Option<String> {
+fn openai_compatible_reasoning_content(
+    native: &Option<serde_json::Map<String, Value>>,
+) -> Option<String> {
     let native = native.as_ref()?;
     let openai_compatible = native.get("openaiCompatible")?;
     let reasoning = openai_compatible.get("reasoning_content")?;
@@ -174,11 +191,17 @@ fn lower_user_message(message: &Message) -> Result<Value, LlmError> {
             }
             ContentPart::Media { .. } => content.push(lower_media(&media_part(part))?),
             _ => {
-                return Err(shared::unsupported("OpenAI Chat", "user", &["text", "media"]));
+                return Err(shared::unsupported(
+                    "OpenAI Chat",
+                    "user",
+                    &["text", "media"],
+                ));
             }
         }
     }
-    let all_text = content.iter().all(|part| part.get("type").and_then(Value::as_str) == Some("text"));
+    let all_text = content
+        .iter()
+        .all(|part| part.get("type").and_then(Value::as_str) == Some("text"));
     if all_text {
         let text = content
             .iter()
@@ -207,13 +230,23 @@ fn lower_assistant_message(message: &Message) -> Result<Value, LlmError> {
                 content.push(TextPart::make(text));
             }
             ContentPart::Reasoning { text, .. } => {
-                reasoning.push(ReasoningPart { part_type: "reasoning".to_string(), text: text.clone(), encrypted: None, metadata: None, provider_metadata: None });
+                reasoning.push(ReasoningPart {
+                    part_type: "reasoning".to_string(),
+                    text: text.clone(),
+                    encrypted: None,
+                    metadata: None,
+                    provider_metadata: None,
+                });
             }
             ContentPart::ToolCall { .. } => {
                 tool_calls.push(lower_tool_call(&tool_call_part(part)));
             }
             _ => {
-                return Err(shared::unsupported("OpenAI Chat", "assistant", &["text", "reasoning", "tool-call"]));
+                return Err(shared::unsupported(
+                    "OpenAI Chat",
+                    "assistant",
+                    &["text", "reasoning", "tool-call"],
+                ));
             }
         }
     }
@@ -224,7 +257,9 @@ fn lower_assistant_message(message: &Message) -> Result<Value, LlmError> {
     } else {
         obj.insert(
             "content".to_string(),
-            Value::String(shared::join_text(&content.iter().map(|p| p.text.clone()).collect::<Vec<_>>())),
+            Value::String(shared::join_text(
+                &content.iter().map(|p| p.text.clone()).collect::<Vec<_>>(),
+            )),
         );
     }
     if !tool_calls.is_empty() {
@@ -233,10 +268,19 @@ fn lower_assistant_message(message: &Message) -> Result<Value, LlmError> {
     if !reasoning.is_empty() {
         obj.insert(
             "reasoning_content".to_string(),
-            Value::String(reasoning.iter().map(|p| p.text.clone()).collect::<Vec<_>>().join("")),
+            Value::String(
+                reasoning
+                    .iter()
+                    .map(|p| p.text.clone())
+                    .collect::<Vec<_>>()
+                    .join(""),
+            ),
         );
     } else if let Some(reasoning_content) = openai_compatible_reasoning_content(&message.native) {
-        obj.insert("reasoning_content".to_string(), Value::String(reasoning_content));
+        obj.insert(
+            "reasoning_content".to_string(),
+            Value::String(reasoning_content),
+        );
     }
     Ok(Value::Object(obj))
 }
@@ -269,7 +313,10 @@ fn lower_tool_messages(message: &Message) -> Result<LowerToolMessages, LlmError>
                 obj.insert("tool_call_id".to_string(), Value::String(part.id.clone()));
                 obj.insert("content".to_string(), Value::String(text.join("\n")));
                 messages.push(Value::Object(obj));
-                for item in content.iter().filter(|item| matches!(item, ToolContent::File { .. })) {
+                for item in content
+                    .iter()
+                    .filter(|item| matches!(item, ToolContent::File { .. }))
+                {
                     if let ToolContent::File { uri, mime, name } = item {
                         images.push(lower_media(&MediaPart {
                             part_type: "media".to_string(),
@@ -285,7 +332,10 @@ fn lower_tool_messages(message: &Message) -> Result<LowerToolMessages, LlmError>
                 let mut obj = Map::new();
                 obj.insert("role".to_string(), Value::String("tool".to_string()));
                 obj.insert("tool_call_id".to_string(), Value::String(part.id.clone()));
-                obj.insert("content".to_string(), Value::String(shared::tool_result_text(&part)));
+                obj.insert(
+                    "content".to_string(),
+                    Value::String(shared::tool_result_text(&part)),
+                );
                 messages.push(Value::Object(obj));
             }
         }
@@ -344,7 +394,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                 if prev.get("role").and_then(Value::as_str) == Some("user") {
                     if let Some(Value::String(content)) = prev.get("content") {
                         let mut next = prev.clone();
-                        next.insert("content".to_string(), Value::String(format!("{}\n{}", content, part.text)));
+                        next.insert(
+                            "content".to_string(),
+                            Value::String(format!("{}\n{}", content, part.text)),
+                        );
                         *messages.last_mut().unwrap() = Value::Object(next);
                         continue;
                     }
@@ -387,7 +440,10 @@ fn lower_options(request: &LlmRequest) -> Result<Map<String, Value>, LlmError> {
     }
     if let Some(effort) = OpenAIOptions::reasoning_effort(request) {
         if !OpenAIOptions::is_reasoning_effort(&effort) {
-            return Err(shared::invalid_request(format!("OpenAI Chat does not support reasoning effort {}", effort)));
+            return Err(shared::invalid_request(format!(
+                "OpenAI Chat does not support reasoning effort {}",
+                effort
+            )));
         }
         options.insert("reasoning_effort".to_string(), Value::String(effort));
     }
@@ -398,10 +454,20 @@ fn lower_options(request: &LlmRequest) -> Result<Map<String, Value>, LlmError> {
 /// From reference/packages/llm/src/protocols/openai-chat.ts (`fromRequest`)
 pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     let generation = request.generation.clone();
-    let tool_schema_compatibility = request.model.compatibility.as_ref().and_then(|c| c.tool_schema);
+    let tool_schema_compatibility = request
+        .model
+        .compatibility
+        .as_ref()
+        .and_then(|c| c.tool_schema);
     let mut body = Map::new();
-    body.insert("model".to_string(), Value::String(request.model.id.0.clone()));
-    body.insert("messages".to_string(), Value::Array(lower_messages(request)?));
+    body.insert(
+        "model".to_string(),
+        Value::String(request.model.id.0.clone()),
+    );
+    body.insert(
+        "messages".to_string(),
+        Value::Array(lower_messages(request)?),
+    );
     if !request.tools.is_empty() {
         body.insert(
             "tools".to_string(),
@@ -410,7 +476,13 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
                     .tools
                     .iter()
                     .map(|tool| {
-                        lower_tool(tool, &ToolSchemaProjection::model_compatibility(&tool.input_schema, tool_schema_compatibility))
+                        lower_tool(
+                            tool,
+                            &ToolSchemaProjection::model_compatibility(
+                                &tool.input_schema,
+                                tool_schema_compatibility,
+                            ),
+                        )
                     })
                     .collect(),
             ),
@@ -420,14 +492,56 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
         body.insert("tool_choice".to_string(), lower_tool_choice(tool_choice)?);
     }
     body.insert("stream".to_string(), Value::Bool(true));
-    body.insert("stream_options".to_string(), Value::Object(Map::from_iter([("include_usage".to_string(), Value::Bool(true))])));
-    crate::jset_opt!(body, "max_tokens", generation.as_ref().and_then(|g| g.max_tokens));
-    crate::jset_opt!(body, "temperature", generation.as_ref().and_then(|g| g.temperature));
-    crate::jset_opt!(body, "top_p", generation.as_ref().and_then(|g| g.top_p));
-    crate::jset_opt!(body, "frequency_penalty", generation.as_ref().and_then(|g| g.frequency_penalty));
-    crate::jset_opt!(body, "presence_penalty", generation.as_ref().and_then(|g| g.presence_penalty));
+    body.insert(
+        "stream_options".to_string(),
+        Value::Object(Map::from_iter([(
+            "include_usage".to_string(),
+            Value::Bool(true),
+        )])),
+    );
+    crate::jset_opt!(
+        body,
+        "max_tokens",
+        generation.as_ref().and_then(|g| g.max_tokens)
+    );
+    crate::jset_opt!(
+        body,
+        "temperature",
+        generation
+            .as_ref()
+            .and_then(|g| g.temperature)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        body,
+        "top_p",
+        generation
+            .as_ref()
+            .and_then(|g| g.top_p)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        body,
+        "frequency_penalty",
+        generation
+            .as_ref()
+            .and_then(|g| g.frequency_penalty)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        body,
+        "presence_penalty",
+        generation
+            .as_ref()
+            .and_then(|g| g.presence_penalty)
+            .map(shared::json_number)
+    );
     crate::jset_opt!(body, "seed", generation.as_ref().and_then(|g| g.seed));
-    crate::jset_opt!(body, "stop", generation.as_ref().and_then(|g| g.stop.clone()));
+    crate::jset_opt!(
+        body,
+        "stop",
+        generation.as_ref().and_then(|g| g.stop.clone())
+    );
     for (key, value) in lower_options(request)? {
         body.insert(key, value);
     }
@@ -450,8 +564,16 @@ fn map_finish_reason(reason: Option<&str>) -> FinishReason {
 
 fn map_usage(usage: Option<OpenAIChatUsage>) -> Option<Usage> {
     let usage = usage?;
-    let cached = usage.prompt_tokens_details.as_ref().and_then(|d| d.as_ref()).and_then(|d| d.cached_tokens);
-    let reasoning = usage.completion_tokens_details.as_ref().and_then(|d| d.as_ref()).and_then(|d| d.reasoning_tokens);
+    let cached = usage
+        .prompt_tokens_details
+        .as_ref()
+        .and_then(|d| d.as_ref())
+        .and_then(|d| d.cached_tokens);
+    let reasoning = usage
+        .completion_tokens_details
+        .as_ref()
+        .and_then(|d| d.as_ref())
+        .and_then(|d| d.reasoning_tokens);
     let non_cached = shared::subtract_tokens(usage.prompt_tokens, cached);
     let raw = serde_json::to_value(&usage).unwrap_or(Value::Null);
     Some(Usage {
@@ -460,7 +582,11 @@ fn map_usage(usage: Option<OpenAIChatUsage>) -> Option<Usage> {
         non_cached_input_tokens: non_cached,
         cache_read_input_tokens: cached,
         reasoning_tokens: reasoning,
-        total_tokens: shared::total_tokens(usage.prompt_tokens, usage.completion_tokens, usage.total_tokens),
+        total_tokens: shared::total_tokens(
+            usage.prompt_tokens,
+            usage.completion_tokens,
+            usage.total_tokens,
+        ),
         cache_write_input_tokens: None,
         provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([(
             "openai".to_string(),
@@ -478,14 +604,26 @@ fn step(state: &mut ParserState, event: &OpenAIChatEvent) -> Result<Vec<LlmEvent
         None => state.finish_reason,
     };
     let delta = choice.and_then(|c| c.delta.clone().flatten());
-    let tool_deltas = delta.as_ref().and_then(|d| d.tool_calls.clone().flatten()).unwrap_or_default();
+    let tool_deltas = delta
+        .as_ref()
+        .and_then(|d| d.tool_calls.clone().flatten())
+        .unwrap_or_default();
     let mut tools = state.tools.clone();
 
     let mut lifecycle = state.lifecycle.clone();
 
-    if let Some(reasoning_content) = delta.as_ref().and_then(|d| d.reasoning_content.clone().flatten()) {
+    if let Some(reasoning_content) = delta
+        .as_ref()
+        .and_then(|d| d.reasoning_content.clone().flatten())
+    {
         if !reasoning_content.is_empty() {
-            lifecycle = lifecycle::reasoning_delta(&lifecycle, &mut events, "reasoning-0", &reasoning_content, None);
+            lifecycle = lifecycle::reasoning_delta(
+                &lifecycle,
+                &mut events,
+                "reasoning-0",
+                &reasoning_content,
+                None,
+            );
         }
     }
 
@@ -505,7 +643,10 @@ fn step(state: &mut ParserState, event: &OpenAIChatEvent) -> Result<Vec<LlmEvent
         let delta = tool_stream::ToolDelta {
             id: tool.id.clone().flatten(),
             name: function.as_ref().and_then(|f| f.name.clone().flatten()),
-            text: function.as_ref().and_then(|f| f.arguments.clone().flatten()).unwrap_or_default(),
+            text: function
+                .as_ref()
+                .and_then(|f| f.arguments.clone().flatten())
+                .unwrap_or_default(),
         };
         let result = tool_stream::append_or_start(
             ADAPTER,
@@ -521,14 +662,17 @@ fn step(state: &mut ParserState, event: &OpenAIChatEvent) -> Result<Vec<LlmEvent
         events.extend(result.events);
     }
 
-    let finished = if finish_reason.is_some() && state.finish_reason.is_none() && !tools.is_empty() {
+    let finished = if finish_reason.is_some() && state.finish_reason.is_none() && !tools.is_empty()
+    {
         Some(tool_stream::finish_all(ADAPTER, &tools)?)
     } else {
         None
     };
 
     state.tools = finished.as_ref().map(|f| f.tools.clone()).unwrap_or(tools);
-    state.tool_call_events = finished.map(|f| f.events).unwrap_or_else(|| state.tool_call_events.clone());
+    state.tool_call_events = finished
+        .map(|f| f.events)
+        .unwrap_or_else(|| state.tool_call_events.clone());
     state.usage = usage;
     state.finish_reason = finish_reason;
     state.lifecycle = lifecycle;
@@ -580,9 +724,9 @@ impl ProtocolStream for OpenAIChatStream {
         state: Box<dyn Any + Send>,
         event: &Value,
     ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError> {
-        let mut state = *state.downcast::<ParserState>().map_err(|_| {
-            shared::invalid_request("OpenAI Chat parser state mismatch")
-        })?;
+        let mut state = *state
+            .downcast::<ParserState>()
+            .map_err(|_| shared::invalid_request("OpenAI Chat parser state mismatch"))?;
         let event: OpenAIChatEvent = serde_json::from_value(event.clone()).unwrap_or_default();
         let events = step(&mut state, &event)?;
         Ok((Box::new(state), events))
@@ -606,7 +750,9 @@ pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
         Arc::new(|request| from_request(request)),
-        Arc::new(OpenAIChatStream { adapter: ADAPTER.to_string() }),
+        Arc::new(OpenAIChatStream {
+            adapter: ADAPTER.to_string(),
+        }),
     )
 }
 
@@ -619,7 +765,10 @@ pub fn route() -> crate::route::Route {
         protocol: protocol(),
         endpoint: crate::route::endpoint::path(
             PATH,
-            crate::route::EndpointOptions { base_url: Some(DEFAULT_BASE_URL.to_string()), query: None },
+            crate::route::EndpointOptions {
+                base_url: Some(DEFAULT_BASE_URL.to_string()),
+                query: None,
+            },
         ),
         auth: Some(crate::route::Auth::none()),
         framing: Some(crate::route::Framing::Sse),
@@ -634,7 +783,12 @@ pub fn route() -> crate::route::Route {
 
 fn media_part(part: &ContentPart) -> MediaPart {
     match part {
-        ContentPart::Media { media_type, data, filename, metadata } => MediaPart {
+        ContentPart::Media {
+            media_type,
+            data,
+            filename,
+            metadata,
+        } => MediaPart {
             part_type: "media".to_string(),
             media_type: media_type.clone(),
             data: data.clone(),
@@ -647,7 +801,14 @@ fn media_part(part: &ContentPart) -> MediaPart {
 
 fn tool_call_part(part: &ContentPart) -> ToolCallPart {
     match part {
-        ContentPart::ToolCall { id, name, input, provider_executed, metadata, provider_metadata } => ToolCallPart {
+        ContentPart::ToolCall {
+            id,
+            name,
+            input,
+            provider_executed,
+            metadata,
+            provider_metadata,
+        } => ToolCallPart {
             part_type: "tool-call".to_string(),
             id: id.clone(),
             name: name.clone(),
@@ -662,18 +823,24 @@ fn tool_call_part(part: &ContentPart) -> ToolCallPart {
 
 fn tool_result_part(part: &ContentPart) -> ToolResultPart {
     match part {
-        ContentPart::ToolResult { id, name, result, provider_executed, cache, metadata, provider_metadata } => {
-            ToolResultPart {
-                part_type: "tool-result".to_string(),
-                id: id.clone(),
-                name: name.clone(),
-                result: result.clone(),
-                provider_executed: *provider_executed,
-                cache: cache.clone(),
-                metadata: metadata.clone(),
-                provider_metadata: provider_metadata.clone(),
-            }
-        }
+        ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache,
+            metadata,
+            provider_metadata,
+        } => ToolResultPart {
+            part_type: "tool-result".to_string(),
+            id: id.clone(),
+            name: name.clone(),
+            result: result.clone(),
+            provider_executed: *provider_executed,
+            cache: cache.clone(),
+            metadata: metadata.clone(),
+            provider_metadata: provider_metadata.clone(),
+        },
         _ => unreachable!(),
     }
 }

@@ -2,7 +2,9 @@
 //! From reference/packages/llm/src/cache-policy.ts
 
 use crate::schema::messages::{ContentPart, Message, ToolDefinition};
-use crate::schema::options::{mark_last_message_content, CachePolicy, CachePolicyMessages, CachePolicyObject};
+use crate::schema::options::{
+    mark_last_message_content, CachePolicy, CachePolicyMessages, CachePolicyObject,
+};
 use crate::schema::{CacheHint, LlmRequest};
 
 const AUTO: CachePolicyObject = CachePolicyObject {
@@ -58,7 +60,10 @@ fn mark_last_tool(tools: &[ToolDefinition], hint: CacheHint) -> Vec<ToolDefiniti
         .collect()
 }
 
-fn mark_last_system(system: &[crate::schema::SystemPart], hint: CacheHint) -> Vec<crate::schema::SystemPart> {
+fn mark_last_system(
+    system: &[crate::schema::SystemPart],
+    hint: CacheHint,
+) -> Vec<crate::schema::SystemPart> {
     if system.is_empty() {
         return system.to_vec();
     }

@@ -27,7 +27,11 @@ pub struct Config {
 }
 
 fn auth_for(options: &Config) -> Auth {
-    AuthOptions::bearer(options.auth.clone(), options.api_key.clone(), &["XAI_API_KEY"])
+    AuthOptions::bearer(
+        options.auth.clone(),
+        options.api_key.clone(),
+        &["XAI_API_KEY"],
+    )
 }
 
 fn configured_responses_route(input: &Config) -> Route {
@@ -35,7 +39,12 @@ fn configured_responses_route(input: &Config) -> Route {
     let mut patch = RoutePatch::empty();
     patch.provider = Some(ID.to_string());
     patch.auth = Some(auth_for(input));
-    patch.endpoint = Some(EndpointPatch::base_url(input.base_url.clone().unwrap_or_else(|| profile.base_url.to_string())));
+    patch.endpoint = Some(EndpointPatch::base_url(
+        input
+            .base_url
+            .clone()
+            .unwrap_or_else(|| profile.base_url.to_string()),
+    ));
     patch.headers = input.headers.clone();
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
@@ -49,7 +58,12 @@ fn configured_chat_route(input: &Config) -> Route {
     let mut patch = RoutePatch::empty();
     patch.provider = Some(ID.to_string());
     patch.auth = Some(auth_for(input));
-    patch.endpoint = Some(EndpointPatch::base_url(input.base_url.clone().unwrap_or_else(|| profile.base_url.to_string())));
+    patch.endpoint = Some(EndpointPatch::base_url(
+        input
+            .base_url
+            .clone()
+            .unwrap_or_else(|| profile.base_url.to_string()),
+    ));
     patch.headers = input.headers.clone();
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
@@ -66,16 +80,34 @@ pub fn configure(input: Config) -> XaiProvider {
     let responses = {
         let route = responses_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: Some(ID.to_string()), defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: Some(ID.to_string()),
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
     let chat = {
         let route = chat_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: Some(ID.to_string()), defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: Some(ID.to_string()),
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
-    XaiProvider { id: ID.to_string(), responses: Arc::new(responses), chat: Arc::new(chat) }
+    XaiProvider {
+        id: ID.to_string(),
+        responses: Arc::new(responses),
+        chat: Arc::new(chat),
+    }
 }
 
 /// Default provider (env-key auth).

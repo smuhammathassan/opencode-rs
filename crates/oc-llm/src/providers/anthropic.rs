@@ -39,7 +39,12 @@ fn auth_for(options: &Config) -> Auth {
 pub fn configure(input: Config) -> AnthropicProvider {
     let mut patch = RoutePatch::empty();
     patch.auth = Some(auth_for(&input));
-    patch.endpoint = Some(EndpointPatch::base_url(input.base_url.clone().unwrap_or_else(|| anthropic_messages::DEFAULT_BASE_URL.to_string())));
+    patch.endpoint = Some(EndpointPatch::base_url(
+        input
+            .base_url
+            .clone()
+            .unwrap_or_else(|| anthropic_messages::DEFAULT_BASE_URL.to_string()),
+    ));
     patch.headers = input.headers.clone();
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
@@ -47,9 +52,19 @@ pub fn configure(input: Config) -> AnthropicProvider {
     patch.http = input.http.clone();
     let route = Arc::new(anthropic_messages::route().with(patch));
     let model = move |model_id: String| -> Model {
-        route.model(RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+        route
+            .model(RouteModelInput {
+                id: model_id,
+                provider: None,
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
-    AnthropicProvider { id: ID.to_string(), model: Arc::new(model) }
+    AnthropicProvider {
+        id: ID.to_string(),
+        model: Arc::new(model),
+    }
 }
 
 /// Default provider (env-key auth).

@@ -3,8 +3,8 @@
 
 use url::Url;
 
-use crate::shared::trim_base_url;
 use crate::schema::LlmRequest;
+use crate::shared::trim_base_url;
 
 /// `EndpointInput`.
 /// From reference/packages/llm/src/route/endpoint.ts
@@ -55,7 +55,11 @@ pub fn path_dynamic(
     f: impl Fn(&EndpointInput) -> String + Send + Sync + 'static,
     options: EndpointOptions,
 ) -> Endpoint {
-    Endpoint { base_url: options.base_url, path: EndpointPath::Dynamic(Arc::new(f)), query: options.query }
+    Endpoint {
+        base_url: options.base_url,
+        path: EndpointPath::Dynamic(Arc::new(f)),
+        query: options.query,
+    }
 }
 
 pub struct EndpointOptions {
@@ -65,7 +69,10 @@ pub struct EndpointOptions {
 
 impl EndpointOptions {
     pub fn none() -> Self {
-        EndpointOptions { base_url: None, query: None }
+        EndpointOptions {
+            base_url: None,
+            query: None,
+        }
     }
 }
 
@@ -97,11 +104,17 @@ pub struct EndpointPatch {
 
 impl EndpointPatch {
     pub fn base_url(url: impl Into<String>) -> EndpointPatch {
-        EndpointPatch { base_url: Some(url.into()), ..Default::default() }
+        EndpointPatch {
+            base_url: Some(url.into()),
+            ..Default::default()
+        }
     }
 
     pub fn query(query: std::collections::BTreeMap<String, String>) -> EndpointPatch {
-        EndpointPatch { query: Some(query), ..Default::default() }
+        EndpointPatch {
+            query: Some(query),
+            ..Default::default()
+        }
     }
 }
 
@@ -112,7 +125,11 @@ pub fn render(endpoint: &Endpoint, input: &EndpointInput) -> Result<Url, crate::
         EndpointPath::Static(path) => path.clone(),
         EndpointPath::Dynamic(f) => f(input),
     };
-    let url = format!("{}{}", trim_base_url(endpoint.base_url.as_deref().unwrap_or("")), part);
+    let url = format!(
+        "{}{}",
+        trim_base_url(endpoint.base_url.as_deref().unwrap_or("")),
+        part
+    );
     let mut parsed = Url::parse(&url).map_err(|error| {
         crate::shared::invalid_request(format!("Invalid endpoint URL {}: {}", url, error))
     })?;

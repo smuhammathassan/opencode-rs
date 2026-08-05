@@ -164,14 +164,16 @@ impl LlmErrorReason {
     }
 
     pub fn retryable(&self) -> bool {
-        matches!(self, LlmErrorReason::RateLimit { .. } | LlmErrorReason::ProviderInternal { .. })
+        matches!(
+            self,
+            LlmErrorReason::RateLimit { .. } | LlmErrorReason::ProviderInternal { .. }
+        )
     }
 
     pub fn retry_after_ms(&self) -> Option<i64> {
         match self {
-            LlmErrorReason::RateLimit { retry_after_ms, .. } | LlmErrorReason::ProviderInternal { retry_after_ms, .. } => {
-                *retry_after_ms
-            }
+            LlmErrorReason::RateLimit { retry_after_ms, .. }
+            | LlmErrorReason::ProviderInternal { retry_after_ms, .. } => *retry_after_ms,
             _ => None,
         }
     }
@@ -194,14 +196,29 @@ pub struct LlmError {
 }
 
 impl LlmError {
-    pub fn new(module: impl Into<String>, method: impl Into<String>, reason: LlmErrorReason) -> LlmError {
-        LlmError { module: module.into(), method: method.into(), reason }
+    pub fn new(
+        module: impl Into<String>,
+        method: impl Into<String>,
+        reason: LlmErrorReason,
+    ) -> LlmError {
+        LlmError {
+            module: module.into(),
+            method: method.into(),
+            reason,
+        }
     }
 
     pub fn message(&self) -> String {
         match &self.reason {
-            LlmErrorReason::NoRoute { route, provider, model } => {
-                format!("{}.{}: No LLM route for {}/{} using {}", self.module, self.method, provider, model, route)
+            LlmErrorReason::NoRoute {
+                route,
+                provider,
+                model,
+            } => {
+                format!(
+                    "{}.{}: No LLM route for {}/{} using {}",
+                    self.module, self.method, provider, model, route
+                )
             }
             _ => format!("{}.{}: {}", self.module, self.method, self.reason.message()),
         }
@@ -270,7 +287,11 @@ pub struct ToolFailure {
 
 impl ToolFailure {
     pub fn new(message: impl Into<String>) -> ToolFailure {
-        ToolFailure { message: message.into(), error: None, metadata: None }
+        ToolFailure {
+            message: message.into(),
+            error: None,
+            metadata: None,
+        }
     }
 }
 

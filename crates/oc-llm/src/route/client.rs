@@ -15,10 +15,10 @@ use super::protocol::{FramePayload, ProtocolStream};
 use super::transport::{self, HttpPrepared, HttpRequestValue};
 use crate::cache_policy::apply_cache_policy;
 use crate::schema::{
-    merge_generation_options, merge_http_options, merge_provider_options, GenerationOptions, HttpOptions, LlmError,
-    LlmEvent, LlmRequest, LlmResponse, Message, Model, ModelCompatibility, ModelDefaults, ModelLimits, ModelInput,
-    ModelSerializable, PreparedRequest, ProviderOptions, SystemPart, ToolDefinition, response_complete, response_empty,
-    response_reduce,
+    merge_generation_options, merge_http_options, merge_provider_options, response_complete,
+    response_empty, response_reduce, GenerationOptions, HttpOptions, LlmError, LlmEvent,
+    LlmRequest, LlmResponse, Message, Model, ModelCompatibility, ModelDefaults, ModelInput,
+    ModelLimits, ModelSerializable, PreparedRequest, ProviderOptions, SystemPart, ToolDefinition,
 };
 
 /// `RouteBody` — body construction for a route.
@@ -35,12 +35,12 @@ pub struct Protocol {
 }
 
 impl Protocol {
-    pub fn make(
-        id: impl Into<String>,
-        body: BodyFn,
-        stream: Arc<dyn ProtocolStream>,
-    ) -> Protocol {
-        Protocol { id: id.into(), body, stream }
+    pub fn make(id: impl Into<String>, body: BodyFn, stream: Arc<dyn ProtocolStream>) -> Protocol {
+        Protocol {
+            id: id.into(),
+            body,
+            stream,
+        }
     }
 }
 
@@ -81,10 +81,16 @@ fn merge_headers(items: &[Option<&BTreeMap<String, String>>]) -> Option<BTreeMap
 }
 
 fn merge_route_defaults(base: Option<&RouteDefaults>, patch: &RouteDefaultsInput) -> RouteDefaults {
-    let headers = merge_headers(&[base.and_then(|b| b.headers.as_ref()), patch.headers.as_ref()]);
+    let headers = merge_headers(&[
+        base.and_then(|b| b.headers.as_ref()),
+        patch.headers.as_ref(),
+    ]);
     RouteDefaults {
         headers: headers.clone(),
-        limits: patch.limits.clone().or_else(|| base.and_then(|b| b.limits.clone())),
+        limits: patch
+            .limits
+            .clone()
+            .or_else(|| base.and_then(|b| b.limits.clone())),
         generation: merge_generation_options(&[
             base.and_then(|b| b.generation.as_ref()),
             patch.generation.as_ref(),
@@ -96,7 +102,11 @@ fn merge_route_defaults(base: Option<&RouteDefaults>, patch: &RouteDefaultsInput
         http: merge_http_options(&[
             base.and_then(|b| b.http.clone()),
             patch.http.clone(),
-            headers.map(|headers| HttpOptions { body: None, headers: Some(headers), query: None }),
+            headers.map(|headers| HttpOptions {
+                body: None,
+                headers: Some(headers),
+                query: None,
+            }),
         ]),
     }
 }
@@ -285,7 +295,9 @@ fn resolve_request_options(request: &LlmRequest) -> LlmRequest {
     let generation = Some(generation.unwrap_or_default());
     let provider_options = merge_provider_options(&[
         route_defaults.provider_options.as_ref(),
-        model_defaults.as_ref().and_then(|d| d.provider_options.as_ref()),
+        model_defaults
+            .as_ref()
+            .and_then(|d| d.provider_options.as_ref()),
         request.provider_options.as_ref(),
     ]);
     let http = merge_http_options(&[
@@ -309,13 +321,32 @@ pub fn compile(request: &LlmRequest) -> Result<Compiled, LlmError> {
     let route = resolved.model.route.clone();
     let body = (route.protocol.body)(&resolved)?;
     let prepared = transport_prepare(&route, &body, &resolved)?;
-    Ok(Compiled { request: resolved, route, body, prepared })
+    Ok(Compiled {
+        request: resolved,
+        route,
+        body,
+        prepared,
+    })
 }
 
-fn transport_prepare(route: &Route, body: &Value, request: &LlmRequest) -> Result<HttpPrepared, LlmError> {
-    let parts = transport::json_request_parts(body, request, &route.endpoint, &route.auth, route.headers.as_ref())?;
+fn transport_prepare(
+    route: &Route,
+    body: &Value,
+    request: &LlmRequest,
+) -> Result<HttpPrepared, LlmError> {
+    let parts = transport::json_request_parts(
+        body,
+        request,
+        &route.endpoint,
+        &route.auth,
+        route.headers.as_ref(),
+    )?;
     Ok(HttpPrepared {
-        request: HttpRequestValue { url: parts.url, body: parts.body_text, headers: parts.headers },
+        request: HttpRequestValue {
+            url: parts.url,
+            body: parts.body_text,
+            headers: parts.headers,
+        },
         framing: route.framing,
     })
 }
@@ -335,11 +366,15 @@ impl Default for LlmClient {
 
 impl LlmClient {
     pub fn new() -> LlmClient {
-        LlmClient { executor: Executor::new(reqwest::Client::new()) }
+        LlmClient {
+            executor: Executor::new(reqwest::Client::new()),
+        }
     }
 
     pub fn with_http_client(client: reqwest::Client) -> LlmClient {
-        LlmClient { executor: Executor::new(client) }
+        LlmClient {
+            executor: Executor::new(client),
+        }
     }
 
     /// `LLMClient.prepare(request)` — compile without sending.
@@ -347,14 +382,19 @@ impl LlmClient {
     pub fn prepare(&self, request: &LlmRequest) -> Result<PreparedRequest, LlmError> {
         let compiled = compile(request)?;
         Ok(PreparedRequest {
-            id: compiled.request.id.clone().unwrap_or_else(|| "request".to_string()),
+            id: compiled
+                .request
+                .id
+                .clone()
+                .unwrap_or_else(|| "request".to_string()),
             route: compiled.route.id.clone(),
             protocol: compiled.route.protocol.id.clone(),
             model: ModelSerializable::from_model(&compiled.request.model),
             body: compiled.body,
-            metadata: Some(
-                serde_json::Map::from_iter([("transport".to_string(), Value::String("http-json".to_string()))]),
-            ),
+            metadata: Some(serde_json::Map::from_iter([(
+                "transport".to_string(),
+                Value::String("http-json".to_string()),
+            )])),
         })
     }
 
@@ -366,13 +406,20 @@ impl LlmClient {
         match compiled {
             Err(error) => Box::pin(futures::stream::once(async move { Err(error) })),
             Ok(compiled) => {
-                let route_key = format!("{}/{}", compiled.request.model.provider, compiled.request.model.route.id);
+                let route_key = format!(
+                    "{}/{}",
+                    compiled.request.model.provider, compiled.request.model.route.id
+                );
                 let stream = futures::stream::once(async move {
                     let response = executor.execute(&compiled.prepared.request).await?;
                     let body = response
                         .bytes_stream()
                         .map_err(move |_error| {
-                            LlmError::event_error(&route_key, format!("Failed to read {} stream", route_key), None)
+                            LlmError::event_error(
+                                &route_key,
+                                format!("Failed to read {} stream", route_key),
+                                None,
+                            )
                         })
                         .boxed();
                     let frames = transport::frames(&compiled.prepared, &compiled.request, body);
@@ -401,7 +448,11 @@ impl LlmClient {
         if let Some(response) = response_complete(&state) {
             return Ok(response);
         }
-        Err(crate::shared::event_error(&route, "Provider stream ended without a terminal finish event", None))
+        Err(crate::shared::event_error(
+            &route,
+            "Provider stream ended without a terminal finish event",
+            None,
+        ))
     }
 }
 

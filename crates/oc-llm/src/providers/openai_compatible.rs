@@ -8,7 +8,7 @@ use crate::protocols::openai_compatible_chat;
 use crate::route::auth::Auth;
 use crate::route::auth_options as AuthOptions;
 use crate::route::{EndpointPatch, Route, RouteDefaultsInput, RouteModelInput, RoutePatch};
-use crate::schema::{Model, ModelLimits, GenerationOptions, HttpOptions, ProviderOptions};
+use crate::schema::{GenerationOptions, HttpOptions, Model, ModelLimits, ProviderOptions};
 
 pub const ID: &str = "openai-compatible";
 
@@ -54,11 +54,18 @@ fn defaults_patch(options: &GenericModelOptions) -> RouteDefaultsInput {
 /// `configure(input)`.
 /// From reference/packages/llm/src/providers/openai-compatible.ts (`configure`)
 pub fn configure(input: GenericModelOptions) -> OpenAICompatible {
-    let provider = input.provider.clone().unwrap_or_else(|| "openai-compatible".to_string());
+    let provider = input
+        .provider
+        .clone()
+        .unwrap_or_else(|| "openai-compatible".to_string());
     let route = openai_compatible_chat::route().with(RoutePatch {
         id: None,
         provider: Some(provider.clone()),
-        auth: Some(AuthOptions::bearer(input.auth.clone(), input.api_key.clone(), &[])),
+        auth: Some(AuthOptions::bearer(
+            input.auth.clone(),
+            input.api_key.clone(),
+            &[],
+        )),
         endpoint: Some(EndpointPatch::base_url(input.base_url.clone())),
         headers: None,
         headers_fn: None,
@@ -71,21 +78,34 @@ pub fn configure(input: GenericModelOptions) -> OpenAICompatible {
     let id_for_closure = provider.clone();
     let model = move |model_id: String| -> Model {
         route
-            .model(RouteModelInput { id: model_id, provider: Some(id_for_closure.clone()), defaults: None, compatibility: None })
+            .model(RouteModelInput {
+                id: model_id,
+                provider: Some(id_for_closure.clone()),
+                defaults: None,
+                compatibility: None,
+            })
             .unwrap()
     };
-    OpenAICompatible { id: provider, model: Arc::new(model) }
+    OpenAICompatible {
+        id: provider,
+        model: Arc::new(model),
+    }
 }
 
 /// `provider()` — the default compatible provider with no URL.
 /// From reference/packages/llm/src/providers/openai-compatible.ts (`provider`)
 pub fn provider() -> OpenAICompatible {
-    configure(GenericModelOptions { base_url: String::new(), ..Default::default() })
+    configure(GenericModelOptions {
+        base_url: String::new(),
+        ..Default::default()
+    })
 }
 
 /// Define a family facade from a profile.
 /// From reference/packages/llm/src/providers/openai-compatible.ts (`define`)
-pub fn define(profile: crate::providers::openai_compatible_profile::OpenAICompatibleProfile) -> OpenAICompatible {
+pub fn define(
+    profile: crate::providers::openai_compatible_profile::OpenAICompatibleProfile,
+) -> OpenAICompatible {
     configure(GenericModelOptions {
         provider: Some(profile.provider.to_string()),
         base_url: profile.base_url.to_string(),

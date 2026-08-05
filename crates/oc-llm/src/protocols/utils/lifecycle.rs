@@ -25,21 +25,38 @@ pub fn step_start(state: &State, events: &mut Vec<LlmEvent>) -> State {
         return state.clone();
     }
     events.push(LlmEvent::StepStart { index: 0 });
-    State { step_started: true, ..state.clone() }
+    State {
+        step_started: true,
+        ..state.clone()
+    }
 }
 
 /// `Lifecycle.textDelta(state, events, id, text)`.
 pub fn text_delta(state: &State, events: &mut Vec<LlmEvent>, id: &str, text: &str) -> State {
     let stepped = step_start(state, events);
     if stepped.text.contains(id) {
-        events.push(LlmEvent::TextDelta { id: id.to_string(), text: text.to_string(), provider_metadata: None });
+        events.push(LlmEvent::TextDelta {
+            id: id.to_string(),
+            text: text.to_string(),
+            provider_metadata: None,
+        });
         return stepped;
     }
-    events.push(LlmEvent::TextStart { id: id.to_string(), provider_metadata: None });
-    events.push(LlmEvent::TextDelta { id: id.to_string(), text: text.to_string(), provider_metadata: None });
+    events.push(LlmEvent::TextStart {
+        id: id.to_string(),
+        provider_metadata: None,
+    });
+    events.push(LlmEvent::TextDelta {
+        id: id.to_string(),
+        text: text.to_string(),
+        provider_metadata: None,
+    });
     let mut text_set = stepped.text.clone();
     text_set.insert(id.to_string());
-    State { text: text_set, ..stepped }
+    State {
+        text: text_set,
+        ..stepped
+    }
 }
 
 /// `Lifecycle.reasoningStart(state, events, id, providerMetadata)`.
@@ -53,10 +70,16 @@ pub fn reasoning_start(
         return state.clone();
     }
     let stepped = step_start(state, events);
-    events.push(LlmEvent::ReasoningStart { id: id.to_string(), provider_metadata: provider_metadata.cloned() });
+    events.push(LlmEvent::ReasoningStart {
+        id: id.to_string(),
+        provider_metadata: provider_metadata.cloned(),
+    });
     let mut reasoning = stepped.reasoning.clone();
     reasoning.insert(id.to_string());
-    State { reasoning, ..stepped }
+    State {
+        reasoning,
+        ..stepped
+    }
 }
 
 /// `Lifecycle.reasoningDelta(...)`.
@@ -87,19 +110,33 @@ pub fn reasoning_end(
         return state.clone();
     }
     let stepped = step_start(state, events);
-    events.push(LlmEvent::ReasoningEnd { id: id.to_string(), provider_metadata: provider_metadata.cloned() });
+    events.push(LlmEvent::ReasoningEnd {
+        id: id.to_string(),
+        provider_metadata: provider_metadata.cloned(),
+    });
     let mut reasoning = stepped.reasoning.clone();
     reasoning.remove(id);
-    State { reasoning, ..stepped }
+    State {
+        reasoning,
+        ..stepped
+    }
 }
 
 /// `Lifecycle.textEnd(...)`.
-pub fn text_end(state: &State, events: &mut Vec<LlmEvent>, id: &str, provider_metadata: Option<&ProviderMetadata>) -> State {
+pub fn text_end(
+    state: &State,
+    events: &mut Vec<LlmEvent>,
+    id: &str,
+    provider_metadata: Option<&ProviderMetadata>,
+) -> State {
     if !state.text.contains(id) {
         return state.clone();
     }
     let stepped = step_start(state, events);
-    events.push(LlmEvent::TextEnd { id: id.to_string(), provider_metadata: provider_metadata.cloned() });
+    events.push(LlmEvent::TextEnd {
+        id: id.to_string(),
+        provider_metadata: provider_metadata.cloned(),
+    });
     let mut text = stepped.text.clone();
     text.remove(id);
     State { text, ..stepped }
@@ -108,10 +145,16 @@ pub fn text_end(state: &State, events: &mut Vec<LlmEvent>, id: &str, provider_me
 fn close_open_blocks(state: &State, events: &mut Vec<LlmEvent>) -> State {
     let mut next = state.clone();
     for id in &state.reasoning {
-        events.push(LlmEvent::ReasoningEnd { id: id.clone(), provider_metadata: None });
+        events.push(LlmEvent::ReasoningEnd {
+            id: id.clone(),
+            provider_metadata: None,
+        });
     }
     for id in &state.text {
-        events.push(LlmEvent::TextEnd { id: id.clone(), provider_metadata: None });
+        events.push(LlmEvent::TextEnd {
+            id: id.clone(),
+            provider_metadata: None,
+        });
     }
     next.reasoning.clear();
     next.text.clear();
@@ -133,8 +176,15 @@ pub fn finish(
         usage: usage.cloned(),
         provider_metadata: provider_metadata.cloned(),
     });
-    events.push(LlmEvent::Finish { reason, usage: usage.cloned(), provider_metadata: provider_metadata.cloned() });
-    State { step_started: false, ..stepped }
+    events.push(LlmEvent::Finish {
+        reason,
+        usage: usage.cloned(),
+        provider_metadata: provider_metadata.cloned(),
+    });
+    State {
+        step_started: false,
+        ..stepped
+    }
 }
 
 #[allow(unused)]

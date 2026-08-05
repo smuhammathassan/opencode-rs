@@ -5,7 +5,8 @@ use serde::{Deserialize, Serialize};
 
 /// `ProviderMetadata` — `Record<string, Record<string, unknown>>`.
 /// From reference/packages/schema/src/llm.ts (`ProviderMetadata`)
-pub type ProviderMetadata = std::collections::BTreeMap<String, serde_json::Map<String, serde_json::Value>>;
+pub type ProviderMetadata =
+    std::collections::BTreeMap<String, serde_json::Map<String, serde_json::Value>>;
 
 /// Stable string identifier for a protocol implementation.
 /// From reference/packages/llm/src/schema/ids.ts (`ProtocolID`)
@@ -69,7 +70,8 @@ impl From<String> for ProviderId {
 
 /// Reasoning effort levels.
 /// From reference/packages/llm/src/schema/ids.ts (`ReasoningEfforts`)
-pub const REASONING_EFFORTS: [&str; 7] = ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
+pub const REASONING_EFFORTS: [&str; 7] =
+    ["none", "minimal", "low", "medium", "high", "xhigh", "max"];
 
 /// Text verbosity.
 /// From reference/packages/llm/src/schema/ids.ts (`TextVerbosity`)

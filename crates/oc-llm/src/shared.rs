@@ -37,6 +37,19 @@ pub fn encode_json(value: &Value) -> String {
     serde_json::to_string(value).unwrap_or_default()
 }
 
+/// JSON number with JS `JSON.stringify` semantics: integral floats serialize
+/// as integers (`0.0` -> `0`).
+pub fn json_number(value: f64) -> Value {
+    if value.fract() == 0.0 && value.abs() < 9.0e15 {
+        Value::Number(serde_json::Number::from(value as i64))
+    } else {
+        match serde_json::Number::from_f64(value) {
+            Some(number) => Value::Number(number),
+            None => Value::Null,
+        }
+    }
+}
+
 /// `ProviderShared.decodeJson` — parse a JSON string.
 pub fn decode_json(input: &str) -> Result<Value, serde_json::Error> {
     serde_json::from_str(input)
@@ -60,18 +73,26 @@ pub fn join_text_parts<'a, T: Iterator<Item = &'a str>>(parts: T) -> String {
 /// Escape text for the `<system-update>` wrapper.
 /// From reference/packages/llm/src/protocols/shared.ts (`wrapSystemUpdate`)
 fn escape_system_update_text(text: &str) -> String {
-    text.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
+    text.replace('&', "&amp;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }
 
 /// `ProviderShared.wrapSystemUpdate(parts)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`wrapSystemUpdate`)
 pub fn wrap_system_update(parts: &[String]) -> String {
-    format!("<system-update>\n{}\n</system-update>", escape_system_update_text(&parts.join("\n")))
+    format!(
+        "<system-update>\n{}\n</system-update>",
+        escape_system_update_text(&parts.join("\n"))
+    )
 }
 
 /// `ProviderShared.systemUpdateText(route, message)` — extract text parts only.
 /// From reference/packages/llm/src/protocols/shared.ts (`systemUpdateText`)
-pub fn system_update_text(route: &str, message: &crate::schema::Message) -> Result<Vec<crate::schema::TextPart>, LlmError> {
+pub fn system_update_text(
+    route: &str,
+    message: &crate::schema::Message,
+) -> Result<Vec<crate::schema::TextPart>, LlmError> {
     let mut content = Vec::new();
     for part in &message.content {
         match part {
@@ -91,10 +112,18 @@ pub fn system_update_text(route: &str, message: &crate::schema::Message) -> Resu
 
 /// `ProviderShared.wrappedSystemUpdate(route, message)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`wrappedSystemUpdate`)
-pub fn wrapped_system_update(route: &str, message: &crate::schema::Message) -> Result<WrappedSystemUpdate, LlmError> {
+pub fn wrapped_system_update(
+    route: &str,
+    message: &crate::schema::Message,
+) -> Result<WrappedSystemUpdate, LlmError> {
     let content = system_update_text(route, message)?;
     let cache = content.last().and_then(|part| part.cache.clone());
-    let text = wrap_system_update(&content.iter().map(|part| part.text.clone()).collect::<Vec<_>>());
+    let text = wrap_system_update(
+        &content
+            .iter()
+            .map(|part| part.text.clone())
+            .collect::<Vec<_>>(),
+    );
     Ok(WrappedSystemUpdate { text, cache })
 }
 
@@ -106,7 +135,11 @@ pub struct WrappedSystemUpdate {
 /// `ProviderShared.parseToolInput(route, name, raw)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`parseToolInput`)
 pub fn parse_tool_input(route: &str, name: &str, raw: &str) -> Result<Value, LlmError> {
-    parse_json(route, if raw.is_empty() { "{}" } else { raw }, &format!("Invalid JSON input for {} tool call {}", route, name))
+    parse_json(
+        route,
+        if raw.is_empty() { "{}" } else { raw },
+        &format!("Invalid JSON input for {} tool call {}", route, name),
+    )
 }
 
 /// `ProviderShared.parseJson(route, input, message)`.
@@ -147,7 +180,14 @@ pub fn error_text_value(error: &Value) -> String {
 
 pub const IMAGE_MIMES: [&str; 4] = ["image/png", "image/jpeg", "image/gif", "image/webp"];
 pub const VIDEO_MIMES: [&str; 3] = ["video/mp4", "video/webm", "video/quicktime"];
-pub const AUDIO_MIMES: [&str; 6] = ["audio/wav", "audio/mp3", "audio/aiff", "audio/aac", "audio/ogg", "audio/flac"];
+pub const AUDIO_MIMES: [&str; 6] = [
+    "audio/wav",
+    "audio/mp3",
+    "audio/aiff",
+    "audio/aac",
+    "audio/ogg",
+    "audio/flac",
+];
 pub const MEDIA_MIMES: [&str; 13] = [
     "image/png",
     "image/jpeg",
@@ -181,10 +221,17 @@ const BASE64_PATTERN: &str = r"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za
 
 /// `ProviderShared.validateMedia(route, part, supportedMimes)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`validateMedia`)
-pub fn validate_media(route: &str, part: &MediaPart, supported_mimes: &std::collections::HashSet<String>) -> Result<ValidatedMedia, LlmError> {
+pub fn validate_media(
+    route: &str,
+    part: &MediaPart,
+    supported_mimes: &std::collections::HashSet<String>,
+) -> Result<ValidatedMedia, LlmError> {
     let mime = part.media_type.to_lowercase();
     if !supported_mimes.contains(&mime) {
-        return Err(invalid_request(format!("{} does not support media type {}", route, part.media_type)));
+        return Err(invalid_request(format!(
+            "{} does not support media type {}",
+            route, part.media_type
+        )));
     }
 
     let base64 = match &part.data {
@@ -200,18 +247,28 @@ pub fn validate_media(route: &str, part: &MediaPart, supported_mimes: &std::coll
         }
         MediaData::Base64(data) => {
             if let Some(rest) = data.strip_prefix("data:") {
-                let regex = regex::Regex::new(r"^data:([^;,]+);base64,([A-Za-z0-9+/]*={0,2})$").unwrap();
+                let regex =
+                    regex::Regex::new(r"^data:([^;,]+);base64,([A-Za-z0-9+/]*={0,2})$").unwrap();
                 let captures = regex.captures(rest).ok_or_else(|| {
-                    invalid_request(format!("{} media data URL must contain valid base64", route))
+                    invalid_request(format!(
+                        "{} media data URL must contain valid base64",
+                        route
+                    ))
                 })?;
-                let data_mime = captures.get(1).map(|m| m.as_str().to_lowercase()).unwrap_or_default();
+                let data_mime = captures
+                    .get(1)
+                    .map(|m| m.as_str().to_lowercase())
+                    .unwrap_or_default();
                 if data_mime != mime {
                     return Err(invalid_request(format!(
                         "{} media type {} does not match data URL type {}",
                         route, part.media_type, data_mime
                     )));
                 }
-                captures.get(2).map(|m| m.as_str().to_string()).unwrap_or_default()
+                captures
+                    .get(2)
+                    .map(|m| m.as_str().to_string())
+                    .unwrap_or_default()
             } else {
                 data.clone()
             }
@@ -219,25 +276,45 @@ pub fn validate_media(route: &str, part: &MediaPart, supported_mimes: &std::coll
     };
 
     if base64.len() > MAX_MEDIA_ENCODED_BYTES {
-        return Err(invalid_request(format!("{} media exceeds the {} byte encoded limit", route, MAX_MEDIA_ENCODED_BYTES)));
+        return Err(invalid_request(format!(
+            "{} media exceeds the {} byte encoded limit",
+            route, MAX_MEDIA_ENCODED_BYTES
+        )));
     }
     if base64.is_empty() || base64.len() % 4 != 0 {
-        return Err(invalid_request(format!("{} media must contain valid base64", route)));
+        return Err(invalid_request(format!(
+            "{} media must contain valid base64",
+            route
+        )));
     }
     let pattern = regex::Regex::new(BASE64_PATTERN).unwrap();
     if !pattern.is_match(&base64) {
-        return Err(invalid_request(format!("{} media must contain valid base64", route)));
+        return Err(invalid_request(format!(
+            "{} media must contain valid base64",
+            route
+        )));
     }
     use base64::Engine as _;
     let bytes = match base64::engine::general_purpose::STANDARD.decode(&base64) {
         Ok(bytes) => bytes,
-        Err(_) => return Err(invalid_request(format!("{} media must contain valid base64", route))),
+        Err(_) => {
+            return Err(invalid_request(format!(
+                "{} media must contain valid base64",
+                route
+            )))
+        }
     };
     if bytes.len() > MAX_MEDIA_DECODED_BYTES {
-        return Err(invalid_request(format!("{} media exceeds the {} byte decoded limit", route, MAX_MEDIA_DECODED_BYTES)));
+        return Err(invalid_request(format!(
+            "{} media exceeds the {} byte decoded limit",
+            route, MAX_MEDIA_DECODED_BYTES
+        )));
     }
     if base64::engine::general_purpose::STANDARD.encode(&bytes) != base64 {
-        return Err(invalid_request(format!("{} media must contain canonical base64", route)));
+        return Err(invalid_request(format!(
+            "{} media must contain canonical base64",
+            route
+        )));
     }
     Ok(ValidatedMedia {
         mime: mime.clone(),
@@ -249,10 +326,20 @@ pub fn validate_media(route: &str, part: &MediaPart, supported_mimes: &std::coll
 
 /// `ProviderShared.validateToolFile(route, part, supportedMimes)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`validateToolFile`)
-pub fn validate_tool_file(route: &str, part: &ToolFileContent, supported_mimes: &std::collections::HashSet<String>) -> Result<ValidatedMedia, LlmError> {
+pub fn validate_tool_file(
+    route: &str,
+    part: &ToolFileContent,
+    supported_mimes: &std::collections::HashSet<String>,
+) -> Result<ValidatedMedia, LlmError> {
     validate_media(
         route,
-        &MediaPart { part_type: "media".to_string(), media_type: part.mime.clone(), data: MediaData::Base64(part.uri.clone()), filename: part.name.clone(), metadata: None },
+        &MediaPart {
+            part_type: "media".to_string(),
+            media_type: part.mime.clone(),
+            data: MediaData::Base64(part.uri.clone()),
+            filename: part.name.clone(),
+            metadata: None,
+        },
         supported_mimes,
     )
 }
@@ -272,8 +359,7 @@ pub fn tool_result_text(part: &ToolResultPart) -> String {
             other => serde_json::to_string(other).unwrap_or_else(|_| other.to_string()),
         },
         ToolResultValue::Error { value } => {
-            let structured = !value.is_array()
-                && (value.is_object() || value.is_null());
+            let structured = !value.is_array() && (value.is_object() || value.is_null());
             if structured {
                 encode_json(value)
             } else {
@@ -285,7 +371,9 @@ pub fn tool_result_text(part: &ToolResultPart) -> String {
         }
         other => encode_json(&match other {
             ToolResultValue::Json { value } => value.clone(),
-            ToolResultValue::Content { value } => serde_json::to_value(value).unwrap_or(Value::Null),
+            ToolResultValue::Content { value } => {
+                serde_json::to_value(value).unwrap_or(Value::Null)
+            }
             ToolResultValue::Text { value } | ToolResultValue::Error { value } => value.clone(),
         }),
     }
@@ -293,7 +381,11 @@ pub fn tool_result_text(part: &ToolResultPart) -> String {
 
 /// `totalTokens` policy.
 /// From reference/packages/llm/src/protocols/shared.ts (`totalTokens`)
-pub fn total_tokens(input_tokens: Option<i64>, output_tokens: Option<i64>, total: Option<i64>) -> Option<i64> {
+pub fn total_tokens(
+    input_tokens: Option<i64>,
+    output_tokens: Option<i64>,
+    total: Option<i64>,
+) -> Option<i64> {
     if let Some(total) = total {
         return Some(total);
     }
@@ -331,7 +423,11 @@ fn format_content_types(types: &[&str]) -> String {
         [] => String::new(),
         [one] => (*one).to_string(),
         [a, b] => format!("{} and {}", a, b),
-        many => format!("{}, and {}", many[..many.len() - 1].join(", "), many[many.len() - 1]),
+        many => format!(
+            "{}, and {}",
+            many[..many.len() - 1].join(", "),
+            many[many.len() - 1]
+        ),
     }
 }
 
@@ -343,12 +439,23 @@ pub fn supports_content(part: &ContentPart, types: &[&str]) -> bool {
 /// `ProviderShared.unsupportedContent(route, role, types)`.
 /// From reference/packages/llm/src/protocols/shared.ts (`unsupportedContent`)
 pub fn unsupported_content(route: &str, role: &str, types: &[&str], detail: String) -> LlmError {
-    invalid_request(format!("{} {} messages {} {}", route, role, detail, format_content_types(types)))
+    invalid_request(format!(
+        "{} {} messages {} {}",
+        route,
+        role,
+        detail,
+        format_content_types(types)
+    ))
 }
 
 /// Convenience overload for the standard message.
 pub fn unsupported(route: &str, role: &str, types: &[&str]) -> LlmError {
-    invalid_request(format!("{} {} messages only support {} content for now", route, role, format_content_types(types)))
+    invalid_request(format!(
+        "{} {} messages only support {} content for now",
+        route,
+        role,
+        format_content_types(types)
+    ))
 }
 
 /// `matchToolChoice` — dispatch over the tool-choice mode.
@@ -368,10 +475,15 @@ pub fn match_tool_choice<Auto, None, Required, Tool>(
     match tool_choice.kind {
         crate::schema::ToolChoiceType::Auto => Ok(ToolChoiceLowering::Auto((cases.auto)())),
         crate::schema::ToolChoiceType::None => Ok(ToolChoiceLowering::None((cases.none)())),
-        crate::schema::ToolChoiceType::Required => Ok(ToolChoiceLowering::Required((cases.required)())),
+        crate::schema::ToolChoiceType::Required => {
+            Ok(ToolChoiceLowering::Required((cases.required)()))
+        }
         crate::schema::ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(invalid_request(format!("{} tool choice requires a tool name", route)));
+                return Err(invalid_request(format!(
+                    "{} tool choice requires a tool name",
+                    route
+                )));
             };
             Ok(ToolChoiceLowering::Tool((cases.tool)(name)))
         }
@@ -387,7 +499,9 @@ pub struct MatchToolChoiceCases<Auto, None, Required, Tool> {
 
 /// `validateWith(decoder)` — map decode errors to `InvalidRequest`.
 /// From reference/packages/llm/src/protocols/shared.ts (`validateWith`)
-pub fn validate_with<A, E: std::fmt::Display>(decode: impl FnOnce(&str) -> Result<A, E>) -> impl FnOnce(&str) -> Result<A, LlmError> {
+pub fn validate_with<A, E: std::fmt::Display>(
+    decode: impl FnOnce(&str) -> Result<A, E>,
+) -> impl FnOnce(&str) -> Result<A, LlmError> {
     move |input| decode(input).map_err(|error| invalid_request(error.to_string()))
 }
 
@@ -401,11 +515,19 @@ pub fn optional_array(value: Option<Vec<Value>>) -> Option<Vec<Value>> {
 
 /// `systemPartText` — join system part text.
 pub fn system_part_text(system: &[SystemPart]) -> String {
-    system.iter().map(|part| part.text.as_str()).collect::<Vec<_>>().join("\n")
+    system
+        .iter()
+        .map(|part| part.text.as_str())
+        .collect::<Vec<_>>()
+        .join("\n")
 }
 
 /// `totalTokens` shorthand used by mappers.
-pub fn usage_total_tokens(input: Option<i64>, output: Option<i64>, total: Option<i64>) -> Option<i64> {
+pub fn usage_total_tokens(
+    input: Option<i64>,
+    output: Option<i64>,
+    total: Option<i64>,
+) -> Option<i64> {
     total_tokens(input, output, total)
 }
 
@@ -415,6 +537,9 @@ pub fn route_key(provider: &str, route: &str) -> String {
 }
 
 /// Look up a `BTreeMap`-shaped provider metadata value.
-pub fn provider_record<'a>(metadata: &'a crate::schema::ProviderMetadata, key: &str) -> Option<&'a serde_json::Map<String, Value>> {
+pub fn provider_record<'a>(
+    metadata: &'a crate::schema::ProviderMetadata,
+    key: &str,
+) -> Option<&'a serde_json::Map<String, Value>> {
     metadata.get(key)
 }

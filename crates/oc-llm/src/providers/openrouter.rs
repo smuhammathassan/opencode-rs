@@ -44,7 +44,13 @@ pub fn body_options(openrouter: Option<&OpenRouterOptions>) -> serde_json::Map<S
     };
     let usage = openrouter.get("usage");
     if usage == Some(&Value::Bool(true)) {
-        result.insert("usage".to_string(), Value::Object(serde_json::Map::from_iter([("include".to_string(), Value::Bool(true))])));
+        result.insert(
+            "usage".to_string(),
+            Value::Object(serde_json::Map::from_iter([(
+                "include".to_string(),
+                Value::Bool(true),
+            )])),
+        );
     } else if is_record(usage.unwrap_or(&Value::Null)) {
         result.insert("usage".to_string(), usage.cloned().unwrap_or(Value::Null));
     }
@@ -54,7 +60,10 @@ pub fn body_options(openrouter: Option<&OpenRouterOptions>) -> serde_json::Map<S
         }
     }
     if let Some(prompt_cache_key) = openrouter.get("promptCacheKey").and_then(Value::as_str) {
-        result.insert("prompt_cache_key".to_string(), Value::String(prompt_cache_key.to_string()));
+        result.insert(
+            "prompt_cache_key".to_string(),
+            Value::String(prompt_cache_key.to_string()),
+        );
     }
     result
 }
@@ -89,7 +98,10 @@ pub fn route() -> Route {
         ),
         endpoint: crate::route::endpoint::path(
             "/chat/completions",
-            crate::route::EndpointOptions { base_url: Some(profile.base_url.to_string()), query: None },
+            crate::route::EndpointOptions {
+                base_url: Some(profile.base_url.to_string()),
+                query: None,
+            },
         ),
         auth: None,
         framing: Some(crate::route::Framing::Sse),
@@ -103,8 +115,17 @@ pub fn route() -> Route {
 pub fn configure(input: Config) -> OpenRouterProvider {
     let profile = openai_compatible_profile::by_provider("openrouter").unwrap();
     let mut patch = RoutePatch::empty();
-    patch.auth = Some(AuthOptions::bearer(input.auth.clone(), input.api_key.clone(), &["OPENROUTER_API_KEY"]));
-    patch.endpoint = Some(EndpointPatch::base_url(input.base_url.clone().unwrap_or_else(|| profile.base_url.to_string())));
+    patch.auth = Some(AuthOptions::bearer(
+        input.auth.clone(),
+        input.api_key.clone(),
+        &["OPENROUTER_API_KEY"],
+    ));
+    patch.endpoint = Some(EndpointPatch::base_url(
+        input
+            .base_url
+            .clone()
+            .unwrap_or_else(|| profile.base_url.to_string()),
+    ));
     patch.headers = input.headers.clone();
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
@@ -112,9 +133,19 @@ pub fn configure(input: Config) -> OpenRouterProvider {
     patch.http = input.http.clone();
     let route = Arc::new(route().with(patch));
     let model = move |model_id: String| -> Model {
-        route.model(RouteModelInput { id: model_id, provider: Some(ID.to_string()), defaults: None, compatibility: None }).unwrap()
+        route
+            .model(RouteModelInput {
+                id: model_id,
+                provider: Some(ID.to_string()),
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
-    OpenRouterProvider { id: ID.to_string(), model: Arc::new(model) }
+    OpenRouterProvider {
+        id: ID.to_string(),
+        model: Arc::new(model),
+    }
 }
 
 /// Default provider (env-key auth).

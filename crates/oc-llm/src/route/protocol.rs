@@ -29,7 +29,11 @@ pub trait ProtocolStream: Send + Sync {
     fn initial(&self, request: &LlmRequest) -> Box<dyn Any + Send>;
 
     /// Translate one event into emitted `LLMEvent`s plus the next state.
-    fn step(&self, state: Box<dyn Any + Send>, event: &Value) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError>;
+    fn step(
+        &self,
+        state: Box<dyn Any + Send>,
+        event: &Value,
+    ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError>;
 
     /// Optional request-completion signal for transports that do not end naturally.
     fn terminal(&self, event: &Value) -> bool;
@@ -71,7 +75,14 @@ impl ProtoStream {
     ) -> ProtoStream {
         let route = format!("{}/{}", request.model.provider, request.model.route.id);
         let state = protocol.initial(&request);
-        ProtoStream { inner, protocol, route, state: Some(state), pending: VecDeque::new(), done: false }
+        ProtoStream {
+            inner,
+            protocol,
+            route,
+            state: Some(state),
+            pending: VecDeque::new(),
+            done: false,
+        }
     }
 
     fn push_events(&mut self, events: Vec<LlmEvent>) {

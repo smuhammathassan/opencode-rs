@@ -37,7 +37,10 @@ pub struct Config {
 }
 
 fn resource_base_url(resource_name: &str) -> String {
-    format!("https://{}.openai.azure.com/openai/v1", resource_name.trim())
+    format!(
+        "https://{}.openai.azure.com/openai/v1",
+        resource_name.trim()
+    )
 }
 
 /// `routeAuth` — Azure removes `authorization`.
@@ -58,7 +61,10 @@ fn responses_base_route() -> Route {
     patch.id = Some("azure-openai-responses".to_string());
     patch.provider = Some(ID.to_string());
     patch.auth = Some(Auth::remove("authorization"));
-    patch.endpoint = Some(EndpointPatch::query(BTreeMap::from_iter([("api-version".to_string(), "v1".to_string())])));
+    patch.endpoint = Some(EndpointPatch::query(BTreeMap::from_iter([(
+        "api-version".to_string(),
+        "v1".to_string(),
+    )])));
     openai_responses::route().with(patch)
 }
 
@@ -67,7 +73,10 @@ fn chat_base_route() -> Route {
     patch.id = Some("azure-openai-chat".to_string());
     patch.provider = Some(ID.to_string());
     patch.auth = Some(Auth::remove("authorization"));
-    patch.endpoint = Some(EndpointPatch::query(BTreeMap::from_iter([("api-version".to_string(), "v1".to_string())])));
+    patch.endpoint = Some(EndpointPatch::query(BTreeMap::from_iter([(
+        "api-version".to_string(),
+        "v1".to_string(),
+    )])));
     openai_chat::route().with(patch)
 }
 
@@ -79,14 +88,20 @@ fn configured_route(route: &Route, input: &Config) -> Route {
     if let Some(query_params) = &input.query_params {
         query.extend(query_params.clone());
     }
-    let base_url = input
-        .url
-        .base_url
-        .clone()
-        .or_else(|| input.url.resource_name.as_ref().map(|name| resource_base_url(name)));
+    let base_url = input.url.base_url.clone().or_else(|| {
+        input
+            .url
+            .resource_name
+            .as_ref()
+            .map(|name| resource_base_url(name))
+    });
     let mut patch = RoutePatch::empty();
     patch.auth = Some(route_auth(input));
-    patch.endpoint = Some(EndpointPatch { base_url, path: None, query: Some(query) });
+    patch.endpoint = Some(EndpointPatch {
+        base_url,
+        path: None,
+        query: Some(query),
+    });
     patch.headers = input.headers.clone();
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
@@ -104,13 +119,27 @@ pub fn configure(input: Config) -> AzureProvider {
     let responses = {
         let route = responses_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: None,
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
     let chat = {
         let route = chat_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: None,
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
     AzureProvider {

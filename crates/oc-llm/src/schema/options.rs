@@ -38,7 +38,9 @@ pub fn merge_json_records(
     base: Option<BTreeMap<String, Value>>,
     next: &BTreeMap<String, Value>,
 ) -> Option<BTreeMap<String, Value>> {
-    let Some(mut result) = base else { return Some(next.clone()) };
+    let Some(mut result) = base else {
+        return Some(next.clone());
+    };
     if next.len() == 1 {
         let (key, value) = next.iter().next().unwrap();
         result.insert(key.clone(), value.clone());
@@ -55,7 +57,8 @@ pub fn merge_json_records(
                     left.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
                 let right_map: BTreeMap<String, Value> =
                     right.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
-                merge_json_records(Some(left_map), &right_map).map(|m| Value::Object(m.into_iter().collect()))
+                merge_json_records(Some(left_map), &right_map)
+                    .map(|m| Value::Object(m.into_iter().collect()))
             }
             (_, v) => Some(v.clone()),
         };
@@ -70,7 +73,10 @@ pub fn merge_json_records(
     }
 }
 
-fn merge_string_records(base: Option<BTreeMap<String, String>>, next: &BTreeMap<String, String>) -> Option<BTreeMap<String, String>> {
+fn merge_string_records(
+    base: Option<BTreeMap<String, String>>,
+    next: &BTreeMap<String, String>,
+) -> Option<BTreeMap<String, String>> {
     let mut result = base.unwrap_or_default();
     for (k, v) in next {
         if !v.is_empty() {
@@ -99,25 +105,37 @@ pub struct HttpOptions {
 /// `mergeHttpOptions(...items)`.
 /// From reference/packages/llm/src/schema/options.ts (`mergeHttpOptions`)
 pub fn merge_http_options(items: &[Option<HttpOptions>]) -> Option<HttpOptions> {
-    let body = merge_value_records(items.iter().map(|item| item.as_ref().and_then(|i| i.body.clone())));
-    let headers = items.iter().fold(None, |acc: Option<BTreeMap<String, String>>, item| {
-        let next = item.as_ref().and_then(|i| i.headers.clone());
-        match (acc, next) {
-            (Some(a), Some(b)) => merge_string_records(Some(a), &b),
-            (a, b) => a.or(b),
-        }
-    });
-    let query = items.iter().fold(None, |acc: Option<BTreeMap<String, String>>, item| {
-        let next = item.as_ref().and_then(|i| i.query.clone());
-        match (acc, next) {
-            (Some(a), Some(b)) => merge_string_records(Some(a), &b),
-            (a, b) => a.or(b),
-        }
-    });
+    let body = merge_value_records(
+        items
+            .iter()
+            .map(|item| item.as_ref().and_then(|i| i.body.clone())),
+    );
+    let headers = items
+        .iter()
+        .fold(None, |acc: Option<BTreeMap<String, String>>, item| {
+            let next = item.as_ref().and_then(|i| i.headers.clone());
+            match (acc, next) {
+                (Some(a), Some(b)) => merge_string_records(Some(a), &b),
+                (a, b) => a.or(b),
+            }
+        });
+    let query = items
+        .iter()
+        .fold(None, |acc: Option<BTreeMap<String, String>>, item| {
+            let next = item.as_ref().and_then(|i| i.query.clone());
+            match (acc, next) {
+                (Some(a), Some(b)) => merge_string_records(Some(a), &b),
+                (a, b) => a.or(b),
+            }
+        });
     if body.is_none() && headers.is_none() && query.is_none() {
         None
     } else {
-        Some(HttpOptions { body, headers, query })
+        Some(HttpOptions {
+            body,
+            headers,
+            query,
+        })
     }
 }
 
@@ -125,7 +143,8 @@ fn merge_value_records(items: impl Iterator<Item = Option<Value>>) -> Option<Val
     let mut acc: Option<BTreeMap<String, Value>> = None;
     for item in items.flatten() {
         if let Some(obj) = item.as_object() {
-            let map: BTreeMap<String, Value> = obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
+            let map: BTreeMap<String, Value> =
+                obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect();
             acc = match acc {
                 Some(base) => merge_json_records(Some(base), &map),
                 None => Some(map),
@@ -231,7 +250,12 @@ impl ModelDefaults {
     pub fn make(input: ModelDefaultsInput) -> ModelDefaults {
         match input {
             ModelDefaultsInput::Defaults(defaults) => defaults,
-            ModelDefaultsInput::Fields { limits, generation, provider_options, http } => ModelDefaults {
+            ModelDefaultsInput::Fields {
+                limits,
+                generation,
+                provider_options,
+                http,
+            } => ModelDefaults {
                 limits,
                 generation,
                 provider_options,
@@ -394,7 +418,10 @@ pub enum CachePolicy {
 impl CacheHint {
     /// `makeHint(ttlSeconds)` — ephemeral hint.
     pub fn ephemeral(ttl_seconds: Option<u64>) -> CacheHint {
-        CacheHint { kind: CacheHintType::Ephemeral, ttl_seconds }
+        CacheHint {
+            kind: CacheHintType::Ephemeral,
+            ttl_seconds,
+        }
     }
 }
 
@@ -449,22 +476,39 @@ pub fn mark_last_message_content(
     next
 }
 
-fn set_part_cache(part: super::messages::ContentPart, hint: CacheHint) -> super::messages::ContentPart {
+fn set_part_cache(
+    part: super::messages::ContentPart,
+    hint: CacheHint,
+) -> super::messages::ContentPart {
     match part {
-        super::messages::ContentPart::Text { text, cache: _, metadata, provider_metadata } => {
-            super::messages::ContentPart::Text { text, cache: Some(hint), metadata, provider_metadata }
-        }
-        super::messages::ContentPart::ToolResult { id, name, result, provider_executed, cache: _, metadata, provider_metadata } => {
-            super::messages::ContentPart::ToolResult {
-                id,
-                name,
-                result,
-                provider_executed,
-                cache: Some(hint),
-                metadata,
-                provider_metadata,
-            }
-        }
+        super::messages::ContentPart::Text {
+            text,
+            cache: _,
+            metadata,
+            provider_metadata,
+        } => super::messages::ContentPart::Text {
+            text,
+            cache: Some(hint),
+            metadata,
+            provider_metadata,
+        },
+        super::messages::ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache: _,
+            metadata,
+            provider_metadata,
+        } => super::messages::ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache: Some(hint),
+            metadata,
+            provider_metadata,
+        },
         other => other,
     }
 }

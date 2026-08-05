@@ -4,9 +4,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::ids::JsonSchema;
 use super::ids::{CacheHint, MessageRole, ProviderMetadata};
 use super::options::{CachePolicy, GenerationOptions, HttpOptions, Model};
-use super::ids::JsonSchema;
 
 /// `SystemPart` — `{ type: "text", text, cache?, metadata? }`.
 /// From reference/packages/llm/src/schema/messages.ts (`SystemPart`)
@@ -28,7 +28,12 @@ fn system_part_default_type() -> String {
 impl SystemPart {
     /// `SystemPart.make(text)` — `{ type: "text", text }`.
     pub fn make(text: impl Into<String>) -> Self {
-        Self { part_type: "text".to_string(), text: text.into(), cache: None, metadata: None }
+        Self {
+            part_type: "text".to_string(),
+            text: text.into(),
+            cache: None,
+            metadata: None,
+        }
     }
 
     /// `SystemPart.content(input)` — normalize into a `Vec<SystemPart>`.
@@ -92,7 +97,13 @@ pub struct TextPart {
 
 impl TextPart {
     pub fn make(text: impl Into<String>) -> Self {
-        Self { part_type: "text".to_string(), text: text.into(), cache: None, metadata: None, provider_metadata: None }
+        Self {
+            part_type: "text".to_string(),
+            text: text.into(),
+            cache: None,
+            metadata: None,
+            provider_metadata: None,
+        }
     }
 }
 
@@ -179,15 +190,20 @@ impl ToolResultValue {
 
     /// `ToolResultValue.is(value)` — guard for the tagged shape.
     pub fn is(value: &Value) -> bool {
-        let Some(obj) = value.as_object() else { return false };
-        let Some(kind) = obj.get("type").and_then(Value::as_str) else { return false };
+        let Some(obj) = value.as_object() else {
+            return false;
+        };
+        let Some(kind) = obj.get("type").and_then(Value::as_str) else {
+            return false;
+        };
         matches!(kind, "json" | "text" | "error" | "content") && obj.contains_key("value")
     }
 
     /// `ToolResultValue.make(value, type = "json")`.
     pub fn make(value: Value, result_type: Option<&str>) -> ToolResultValue {
         if Self::is(&value) {
-            return serde_json::from_value(value).unwrap_or(ToolResultValue::Json { value: Value::Null });
+            return serde_json::from_value(value)
+                .unwrap_or(ToolResultValue::Json { value: Value::Null });
         }
         match result_type {
             Some("content") => {
@@ -226,31 +242,48 @@ pub struct ToolOutput {
 
 impl ToolOutput {
     pub fn make(structured: Value, content: Vec<ToolContent>) -> Self {
-        Self { structured, content }
+        Self {
+            structured,
+            content,
+        }
     }
 
     pub fn from_result_value(result: &ToolResultValue) -> Option<ToolOutput> {
         match result {
-            ToolResultValue::Json { value } => Some(ToolOutput { structured: value.clone(), content: vec![] }),
+            ToolResultValue::Json { value } => Some(ToolOutput {
+                structured: value.clone(),
+                content: vec![],
+            }),
             ToolResultValue::Text { value } => Some(ToolOutput {
                 structured: Value::Null,
-                content: vec![ToolContent::Text { text: tool_result_text(value) }],
+                content: vec![ToolContent::Text {
+                    text: tool_result_text(value),
+                }],
             }),
-            ToolResultValue::Content { value } => Some(ToolOutput { structured: Value::Null, content: value.clone() }),
+            ToolResultValue::Content { value } => Some(ToolOutput {
+                structured: Value::Null,
+                content: value.clone(),
+            }),
             ToolResultValue::Error { .. } => None,
         }
     }
 
     pub fn to_result_value(&self) -> ToolResultValue {
         if self.content.is_empty() {
-            return ToolResultValue::Json { value: self.structured.clone() };
+            return ToolResultValue::Json {
+                value: self.structured.clone(),
+            };
         }
         if self.content.len() == 1 {
             if let ToolContent::Text { text } = &self.content[0] {
-                return ToolResultValue::Text { value: Value::String(text.clone()) };
+                return ToolResultValue::Text {
+                    value: Value::String(text.clone()),
+                };
             }
         }
-        ToolResultValue::Content { value: self.content.clone() }
+        ToolResultValue::Content {
+            value: self.content.clone(),
+        }
     }
 }
 
@@ -309,7 +342,14 @@ pub struct ToolCallPartInput {
 
 impl ToolCallPartInput {
     pub fn new(id: impl Into<String>, name: impl Into<String>, input: Value) -> Self {
-        Self { id: id.into(), name: name.into(), input, provider_executed: None, metadata: None, provider_metadata: None }
+        Self {
+            id: id.into(),
+            name: name.into(),
+            input,
+            provider_executed: None,
+            metadata: None,
+            provider_metadata: None,
+        }
     }
 }
 
@@ -440,7 +480,12 @@ pub enum ContentPart {
 
 impl ContentPart {
     pub fn text(text: impl Into<String>) -> ContentPart {
-        ContentPart::Text { text: text.into(), cache: None, metadata: None, provider_metadata: None }
+        ContentPart::Text {
+            text: text.into(),
+            cache: None,
+            metadata: None,
+            provider_metadata: None,
+        }
     }
 
     pub fn kind(&self) -> &'static str {
@@ -620,7 +665,11 @@ pub struct ToolDefinition {
 }
 
 impl ToolDefinition {
-    pub fn new(name: impl Into<String>, description: impl Into<String>, input_schema: JsonSchema) -> Self {
+    pub fn new(
+        name: impl Into<String>,
+        description: impl Into<String>,
+        input_schema: JsonSchema,
+    ) -> Self {
         Self {
             name: name.into(),
             description: description.into(),
@@ -654,7 +703,10 @@ pub enum ToolChoiceType {
 
 impl ToolChoice {
     pub fn named(value: impl Into<String>) -> ToolChoice {
-        ToolChoice { kind: ToolChoiceType::Tool, name: Some(value.into()) }
+        ToolChoice {
+            kind: ToolChoiceType::Tool,
+            name: Some(value.into()),
+        }
     }
 
     pub fn is_mode(value: &str) -> bool {
@@ -688,7 +740,10 @@ pub enum ToolChoiceInput {
     Choice(ToolChoice),
     Definition(ToolDefinition),
     String(String),
-    Fields { kind: ToolChoiceType, name: Option<String> },
+    Fields {
+        kind: ToolChoiceType,
+        name: Option<String>,
+    },
 }
 
 impl From<ToolChoice> for ToolChoiceInput {

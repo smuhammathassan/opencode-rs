@@ -6,7 +6,9 @@ use serde_json::Value;
 use std::collections::BTreeMap;
 
 use super::ids::{FinishReason, ProviderMetadata};
-use super::messages::{ContentPart, Message, ToolCallPart, ToolOutput, ToolResultPart, ToolResultValue};
+use super::messages::{
+    ContentPart, Message, ToolCallPart, ToolOutput, ToolResultPart, ToolResultValue,
+};
 use super::options::ModelSerializable;
 
 /// `Usage` — token usage contract.
@@ -17,11 +19,20 @@ pub struct Usage {
     pub input_tokens: Option<i64>,
     #[serde(rename = "outputTokens", skip_serializing_if = "Option::is_none")]
     pub output_tokens: Option<i64>,
-    #[serde(rename = "nonCachedInputTokens", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "nonCachedInputTokens",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub non_cached_input_tokens: Option<i64>,
-    #[serde(rename = "cacheReadInputTokens", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "cacheReadInputTokens",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub cache_read_input_tokens: Option<i64>,
-    #[serde(rename = "cacheWriteInputTokens", skip_serializing_if = "Option::is_none")]
+    #[serde(
+        rename = "cacheWriteInputTokens",
+        skip_serializing_if = "Option::is_none"
+    )]
     pub cache_write_input_tokens: Option<i64>,
     #[serde(rename = "reasoningTokens", skip_serializing_if = "Option::is_none")]
     pub reasoning_tokens: Option<i64>,
@@ -103,7 +114,11 @@ pub enum LlmEvent {
         provider_metadata: Option<ProviderMetadata>,
     },
     #[serde(rename = "tool-input-delta")]
-    ToolInputDelta { id: String, name: String, text: String },
+    ToolInputDelta {
+        id: String,
+        name: String,
+        text: String,
+    },
     #[serde(rename = "tool-input-end")]
     ToolInputEnd {
         id: String,
@@ -208,11 +223,19 @@ impl LlmEvent {
     }
 
     pub fn text_delta(id: impl Into<String>, text: impl Into<String>) -> LlmEvent {
-        LlmEvent::TextDelta { id: id.into(), text: text.into(), provider_metadata: None }
+        LlmEvent::TextDelta {
+            id: id.into(),
+            text: text.into(),
+            provider_metadata: None,
+        }
     }
 
     pub fn reasoning_delta(id: impl Into<String>, text: impl Into<String>) -> LlmEvent {
-        LlmEvent::ReasoningDelta { id: id.into(), text: text.into(), provider_metadata: None }
+        LlmEvent::ReasoningDelta {
+            id: id.into(),
+            text: text.into(),
+            provider_metadata: None,
+        }
     }
 }
 
@@ -254,7 +277,10 @@ impl LlmResponse {
 
     /// `response.toolCalls`.
     pub fn tool_calls(&self) -> Vec<&LlmEvent> {
-        self.events.iter().filter(|e| matches!(e, LlmEvent::ToolCall { .. })).collect()
+        self.events
+            .iter()
+            .filter(|e| matches!(e, LlmEvent::ToolCall { .. }))
+            .collect()
     }
 }
 
@@ -311,7 +337,15 @@ pub struct ToolInputAssembly {
 
 /// `LLMResponse.empty`.
 pub fn response_empty() -> ResponseState {
-    ResponseState { message: Message::assistant(Vec::<ContentPart>::new()), events: Vec::new(), usage: None, finish_reason: None, text_parts: BTreeMap::new(), reasoning_parts: BTreeMap::new(), tool_inputs: BTreeMap::new() }
+    ResponseState {
+        message: Message::assistant(Vec::<ContentPart>::new()),
+        events: Vec::new(),
+        usage: None,
+        finish_reason: None,
+        text_parts: BTreeMap::new(),
+        reasoning_parts: BTreeMap::new(),
+        tool_inputs: BTreeMap::new(),
+    }
 }
 
 fn text_content(text: &str, provider_metadata: Option<&ProviderMetadata>) -> ContentPart {
@@ -335,7 +369,11 @@ fn reasoning_content(text: &str, provider_metadata: Option<&ProviderMetadata>) -
 fn content_with(state: &ResponseState, content: Vec<ContentPart>) -> ResponseState {
     ResponseState {
         events: state.events.clone(),
-        message: Message { role: super::ids::MessageRole::Assistant, content, ..state.message.clone() },
+        message: Message {
+            role: super::ids::MessageRole::Assistant,
+            content,
+            ..state.message.clone()
+        },
         usage: state.usage.clone(),
         finish_reason: state.finish_reason,
         text_parts: state.text_parts.clone(),
@@ -358,7 +396,11 @@ fn replace_content(state: &ResponseState, index: usize, part: ContentPart) -> Re
     content_with(state, content)
 }
 
-fn ensure_text(state: &ResponseState, id: &str, provider_metadata: Option<&ProviderMetadata>) -> ResponseState {
+fn ensure_text(
+    state: &ResponseState,
+    id: &str,
+    provider_metadata: Option<&ProviderMetadata>,
+) -> ResponseState {
     if state.text_parts.contains_key(id) {
         return state.clone();
     }
@@ -375,14 +417,27 @@ fn ensure_text(state: &ResponseState, id: &str, provider_metadata: Option<&Provi
 }
 
 fn reduce_text_delta(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::TextDelta { id, text, provider_metadata } = event else {
+    let LlmEvent::TextDelta {
+        id,
+        text,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
     let started = ensure_text(state, id, provider_metadata.as_ref());
-    let Some(current) = started.text_parts.get(id) else { return started };
+    let Some(current) = started.text_parts.get(id) else {
+        return started;
+    };
     let next_text = format!("{}{}", current.text, text);
-    let next_metadata = provider_metadata.clone().or_else(|| current.provider_metadata.clone());
-    let with_content = replace_content(&started, current.content_index, text_content(&next_text, next_metadata.as_ref()));
+    let next_metadata = provider_metadata
+        .clone()
+        .or_else(|| current.provider_metadata.clone());
+    let with_content = replace_content(
+        &started,
+        current.content_index,
+        text_content(&next_text, next_metadata.as_ref()),
+    );
     let mut next = with_content;
     next.text_parts.insert(
         id.clone(),
@@ -396,12 +451,24 @@ fn reduce_text_delta(state: &ResponseState, event: &LlmEvent) -> ResponseState {
 }
 
 fn reduce_text_end(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::TextEnd { id, provider_metadata } = event else {
+    let LlmEvent::TextEnd {
+        id,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
-    let Some(current) = state.text_parts.get(id) else { return state.clone() };
-    let next_metadata = provider_metadata.clone().or_else(|| current.provider_metadata.clone());
-    let next = replace_content(state, current.content_index, text_content(&current.text, next_metadata.as_ref()));
+    let Some(current) = state.text_parts.get(id) else {
+        return state.clone();
+    };
+    let next_metadata = provider_metadata
+        .clone()
+        .or_else(|| current.provider_metadata.clone());
+    let next = replace_content(
+        state,
+        current.content_index,
+        text_content(&current.text, next_metadata.as_ref()),
+    );
     let mut next = next;
     next.text_parts.insert(
         id.clone(),
@@ -414,7 +481,11 @@ fn reduce_text_end(state: &ResponseState, event: &LlmEvent) -> ResponseState {
     next
 }
 
-fn ensure_reasoning(state: &ResponseState, id: &str, provider_metadata: Option<&ProviderMetadata>) -> ResponseState {
+fn ensure_reasoning(
+    state: &ResponseState,
+    id: &str,
+    provider_metadata: Option<&ProviderMetadata>,
+) -> ResponseState {
     if state.reasoning_parts.contains_key(id) {
         return state.clone();
     }
@@ -431,14 +502,27 @@ fn ensure_reasoning(state: &ResponseState, id: &str, provider_metadata: Option<&
 }
 
 fn reduce_reasoning_delta(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::ReasoningDelta { id, text, provider_metadata } = event else {
+    let LlmEvent::ReasoningDelta {
+        id,
+        text,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
     let started = ensure_reasoning(state, id, provider_metadata.as_ref());
-    let Some(current) = started.reasoning_parts.get(id) else { return started };
+    let Some(current) = started.reasoning_parts.get(id) else {
+        return started;
+    };
     let next_text = format!("{}{}", current.text, text);
-    let next_metadata = provider_metadata.clone().or_else(|| current.provider_metadata.clone());
-    let with_content = replace_content(&started, current.content_index, reasoning_content(&next_text, next_metadata.as_ref()));
+    let next_metadata = provider_metadata
+        .clone()
+        .or_else(|| current.provider_metadata.clone());
+    let with_content = replace_content(
+        &started,
+        current.content_index,
+        reasoning_content(&next_text, next_metadata.as_ref()),
+    );
     let mut next = with_content;
     next.reasoning_parts.insert(
         id.clone(),
@@ -452,12 +536,24 @@ fn reduce_reasoning_delta(state: &ResponseState, event: &LlmEvent) -> ResponseSt
 }
 
 fn reduce_reasoning_end(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::ReasoningEnd { id, provider_metadata } = event else {
+    let LlmEvent::ReasoningEnd {
+        id,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
-    let Some(current) = state.reasoning_parts.get(id) else { return state.clone() };
-    let next_metadata = provider_metadata.clone().or_else(|| current.provider_metadata.clone());
-    let next = replace_content(state, current.content_index, reasoning_content(&current.text, next_metadata.as_ref()));
+    let Some(current) = state.reasoning_parts.get(id) else {
+        return state.clone();
+    };
+    let next_metadata = provider_metadata
+        .clone()
+        .or_else(|| current.provider_metadata.clone());
+    let next = replace_content(
+        state,
+        current.content_index,
+        reasoning_content(&current.text, next_metadata.as_ref()),
+    );
     let mut next = next;
     next.reasoning_parts.insert(
         id.clone(),
@@ -471,13 +567,22 @@ fn reduce_reasoning_end(state: &ResponseState, event: &LlmEvent) -> ResponseStat
 }
 
 fn reduce_tool_input_start(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::ToolInputStart { id, name, provider_metadata } = event else {
+    let LlmEvent::ToolInputStart {
+        id,
+        name,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
     let mut next = state.clone();
     next.tool_inputs.insert(
         id.clone(),
-        ToolInputAssembly { name: name.clone(), text: String::new(), provider_metadata: provider_metadata.clone() },
+        ToolInputAssembly {
+            name: name.clone(),
+            text: String::new(),
+            provider_metadata: provider_metadata.clone(),
+        },
     );
     next
 }
@@ -491,16 +596,29 @@ fn reduce_tool_input_delta(state: &ResponseState, event: &LlmEvent) -> ResponseS
         .tool_inputs
         .get(id)
         .cloned()
-        .unwrap_or_else(|| ToolInputAssembly { name: name.clone(), text: String::new(), provider_metadata: None });
+        .unwrap_or_else(|| ToolInputAssembly {
+            name: name.clone(),
+            text: String::new(),
+            provider_metadata: None,
+        });
     next.tool_inputs.insert(
         id.clone(),
-        ToolInputAssembly { name: current.name.clone(), text: format!("{}{}", current.text, text), provider_metadata: current.provider_metadata.clone() },
+        ToolInputAssembly {
+            name: current.name.clone(),
+            text: format!("{}{}", current.text, text),
+            provider_metadata: current.provider_metadata.clone(),
+        },
     );
     next
 }
 
 fn reduce_tool_input_end(state: &ResponseState, event: &LlmEvent) -> ResponseState {
-    let LlmEvent::ToolInputEnd { id, name, provider_metadata } = event else {
+    let LlmEvent::ToolInputEnd {
+        id,
+        name,
+        provider_metadata,
+    } = event
+    else {
         return state.clone();
     };
     let mut next = state.clone();
@@ -508,17 +626,34 @@ fn reduce_tool_input_end(state: &ResponseState, event: &LlmEvent) -> ResponseSta
         .tool_inputs
         .get(id)
         .cloned()
-        .unwrap_or_else(|| ToolInputAssembly { name: name.clone(), text: String::new(), provider_metadata: None });
-    let next_metadata = provider_metadata.clone().or_else(|| current.provider_metadata.clone());
+        .unwrap_or_else(|| ToolInputAssembly {
+            name: name.clone(),
+            text: String::new(),
+            provider_metadata: None,
+        });
+    let next_metadata = provider_metadata
+        .clone()
+        .or_else(|| current.provider_metadata.clone());
     next.tool_inputs.insert(
         id.clone(),
-        ToolInputAssembly { name: current.name.clone(), text: current.text.clone(), provider_metadata: next_metadata },
+        ToolInputAssembly {
+            name: current.name.clone(),
+            text: current.text.clone(),
+            provider_metadata: next_metadata,
+        },
     );
     next
 }
 
 fn tool_call_content(event: &LlmEvent) -> ContentPart {
-    let LlmEvent::ToolCall { id, name, input, provider_executed, provider_metadata } = event else {
+    let LlmEvent::ToolCall {
+        id,
+        name,
+        input,
+        provider_executed,
+        provider_metadata,
+    } = event
+    else {
         unreachable!()
     };
     ContentPart::from_tool_call(ToolCallPart {
@@ -533,7 +668,15 @@ fn tool_call_content(event: &LlmEvent) -> ContentPart {
 }
 
 fn tool_result_content(event: &LlmEvent) -> ContentPart {
-    let LlmEvent::ToolResult { id, name, result, provider_executed, provider_metadata, .. } = event else {
+    let LlmEvent::ToolResult {
+        id,
+        name,
+        result,
+        provider_executed,
+        provider_metadata,
+        ..
+    } = event
+    else {
         unreachable!()
     };
     ContentPart::from_tool_result(ToolResultPart {
@@ -578,10 +721,16 @@ pub fn response_reduce(state: &ResponseState, event: &LlmEvent) -> ResponseState
     }
 
     match event {
-        LlmEvent::TextStart { id, provider_metadata } => ensure_text(&next, id, provider_metadata.as_ref()),
+        LlmEvent::TextStart {
+            id,
+            provider_metadata,
+        } => ensure_text(&next, id, provider_metadata.as_ref()),
         LlmEvent::TextDelta { .. } => reduce_text_delta(&next, event),
         LlmEvent::TextEnd { .. } => reduce_text_end(&next, event),
-        LlmEvent::ReasoningStart { id, provider_metadata } => ensure_reasoning(&next, id, provider_metadata.as_ref()),
+        LlmEvent::ReasoningStart {
+            id,
+            provider_metadata,
+        } => ensure_reasoning(&next, id, provider_metadata.as_ref()),
         LlmEvent::ReasoningDelta { .. } => reduce_reasoning_delta(&next, event),
         LlmEvent::ReasoningEnd { .. } => reduce_reasoning_end(&next, event),
         LlmEvent::ToolInputStart { .. } => reduce_tool_input_start(&next, event),
@@ -608,7 +757,9 @@ pub fn response_complete(state: &ResponseState) -> Option<LlmResponse> {
 
 /// `LLMResponse.fromEvents`.
 pub fn response_from_events(events: &[LlmEvent]) -> Option<LlmResponse> {
-    let state = events.iter().fold(response_empty(), |state, event| response_reduce(&state, event));
+    let state = events.iter().fold(response_empty(), |state, event| {
+        response_reduce(&state, event)
+    });
     response_complete(&state)
 }
 
@@ -629,5 +780,8 @@ pub fn response_usage_from(events: &[LlmEvent]) -> Option<Usage> {
 
 /// `LLMResponse.toolCalls(events)`.
 pub fn response_tool_calls_from(events: &[LlmEvent]) -> Vec<&LlmEvent> {
-    events.iter().filter(|e| matches!(e, LlmEvent::ToolCall { .. })).collect()
+    events
+        .iter()
+        .filter(|e| matches!(e, LlmEvent::ToolCall { .. }))
+        .collect()
 }

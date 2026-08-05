@@ -63,7 +63,10 @@ pub fn configure(input: Config) -> BedrockProvider {
     let mut patch = RoutePatch::empty();
     patch.provider = Some(ID.to_string());
     patch.endpoint = Some(EndpointPatch::base_url(
-        input.base_url.clone().unwrap_or_else(|| bedrock_base_url(&resolved_region)),
+        input
+            .base_url
+            .clone()
+            .unwrap_or_else(|| bedrock_base_url(&resolved_region)),
     ));
     patch.auth = Some(match &input.api_key {
         Some(api_key) => Credential::Value(api_key.clone()).bearer_auth(),
@@ -76,9 +79,19 @@ pub fn configure(input: Config) -> BedrockProvider {
     patch.http = input.http.clone();
     let route = Arc::new(bedrock_converse::route().with(patch));
     let model = move |model_id: String| -> Model {
-        route.model(RouteModelInput { id: model_id, provider: Some(ID.to_string()), defaults: None, compatibility: None }).unwrap()
+        route
+            .model(RouteModelInput {
+                id: model_id,
+                provider: Some(ID.to_string()),
+                defaults: None,
+                compatibility: None,
+            })
+            .unwrap()
     };
-    BedrockProvider { id: ID.to_string(), model: Arc::new(model) }
+    BedrockProvider {
+        id: ID.to_string(),
+        model: Arc::new(model),
+    }
 }
 
 /// Default provider (env-based credentials).

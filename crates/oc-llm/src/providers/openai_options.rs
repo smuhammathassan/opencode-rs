@@ -23,7 +23,15 @@ fn openai_provider_options(options: &Value) -> Option<ProviderOptions> {
     let mut openai = BTreeMap::new();
     if is_record(options) {
         let obj = options.as_object().unwrap();
-        for key in ["store", "promptCacheKey", "reasoningEffort", "reasoningSummary", "include", "textVerbosity", "serviceTier"] {
+        for key in [
+            "store",
+            "promptCacheKey",
+            "reasoningEffort",
+            "reasoningSummary",
+            "include",
+            "textVerbosity",
+            "serviceTier",
+        ] {
             if let Some(value) = obj.get(key) {
                 openai.insert(key.to_string(), value.clone());
             }
@@ -44,14 +52,25 @@ pub fn gpt5_default_options(model_id: &str, text_verbosity: bool) -> Option<Prov
         return None;
     }
     let mut options = serde_json::Map::new();
-    options.insert("reasoningEffort".to_string(), Value::String("medium".to_string()));
-    options.insert("reasoningSummary".to_string(), Value::String("auto".to_string()));
+    options.insert(
+        "reasoningEffort".to_string(),
+        Value::String("medium".to_string()),
+    );
+    options.insert(
+        "reasoningSummary".to_string(),
+        Value::String("auto".to_string()),
+    );
     options.insert(
         "include".to_string(),
-        Value::Array(vec![Value::String("reasoning.encrypted_content".to_string())]),
+        Value::Array(vec![Value::String(
+            "reasoning.encrypted_content".to_string(),
+        )]),
     );
     if text_verbosity && id.contains("gpt-5.") && !id.contains("codex") && !id.contains("-chat") {
-        options.insert("textVerbosity".to_string(), Value::String("low".to_string()));
+        options.insert(
+            "textVerbosity".to_string(),
+            Value::String("low".to_string()),
+        );
     }
     openai_provider_options(&Value::Object(options))
 }
@@ -74,7 +93,10 @@ pub fn with_openai_options(
     provider_options: Option<ProviderOptions>,
     text_verbosity: bool,
 ) -> Option<ProviderOptions> {
-    merge_provider_options(&[openai_default_options(model_id, text_verbosity).as_ref(), provider_options.as_ref()])
+    merge_provider_options(&[
+        openai_default_options(model_id, text_verbosity).as_ref(),
+        provider_options.as_ref(),
+    ])
 }
 
 /// Raw `OpenAIOptionsInput` projection used by provider facades.
@@ -87,5 +109,8 @@ pub fn project_openai_options(input: &Value) -> Option<ProviderOptions> {
     if entries.is_empty() {
         return None;
     }
-    Some(ProviderOptions::from_iter([("openai".to_string(), entries)]))
+    Some(ProviderOptions::from_iter([(
+        "openai".to_string(),
+        entries,
+    )]))
 }

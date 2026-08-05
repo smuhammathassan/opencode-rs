@@ -3,9 +3,9 @@
 
 use serde_json::{Map, Value};
 
+use crate::protocols::utils::gemini_tool_schema::convert as gemini_convert;
 use crate::schema::ModelToolSchemaCompatibility;
 use crate::shared::is_record;
-use crate::protocols::utils::gemini_tool_schema::convert as gemini_convert;
 
 /// `removeNullSchemas(value)`.
 /// From reference/packages/llm/src/protocols/utils/tool-schema.ts
@@ -30,7 +30,10 @@ fn remove_null_schemas(value: &Value) -> Value {
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter(|variant| !(is_record(variant) && variant.get("type").and_then(Value::as_str) == Some("null")))
+                .filter(|variant| {
+                    !(is_record(variant)
+                        && variant.get("type").and_then(Value::as_str) == Some("null"))
+                })
                 .map(remove_null_schemas)
                 .collect();
             if variants.len() == 1 && is_record(&variants[0]) {
@@ -53,7 +56,10 @@ fn tuple_items_schema(items: &[Value]) -> Value {
     match projected.len() {
         0 => Value::Object(Map::new()),
         1 => projected[0].clone(),
-        _ => Value::Object(Map::from_iter([("anyOf".to_string(), Value::Array(projected))])),
+        _ => Value::Object(Map::from_iter([(
+            "anyOf".to_string(),
+            Value::Array(projected),
+        )])),
     }
 }
 
@@ -64,12 +70,18 @@ fn moonshot_node(schema: &Value) -> Value {
         _ => {
             let obj = schema.as_object().unwrap();
             if let Some(reference) = obj.get("$ref").and_then(Value::as_str) {
-                return Value::Object(Map::from_iter([("$ref".to_string(), Value::String(reference.to_string()))]));
+                return Value::Object(Map::from_iter([(
+                    "$ref".to_string(),
+                    Value::String(reference.to_string()),
+                )]));
             }
             let mut result = Map::new();
             for (key, value) in obj {
                 if key == "items" && value.is_array() {
-                    result.insert("items".to_string(), tuple_items_schema(value.as_array().unwrap()));
+                    result.insert(
+                        "items".to_string(),
+                        tuple_items_schema(value.as_array().unwrap()),
+                    );
                 } else if key == "prefixItems" {
                     if obj.contains_key("items") {
                         continue;
@@ -140,7 +152,10 @@ pub fn open_ai(schema: &Value) -> Value {
     if is_record(&normalized) {
         normalized
     } else {
-        Value::Object(Map::from_iter([("type".to_string(), Value::String("object".to_string()))]))
+        Value::Object(Map::from_iter([(
+            "type".to_string(),
+            Value::String("object".to_string()),
+        )]))
     }
 }
 
@@ -177,7 +192,10 @@ impl ToolSchemaProjection {
     pub fn moonshot(schema: &Value) -> Value {
         moonshot(schema)
     }
-    pub fn model_compatibility(schema: &Value, compatibility: Option<ModelToolSchemaCompatibility>) -> Value {
+    pub fn model_compatibility(
+        schema: &Value,
+        compatibility: Option<ModelToolSchemaCompatibility>,
+    ) -> Value {
         model_compatibility(schema, compatibility)
     }
 }

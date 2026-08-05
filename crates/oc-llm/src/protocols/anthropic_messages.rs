@@ -13,10 +13,14 @@ use super::utils::lifecycle;
 use super::utils::tool_schema::ToolSchemaProjection;
 use super::utils::tool_stream::{self, ToolStream};
 use crate::provider_error::is_context_overflow;
-use crate::route::Protocol;
 use crate::route::protocol::ProtocolStream;
-use crate::schema::messages::{ContentPart, MediaPart, Message, ToolCallPart, ToolContent, ToolDefinition, ToolResultPart};
-use crate::schema::{CacheHint, FinishReason, LlmError, LlmEvent, LlmRequest, ToolChoiceType, Usage};
+use crate::route::Protocol;
+use crate::schema::messages::{
+    ContentPart, MediaPart, Message, ToolCallPart, ToolContent, ToolDefinition, ToolResultPart,
+};
+use crate::schema::{
+    CacheHint, FinishReason, LlmError, LlmEvent, LlmRequest, ToolChoiceType, Usage,
+};
 use crate::shared;
 
 pub const ADAPTER: &str = "anthropic-messages";
@@ -114,7 +118,10 @@ pub struct ParserState {
 
 fn cache_control(breakpoints: &mut Cache::Breakpoints, cache: Option<&CacheHint>) -> Option<Value> {
     let cache = cache?;
-    if !matches!(cache.kind, crate::schema::CacheHintType::Ephemeral | crate::schema::CacheHintType::Persistent) {
+    if !matches!(
+        cache.kind,
+        crate::schema::CacheHintType::Ephemeral | crate::schema::CacheHintType::Persistent
+    ) {
         return None;
     }
     if breakpoints.remaining <= 0 {
@@ -128,7 +135,10 @@ fn cache_control(breakpoints: &mut Cache::Breakpoints, cache: Option<&CacheHint>
             ("ttl".to_string(), Value::String("1h".to_string())),
         ])))
     } else {
-        Some(Value::Object(Map::from_iter([("type".to_string(), Value::String("ephemeral".to_string()))])))
+        Some(Value::Object(Map::from_iter([(
+            "type".to_string(),
+            Value::String("ephemeral".to_string()),
+        )])))
     }
 }
 
@@ -138,26 +148,48 @@ fn anthropic_metadata(metadata: Map<String, Value>) -> crate::schema::ProviderMe
 
 fn signature_from_metadata(metadata: Option<&crate::schema::ProviderMetadata>) -> Option<String> {
     let anthropic = metadata?.get("anthropic")?;
-    anthropic.get("signature").and_then(Value::as_str).map(|s| s.to_string())
+    anthropic
+        .get("signature")
+        .and_then(Value::as_str)
+        .map(|s| s.to_string())
 }
 
-fn lower_tool(breakpoints: &mut Cache::Breakpoints, tool: &ToolDefinition, input_schema: &Value) -> Value {
+fn lower_tool(
+    breakpoints: &mut Cache::Breakpoints,
+    tool: &ToolDefinition,
+    input_schema: &Value,
+) -> Value {
     let mut obj = Map::new();
     obj.insert("name".to_string(), Value::String(tool.name.clone()));
-    obj.insert("description".to_string(), Value::String(tool.description.clone()));
+    obj.insert(
+        "description".to_string(),
+        Value::String(tool.description.clone()),
+    );
     obj.insert("input_schema".to_string(), input_schema.clone());
-    crate::jset_opt!(obj, "cache_control", cache_control(breakpoints, tool.cache.as_ref()));
+    crate::jset_opt!(
+        obj,
+        "cache_control",
+        cache_control(breakpoints, tool.cache.as_ref())
+    );
     Value::Object(obj)
 }
 
 fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, LlmError> {
     match tool_choice.kind {
-        ToolChoiceType::Auto => Ok(Value::Object(Map::from_iter([("type".to_string(), Value::String("auto".to_string()))]))),
+        ToolChoiceType::Auto => Ok(Value::Object(Map::from_iter([(
+            "type".to_string(),
+            Value::String("auto".to_string()),
+        )]))),
         ToolChoiceType::None => Ok(Value::Null),
-        ToolChoiceType::Required => Ok(Value::Object(Map::from_iter([("type".to_string(), Value::String("any".to_string()))]))),
+        ToolChoiceType::Required => Ok(Value::Object(Map::from_iter([(
+            "type".to_string(),
+            Value::String("any".to_string()),
+        )]))),
         ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(shared::invalid_request("Anthropic Messages tool choice requires a tool name"));
+                return Err(shared::invalid_request(
+                    "Anthropic Messages tool choice requires a tool name",
+                ));
             };
             Ok(Value::Object(Map::from_iter([
                 ("type".to_string(), Value::String("tool".to_string())),
@@ -178,7 +210,10 @@ fn lower_tool_call(part: &ToolCallPart) -> Value {
 
 fn lower_server_tool_call(part: &ToolCallPart) -> Value {
     Value::Object(Map::from_iter([
-        ("type".to_string(), Value::String("server_tool_use".to_string())),
+        (
+            "type".to_string(),
+            Value::String("server_tool_use".to_string()),
+        ),
         ("id".to_string(), Value::String(part.id.clone())),
         ("name".to_string(), Value::String(part.name.clone())),
         ("input".to_string(), part.input.clone()),
@@ -202,8 +237,12 @@ fn lower_server_tool_result(part: &ToolResultPart) -> Result<Value, LlmError> {
         )));
     };
     let value = match &part.result {
-        crate::schema::ToolResultValue::Json { value } | crate::schema::ToolResultValue::Text { value } | crate::schema::ToolResultValue::Error { value } => value.clone(),
-        crate::schema::ToolResultValue::Content { value } => serde_json::to_value(value).unwrap_or(Value::Null),
+        crate::schema::ToolResultValue::Json { value }
+        | crate::schema::ToolResultValue::Text { value }
+        | crate::schema::ToolResultValue::Error { value } => value.clone(),
+        crate::schema::ToolResultValue::Content { value } => {
+            serde_json::to_value(value).unwrap_or(Value::Null)
+        }
     };
     Ok(Value::Object(Map::from_iter([
         ("type".to_string(), Value::String(wire_type.to_string())),
@@ -213,7 +252,8 @@ fn lower_server_tool_result(part: &ToolResultPart) -> Result<Value, LlmError> {
 }
 
 fn lower_image(part: &MediaPart) -> Result<Value, LlmError> {
-    let supported: std::collections::HashSet<String> = shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
+    let supported: std::collections::HashSet<String> =
+        shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
     let media = shared::validate_media("Anthropic Messages", part, &supported)?;
     Ok(Value::Object(Map::from_iter([
         ("type".to_string(), Value::String("image".to_string())),
@@ -235,8 +275,10 @@ fn lower_tool_result_content_item(item: &ToolContent) -> Result<Value, LlmError>
             ("text".to_string(), Value::String(text.clone())),
         ]))),
         ToolContent::File { .. } => {
-            let supported: std::collections::HashSet<String> = shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
-            let media = shared::validate_tool_file("Anthropic Messages", &tool_file(item), &supported)?;
+            let supported: std::collections::HashSet<String> =
+                shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
+            let media =
+                shared::validate_tool_file("Anthropic Messages", &tool_file(item), &supported)?;
             Ok(Value::Object(Map::from_iter([
                 ("type".to_string(), Value::String("image".to_string())),
                 (
@@ -255,7 +297,10 @@ fn lower_tool_result_content_item(item: &ToolContent) -> Result<Value, LlmError>
 fn lower_tool_result_content(part: &ToolResultPart) -> Result<Value, LlmError> {
     match &part.result {
         crate::schema::ToolResultValue::Content { value } => Ok(Value::Array(
-            value.iter().map(lower_tool_result_content_item).collect::<Result<Vec<_>, _>>()?,
+            value
+                .iter()
+                .map(lower_tool_result_content_item)
+                .collect::<Result<Vec<_>, _>>()?,
         )),
         _ => Ok(Value::String(shared::tool_result_text(part))),
     }
@@ -296,7 +341,12 @@ fn splits_local_tool_results(messages: &[Message], index: usize) -> bool {
     for message in &messages[..index] {
         for part in &message.content {
             if message.role == crate::schema::MessageRole::Assistant {
-                if let ContentPart::ToolCall { id, provider_executed, .. } = part {
+                if let ContentPart::ToolCall {
+                    id,
+                    provider_executed,
+                    ..
+                } = part
+                {
                     if *provider_executed != Some(true) {
                         pending.insert(id.clone());
                     }
@@ -312,7 +362,10 @@ fn splits_local_tool_results(messages: &[Message], index: usize) -> bool {
     !pending.is_empty()
 }
 
-fn lower_native_system_update(breakpoints: &mut Cache::Breakpoints, message: &Message) -> Result<Value, LlmError> {
+fn lower_native_system_update(
+    breakpoints: &mut Cache::Breakpoints,
+    message: &Message,
+) -> Result<Value, LlmError> {
     let content = shared::system_update_text("Anthropic Messages", message)?;
     let blocks: Vec<Value> = content
         .iter()
@@ -320,7 +373,11 @@ fn lower_native_system_update(breakpoints: &mut Cache::Breakpoints, message: &Me
             let mut obj = Map::new();
             obj.insert("type".to_string(), Value::String("text".to_string()));
             obj.insert("text".to_string(), Value::String(part.text.clone()));
-            crate::jset_opt!(obj, "cache_control", cache_control(breakpoints, part.cache.as_ref()));
+            crate::jset_opt!(
+                obj,
+                "cache_control",
+                cache_control(breakpoints, part.cache.as_ref())
+            );
             Value::Object(obj)
         })
         .collect();
@@ -330,7 +387,10 @@ fn lower_native_system_update(breakpoints: &mut Cache::Breakpoints, message: &Me
     ])))
 }
 
-fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) -> Result<Vec<Value>, LlmError> {
+fn lower_messages(
+    request: &LlmRequest,
+    breakpoints: &mut Cache::Breakpoints,
+) -> Result<Vec<Value>, LlmError> {
     let mut messages: Vec<Value> = Vec::new();
 
     for (index, message) in request.messages.iter().enumerate() {
@@ -340,7 +400,9 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
                     "Anthropic Messages system updates cannot split a local tool call from its tool result",
                 ));
             }
-            if supports_native_system_updates(request) && can_use_native_system_update(&request.messages, index) {
+            if supports_native_system_updates(request)
+                && can_use_native_system_update(&request.messages, index)
+            {
                 messages.push(lower_native_system_update(breakpoints, message)?);
                 continue;
             }
@@ -348,7 +410,11 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
             let mut block = Map::new();
             block.insert("type".to_string(), Value::String("text".to_string()));
             block.insert("text".to_string(), Value::String(part.text.clone()));
-            crate::jset_opt!(block, "cache_control", cache_control(breakpoints, part.cache.as_ref()));
+            crate::jset_opt!(
+                block,
+                "cache_control",
+                cache_control(breakpoints, part.cache.as_ref())
+            );
             let previous = messages.last().cloned();
             if let Some(Value::Object(prev)) = previous {
                 if prev.get("role").and_then(Value::as_str) == Some("user") {
@@ -362,7 +428,10 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
             }
             messages.push(Value::Object(Map::from_iter([
                 ("role".to_string(), Value::String("user".to_string())),
-                ("content".to_string(), Value::Array(vec![Value::Object(block)])),
+                (
+                    "content".to_string(),
+                    Value::Array(vec![Value::Object(block)]),
+                ),
             ])));
             continue;
         }
@@ -375,12 +444,20 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
                         let mut block = Map::new();
                         block.insert("type".to_string(), Value::String("text".to_string()));
                         block.insert("text".to_string(), Value::String(text.clone()));
-                        crate::jset_opt!(block, "cache_control", cache_control(breakpoints, cache.as_ref()));
+                        crate::jset_opt!(
+                            block,
+                            "cache_control",
+                            cache_control(breakpoints, cache.as_ref())
+                        );
                         content.push(Value::Object(block));
                     }
                     ContentPart::Media { .. } => content.push(lower_image(&media_part(part))?),
                     _ => {
-                        return Err(shared::unsupported("Anthropic Messages", "user", &["text", "media"]));
+                        return Err(shared::unsupported(
+                            "Anthropic Messages",
+                            "user",
+                            &["text", "media"],
+                        ));
                     }
                 }
             }
@@ -399,18 +476,31 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
                         let mut block = Map::new();
                         block.insert("type".to_string(), Value::String("text".to_string()));
                         block.insert("text".to_string(), Value::String(text.clone()));
-                        crate::jset_opt!(block, "cache_control", cache_control(breakpoints, cache.as_ref()));
+                        crate::jset_opt!(
+                            block,
+                            "cache_control",
+                            cache_control(breakpoints, cache.as_ref())
+                        );
                         content.push(Value::Object(block));
                     }
-                    ContentPart::Reasoning { text, encrypted, provider_metadata, .. } => {
+                    ContentPart::Reasoning {
+                        text,
+                        encrypted,
+                        provider_metadata,
+                        ..
+                    } => {
                         let mut block = Map::new();
                         block.insert("type".to_string(), Value::String("thinking".to_string()));
                         block.insert("thinking".to_string(), Value::String(text.clone()));
-                        let signature = encrypted.clone().or_else(|| signature_from_metadata(provider_metadata.as_ref()));
+                        let signature = encrypted
+                            .clone()
+                            .or_else(|| signature_from_metadata(provider_metadata.as_ref()));
                         crate::jset_opt!(block, "signature", signature);
                         content.push(Value::Object(block));
                     }
-                    ContentPart::ToolCall { provider_executed, .. } => {
+                    ContentPart::ToolCall {
+                        provider_executed, ..
+                    } => {
                         let part = tool_call_part(part);
                         content.push(if *provider_executed == Some(true) {
                             lower_server_tool_call(&part)
@@ -418,7 +508,9 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
                             lower_tool_call(&part)
                         });
                     }
-                    ContentPart::ToolResult { provider_executed, .. } if *provider_executed == Some(true) => {
+                    ContentPart::ToolResult {
+                        provider_executed, ..
+                    } if *provider_executed == Some(true) => {
                         content.push(lower_server_tool_result(&tool_result_part(part))?);
                     }
                     _ => {
@@ -438,7 +530,11 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
         let mut content: Vec<Value> = Vec::new();
         for part in &message.content {
             let ContentPart::ToolResult { .. } = part else {
-                return Err(shared::unsupported("Anthropic Messages", "tool", &["tool-result"]));
+                return Err(shared::unsupported(
+                    "Anthropic Messages",
+                    "tool",
+                    &["tool-result"],
+                ));
             };
             let part = tool_result_part(part);
             let mut block = Map::new();
@@ -448,7 +544,11 @@ fn lower_messages(request: &LlmRequest, breakpoints: &mut Cache::Breakpoints) ->
             if part.result.is_error() {
                 block.insert("is_error".to_string(), Value::Bool(true));
             }
-            crate::jset_opt!(block, "cache_control", cache_control(breakpoints, part.cache.as_ref()));
+            crate::jset_opt!(
+                block,
+                "cache_control",
+                cache_control(breakpoints, part.cache.as_ref())
+            );
             content.push(Value::Object(block));
         }
         messages.push(Value::Object(Map::from_iter([
@@ -469,7 +569,9 @@ fn lower_thinking(request: &LlmRequest) -> Result<Value, LlmError> {
     let Some(thinking) = thinking else {
         return Ok(Value::Null);
     };
-    if !shared::is_record(thinking) || thinking.get("type").and_then(Value::as_str) != Some("enabled") {
+    if !shared::is_record(thinking)
+        || thinking.get("type").and_then(Value::as_str) != Some("enabled")
+    {
         return Ok(Value::Null);
     }
     let budget = thinking
@@ -477,7 +579,9 @@ fn lower_thinking(request: &LlmRequest) -> Result<Value, LlmError> {
         .and_then(Value::as_i64)
         .or_else(|| thinking.get("budget_tokens").and_then(Value::as_i64));
     let Some(budget) = budget else {
-        return Err(shared::invalid_request("Anthropic thinking provider option requires budgetTokens"));
+        return Err(shared::invalid_request(
+            "Anthropic thinking provider option requires budgetTokens",
+        ));
     };
     Ok(Value::Object(Map::from_iter([
         ("type".to_string(), Value::String("enabled".to_string())),
@@ -500,18 +604,36 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
         None => None,
     };
     let generation = request.generation.clone();
-    let tool_schema_compatibility = request.model.compatibility.as_ref().and_then(|c| c.tool_schema);
+    let tool_schema_compatibility = request
+        .model
+        .compatibility
+        .as_ref()
+        .and_then(|c| c.tool_schema);
     let output_limit = request
         .model
         .defaults
         .as_ref()
         .and_then(|d| d.limits.as_ref())
         .and_then(|l| l.output)
-        .or_else(|| request.model.route.defaults.limits.as_ref().and_then(|l| l.output))
+        .or_else(|| {
+            request
+                .model
+                .route
+                .defaults
+                .limits
+                .as_ref()
+                .and_then(|l| l.output)
+        })
         .unwrap_or(4096);
     let mut breakpoints = Cache::new_breakpoints(ANTHROPIC_BREAKPOINT_CAP);
 
-    let tools = if request.tools.is_empty() || request.tool_choice.as_ref().map(|tc| tc.kind == ToolChoiceType::None).unwrap_or(false) {
+    let tools = if request.tools.is_empty()
+        || request
+            .tool_choice
+            .as_ref()
+            .map(|tc| tc.kind == ToolChoiceType::None)
+            .unwrap_or(false)
+    {
         None
     } else {
         Some(
@@ -522,7 +644,10 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
                     lower_tool(
                         &mut breakpoints,
                         tool,
-                        &ToolSchemaProjection::model_compatibility(&tool.input_schema, tool_schema_compatibility),
+                        &ToolSchemaProjection::model_compatibility(
+                            &tool.input_schema,
+                            tool_schema_compatibility,
+                        ),
                     )
                 })
                 .collect::<Vec<_>>(),
@@ -539,7 +664,11 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
                     let mut block = Map::new();
                     block.insert("type".to_string(), Value::String("text".to_string()));
                     block.insert("text".to_string(), Value::String(part.text.clone()));
-                    crate::jset_opt!(block, "cache_control", cache_control(&mut breakpoints, part.cache.as_ref()));
+                    crate::jset_opt!(
+                        block,
+                        "cache_control",
+                        cache_control(&mut breakpoints, part.cache.as_ref())
+                    );
                     Value::Object(block)
                 })
                 .collect::<Vec<_>>(),
@@ -555,7 +684,10 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     }
 
     let mut body = Map::new();
-    body.insert("model".to_string(), Value::String(request.model.id.0.clone()));
+    body.insert(
+        "model".to_string(),
+        Value::String(request.model.id.0.clone()),
+    );
     crate::jset_opt!(body, "system", system);
     body.insert("messages".to_string(), Value::Array(messages));
     crate::jset_opt!(body, "tools", tools);
@@ -563,12 +695,36 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     body.insert("stream".to_string(), Value::Bool(true));
     body.insert(
         "max_tokens".to_string(),
-        Value::Number(generation.as_ref().and_then(|g| g.max_tokens).unwrap_or(output_limit).into()),
+        Value::Number(
+            generation
+                .as_ref()
+                .and_then(|g| g.max_tokens)
+                .unwrap_or(output_limit)
+                .into(),
+        ),
     );
-    crate::jset_opt!(body, "temperature", generation.as_ref().and_then(|g| g.temperature));
-    crate::jset_opt!(body, "top_p", generation.as_ref().and_then(|g| g.top_p));
+    crate::jset_opt!(
+        body,
+        "temperature",
+        generation
+            .as_ref()
+            .and_then(|g| g.temperature)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        body,
+        "top_p",
+        generation
+            .as_ref()
+            .and_then(|g| g.top_p)
+            .map(shared::json_number)
+    );
     crate::jset_opt!(body, "top_k", generation.as_ref().and_then(|g| g.top_k));
-    crate::jset_opt!(body, "stop_sequences", generation.as_ref().and_then(|g| g.stop.clone()));
+    crate::jset_opt!(
+        body,
+        "stop_sequences",
+        generation.as_ref().and_then(|g| g.stop.clone())
+    );
     let thinking = lower_thinking(request)?;
     if !thinking.is_null() {
         body.insert("thinking".to_string(), thinking);
@@ -613,18 +769,32 @@ fn map_usage(usage: &AnthropicUsage) -> Option<Usage> {
 }
 
 fn merge_usage(left: &Usage, right: &Usage) -> Usage {
-    let non_cached = right.non_cached_input_tokens.or(left.non_cached_input_tokens);
-    let cache_read = right.cache_read_input_tokens.or(left.cache_read_input_tokens);
-    let cache_write = right.cache_write_input_tokens.or(left.cache_write_input_tokens);
+    let non_cached = right
+        .non_cached_input_tokens
+        .or(left.non_cached_input_tokens);
+    let cache_read = right
+        .cache_read_input_tokens
+        .or(left.cache_read_input_tokens);
+    let cache_write = right
+        .cache_write_input_tokens
+        .or(left.cache_write_input_tokens);
     let input_tokens = shared::sum_tokens(&[non_cached, cache_read, cache_write]);
     let output_tokens = right.output_tokens.or(left.output_tokens);
     let mut anthropic = Map::new();
-    if let Some(left_anthropic) = left.provider_metadata.as_ref().and_then(|m| m.get("anthropic")) {
+    if let Some(left_anthropic) = left
+        .provider_metadata
+        .as_ref()
+        .and_then(|m| m.get("anthropic"))
+    {
         for (k, v) in left_anthropic {
             anthropic.insert(k.clone(), v.clone());
         }
     }
-    if let Some(right_anthropic) = right.provider_metadata.as_ref().and_then(|m| m.get("anthropic")) {
+    if let Some(right_anthropic) = right
+        .provider_metadata
+        .as_ref()
+        .and_then(|m| m.get("anthropic"))
+    {
         for (k, v) in right_anthropic {
             anthropic.insert(k.clone(), v.clone());
         }
@@ -637,7 +807,10 @@ fn merge_usage(left: &Usage, right: &Usage) -> Usage {
         cache_write_input_tokens: cache_write,
         reasoning_tokens: None,
         total_tokens: shared::total_tokens(input_tokens, output_tokens, None),
-        provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([("anthropic".to_string(), anthropic)])),
+        provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([(
+            "anthropic".to_string(),
+            anthropic,
+        )])),
     }
 }
 
@@ -649,20 +822,31 @@ const SERVER_TOOL_RESULT_NAMES: [(&str, &str); 3] = [
 
 fn server_tool_result_event(block: &AnthropicStreamBlock) -> Option<LlmEvent> {
     let wire_type = block.block_type.as_deref()?;
-    let name = SERVER_TOOL_RESULT_NAMES.iter().find(|(kind, _)| *kind == wire_type).map(|(_, name)| *name)?;
-    let error_payload = block.content.as_ref().map(|content| {
-        if let Some(obj) = content.as_object() {
-            if let Some(kind) = obj.get("type").and_then(Value::as_str) {
-                return kind.to_string();
+    let name = SERVER_TOOL_RESULT_NAMES
+        .iter()
+        .find(|(kind, _)| *kind == wire_type)
+        .map(|(_, name)| *name)?;
+    let error_payload = block
+        .content
+        .as_ref()
+        .map(|content| {
+            if let Some(obj) = content.as_object() {
+                if let Some(kind) = obj.get("type").and_then(Value::as_str) {
+                    return kind.to_string();
+                }
             }
-        }
-        String::new()
-    }).unwrap_or_default();
+            String::new()
+        })
+        .unwrap_or_default();
     let is_error = error_payload.ends_with("_tool_result_error");
     let result = if is_error {
-        crate::schema::ToolResultValue::Error { value: block.content.clone().unwrap_or(Value::Null) }
+        crate::schema::ToolResultValue::Error {
+            value: block.content.clone().unwrap_or(Value::Null),
+        }
     } else {
-        crate::schema::ToolResultValue::Json { value: block.content.clone().unwrap_or(Value::Null) }
+        crate::schema::ToolResultValue::Json {
+            value: block.content.clone().unwrap_or(Value::Null),
+        }
     };
     Some(LlmEvent::ToolResult {
         id: block.tool_use_id.clone().unwrap_or_default(),
@@ -680,7 +864,11 @@ fn server_tool_result_event(block: &AnthropicStreamBlock) -> Option<LlmEvent> {
 type StepResult = (ParserState, Vec<LlmEvent>);
 
 fn on_message_start(state: &ParserState, event: &AnthropicEvent) -> StepResult {
-    let usage = event.message.as_ref().and_then(|m| m.usage.as_ref()).and_then(map_usage);
+    let usage = event
+        .message
+        .as_ref()
+        .and_then(|m| m.usage.as_ref())
+        .and_then(map_usage);
     let mut next = state.clone();
     if let Some(usage) = usage {
         next.usage = Some(match (&state.usage, &next.usage) {
@@ -696,7 +884,8 @@ fn on_content_block_start(state: &ParserState, event: &AnthropicEvent) -> StepRe
         return (state.clone(), vec![]);
     };
 
-    if (block.block_type.as_deref() == Some("tool_use") || block.block_type.as_deref() == Some("server_tool_use"))
+    if (block.block_type.as_deref() == Some("tool_use")
+        || block.block_type.as_deref() == Some("server_tool_use"))
         && event.index.is_some()
     {
         let mut events = Vec::new();
@@ -706,14 +895,26 @@ fn on_content_block_start(state: &ParserState, event: &AnthropicEvent) -> StepRe
         let name = block.name.clone().unwrap_or_default();
         let mut next = state.clone();
         next.lifecycle = lifecycle;
-        next.tools = ToolStream::start(&state.tools, index, tool_stream::PendingToolInput {
+        next.tools = ToolStream::start(
+            &state.tools,
+            index,
+            tool_stream::PendingToolInput {
+                id: id.clone(),
+                name: name.clone(),
+                input: None,
+                provider_executed: if block.block_type.as_deref() == Some("server_tool_use") {
+                    Some(true)
+                } else {
+                    None
+                },
+                provider_metadata: None,
+            },
+        );
+        events.push(LlmEvent::ToolInputStart {
             id: id.clone(),
-            name: name.clone(),
-            input: None,
-            provider_executed: if block.block_type.as_deref() == Some("server_tool_use") { Some(true) } else { None },
+            name,
             provider_metadata: None,
         });
-        events.push(LlmEvent::ToolInputStart { id: id.clone(), name, provider_metadata: None });
         return (next, events);
     }
 
@@ -755,7 +956,10 @@ fn on_content_block_start(state: &ParserState, event: &AnthropicEvent) -> StepRe
     (next, events)
 }
 
-fn on_content_block_delta(state: &ParserState, event: &AnthropicEvent) -> Result<StepResult, LlmError> {
+fn on_content_block_delta(
+    state: &ParserState,
+    event: &AnthropicEvent,
+) -> Result<StepResult, LlmError> {
     let Some(delta) = &event.delta else {
         return Ok((state.clone(), vec![]));
     };
@@ -795,7 +999,10 @@ fn on_content_block_delta(state: &ParserState, event: &AnthropicEvent) -> Result
             &state.lifecycle,
             &mut events,
             &format!("reasoning-{}", event.index.unwrap_or(0)),
-            Some(&anthropic_metadata(Map::from_iter([("signature".to_string(), Value::String(signature))]))),
+            Some(&anthropic_metadata(Map::from_iter([(
+                "signature".to_string(),
+                Value::String(signature),
+            )]))),
         );
         return Ok((next, events));
     }
@@ -828,7 +1035,10 @@ fn on_content_block_delta(state: &ParserState, event: &AnthropicEvent) -> Result
     Ok((state.clone(), vec![]))
 }
 
-fn on_content_block_stop(state: &ParserState, event: &AnthropicEvent) -> Result<StepResult, LlmError> {
+fn on_content_block_stop(
+    state: &ParserState,
+    event: &AnthropicEvent,
+) -> Result<StepResult, LlmError> {
     let Some(index) = event.index else {
         return Ok((state.clone(), vec![]));
     };
@@ -839,7 +1049,12 @@ fn on_content_block_stop(state: &ParserState, event: &AnthropicEvent) -> Result<
         lifecycle::step_start(&state.lifecycle, &mut events)
     } else {
         lifecycle::reasoning_end(
-            &lifecycle::text_end(&state.lifecycle, &mut events, &format!("text-{}", index), None),
+            &lifecycle::text_end(
+                &state.lifecycle,
+                &mut events,
+                &format!("text-{}", index),
+                None,
+            ),
             &mut events,
             &format!("reasoning-{}", index),
             None,
@@ -859,14 +1074,26 @@ fn on_message_delta(state: &ParserState, event: &AnthropicEvent) -> StepResult {
         (left, right) => left.clone().or(right),
     };
     let mut events = Vec::new();
-    let stop_sequence = event.delta.as_ref().and_then(|d| d.stop_sequence.clone().flatten());
+    let stop_sequence = event
+        .delta
+        .as_ref()
+        .and_then(|d| d.stop_sequence.clone().flatten());
     let provider_metadata = stop_sequence.as_ref().map(|seq| {
-        anthropic_metadata(Map::from_iter([("stopSequence".to_string(), Value::String(seq.clone()))]))
+        anthropic_metadata(Map::from_iter([(
+            "stopSequence".to_string(),
+            Value::String(seq.clone()),
+        )]))
     });
     let lifecycle = lifecycle::finish(
         &state.lifecycle,
         &mut events,
-        map_finish_reason(event.delta.as_ref().and_then(|d| d.stop_reason.clone().flatten()).as_deref()),
+        map_finish_reason(
+            event
+                .delta
+                .as_ref()
+                .and_then(|d| d.stop_reason.clone().flatten())
+                .as_deref(),
+        ),
         usage.as_ref(),
         provider_metadata.as_ref(),
     );
@@ -880,7 +1107,9 @@ fn provider_error_message(event: &AnthropicEvent) -> String {
     let message_type = event.error.as_ref().and_then(|e| e.message_type.clone());
     let message = event.error.as_ref().and_then(|e| e.message.clone());
     match (message_type.as_deref(), message.as_deref()) {
-        (Some(kind), Some(message)) if !kind.is_empty() && !message.is_empty() => format!("{}: {}", kind, message),
+        (Some(kind), Some(message)) if !kind.is_empty() && !message.is_empty() => {
+            format!("{}: {}", kind, message)
+        }
         (_, Some(message)) if !message.is_empty() => message.to_string(),
         (Some(kind), _) => kind.to_string(),
         _ => "Anthropic Messages stream error".to_string(),
@@ -894,7 +1123,15 @@ fn on_error(state: &ParserState, event: &AnthropicEvent) -> StepResult {
     } else {
         None
     };
-    (state.clone(), vec![LlmEvent::ProviderError { message, classification, retryable: None, provider_metadata: None }])
+    (
+        state.clone(),
+        vec![LlmEvent::ProviderError {
+            message,
+            classification,
+            retryable: None,
+            provider_metadata: None,
+        }],
+    )
 }
 
 fn step(state: &mut ParserState, event: &AnthropicEvent) -> Result<Vec<LlmEvent>, LlmError> {
@@ -941,7 +1178,11 @@ struct AnthropicMessagesStream;
 
 impl ProtocolStream for AnthropicMessagesStream {
     fn initial(&self, _request: &LlmRequest) -> Box<dyn Any + Send> {
-        Box::new(ParserState { tools: ToolStream::empty(), usage: None, lifecycle: lifecycle::initial() })
+        Box::new(ParserState {
+            tools: ToolStream::empty(),
+            usage: None,
+            lifecycle: lifecycle::initial(),
+        })
     }
 
     fn step(
@@ -949,9 +1190,9 @@ impl ProtocolStream for AnthropicMessagesStream {
         state: Box<dyn Any + Send>,
         event: &Value,
     ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError> {
-        let mut state = *state.downcast::<ParserState>().map_err(|_| {
-            shared::invalid_request("Anthropic Messages parser state mismatch")
-        })?;
+        let mut state = *state
+            .downcast::<ParserState>()
+            .map_err(|_| shared::invalid_request("Anthropic Messages parser state mismatch"))?;
         let event: AnthropicEvent = serde_json::from_value(event.clone()).unwrap_or_default();
         let events = step(&mut state, &event)?;
         Ok((Box::new(state), events))
@@ -969,7 +1210,11 @@ impl ProtocolStream for AnthropicMessagesStream {
 /// `AnthropicMessages.protocol`.
 /// From reference/packages/llm/src/protocols/anthropic-messages.ts (`protocol`)
 pub fn protocol() -> Protocol {
-    Protocol::make(ADAPTER, Arc::new(|request| from_request(request)), Arc::new(AnthropicMessagesStream))
+    Protocol::make(
+        ADAPTER,
+        Arc::new(|request| from_request(request)),
+        Arc::new(AnthropicMessagesStream),
+    )
 }
 
 /// `AnthropicMessages.route`.
@@ -981,12 +1226,18 @@ pub fn route() -> crate::route::Route {
         protocol: protocol(),
         endpoint: crate::route::endpoint::path(
             PATH,
-            crate::route::EndpointOptions { base_url: Some(DEFAULT_BASE_URL.to_string()), query: None },
+            crate::route::EndpointOptions {
+                base_url: Some(DEFAULT_BASE_URL.to_string()),
+                query: None,
+            },
         ),
         auth: Some(crate::route::Auth::none()),
         framing: Some(crate::route::Framing::Sse),
         headers: Some(Arc::new(|_request| {
-            std::collections::BTreeMap::from_iter([("anthropic-version".to_string(), "2023-06-01".to_string())])
+            std::collections::BTreeMap::from_iter([(
+                "anthropic-version".to_string(),
+                "2023-06-01".to_string(),
+            )])
         })),
         defaults: None,
     })
@@ -998,7 +1249,12 @@ pub fn route() -> crate::route::Route {
 
 fn media_part(part: &ContentPart) -> MediaPart {
     match part {
-        ContentPart::Media { media_type, data, filename, metadata } => MediaPart {
+        ContentPart::Media {
+            media_type,
+            data,
+            filename,
+            metadata,
+        } => MediaPart {
             part_type: "media".to_string(),
             media_type: media_type.clone(),
             data: data.clone(),
@@ -1011,7 +1267,14 @@ fn media_part(part: &ContentPart) -> MediaPart {
 
 fn tool_call_part(part: &ContentPart) -> ToolCallPart {
     match part {
-        ContentPart::ToolCall { id, name, input, provider_executed, metadata, provider_metadata } => ToolCallPart {
+        ContentPart::ToolCall {
+            id,
+            name,
+            input,
+            provider_executed,
+            metadata,
+            provider_metadata,
+        } => ToolCallPart {
             part_type: "tool-call".to_string(),
             id: id.clone(),
             name: name.clone(),
@@ -1026,18 +1289,24 @@ fn tool_call_part(part: &ContentPart) -> ToolCallPart {
 
 fn tool_result_part(part: &ContentPart) -> ToolResultPart {
     match part {
-        ContentPart::ToolResult { id, name, result, provider_executed, cache, metadata, provider_metadata } => {
-            ToolResultPart {
-                part_type: "tool-result".to_string(),
-                id: id.clone(),
-                name: name.clone(),
-                result: result.clone(),
-                provider_executed: *provider_executed,
-                cache: cache.clone(),
-                metadata: metadata.clone(),
-                provider_metadata: provider_metadata.clone(),
-            }
-        }
+        ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache,
+            metadata,
+            provider_metadata,
+        } => ToolResultPart {
+            part_type: "tool-result".to_string(),
+            id: id.clone(),
+            name: name.clone(),
+            result: result.clone(),
+            provider_executed: *provider_executed,
+            cache: cache.clone(),
+            metadata: metadata.clone(),
+            provider_metadata: provider_metadata.clone(),
+        },
         _ => unreachable!(),
     }
 }

@@ -8,7 +8,9 @@ use std::sync::Arc;
 
 use serde_json::Value;
 
-use crate::schema::messages::{ToolCallPart, ToolContent, ToolDefinition, ToolOutput, ToolResultValue};
+use crate::schema::messages::{
+    ToolCallPart, ToolContent, ToolDefinition, ToolOutput, ToolResultValue,
+};
 
 /// `ToolSchema` — parameter / success codec constraint (Effect `Schema.Codec`
 /// has no Rust equivalent; the schema shape and codecs are captured directly).
@@ -57,7 +59,11 @@ pub struct ToolModelOutputInput<'a> {
 }
 
 /// `ToolExecute` — handler returning a future `Result<Value, ToolFailure>`.
-pub type ToolExecute = dyn Fn(Value, ToolExecuteContext) -> Pin<Box<dyn Future<Output = Result<Value, crate::schema::ToolFailure>> + Send + 'static>>
+pub type ToolExecute = dyn Fn(
+        Value,
+        ToolExecuteContext,
+    )
+        -> Pin<Box<dyn Future<Output = Result<Value, crate::schema::ToolFailure>> + Send + 'static>>
     + Send
     + Sync;
 
@@ -111,7 +117,8 @@ pub fn make(config: ToolConfig) -> Tool {
             to_structured_output: config.to_structured_output.clone(),
             decode: Arc::new(|value| Ok(value.clone())),
             encode: Arc::new(|value| Ok(value.clone())),
-            legacy_result: config.to_model_output.is_none() && config.to_structured_output.is_none(),
+            legacy_result: config.to_model_output.is_none()
+                && config.to_structured_output.is_none(),
             definition: ToolDefinition {
                 name: String::new(),
                 description: config.description,
@@ -123,7 +130,10 @@ pub fn make(config: ToolConfig) -> Tool {
             },
         };
     }
-    let parameters = config.parameters.clone().unwrap_or_else(ToolSchema::unknown);
+    let parameters = config
+        .parameters
+        .clone()
+        .unwrap_or_else(ToolSchema::unknown);
     let success = config.success.clone().unwrap_or_else(ToolSchema::unknown);
     let decode = parameters.decode.clone();
     let encode = success.encode.clone();
@@ -140,7 +150,11 @@ pub fn make(config: ToolConfig) -> Tool {
         definition: ToolDefinition {
             name: String::new(),
             description: config.description,
-            input_schema: config.parameters.clone().map(|p| p.json_schema).unwrap_or_else(|| Value::Object(Default::default())),
+            input_schema: config
+                .parameters
+                .clone()
+                .map(|p| p.json_schema)
+                .unwrap_or_else(|| Value::Object(Default::default())),
             output_schema: config.success.clone().map(|s| s.json_schema),
             cache: None,
             metadata: None,
@@ -180,18 +194,30 @@ pub fn project(
         None => output.clone(),
     };
     let content = match to_model_output {
-        Some(f) => f(&ToolModelOutputInput { call_id, parameters, output }),
+        Some(f) => f(&ToolModelOutputInput {
+            call_id,
+            parameters,
+            output,
+        }),
         None => match output.as_str() {
-            Some(text) => vec![ToolContent::Text { text: text.to_string() }],
+            Some(text) => vec![ToolContent::Text {
+                text: text.to_string(),
+            }],
             None => vec![],
         },
     };
-    ToolOutput { structured, content }
+    ToolOutput {
+        structured,
+        content,
+    }
 }
 
 /// `Tool.make` helper to construct an async execute handler from a sync one.
 pub fn sync_execute(
-    f: impl Fn(Value, ToolExecuteContext) -> Result<Value, crate::schema::ToolFailure> + Send + Sync + 'static,
+    f: impl Fn(Value, ToolExecuteContext) -> Result<Value, crate::schema::ToolFailure>
+        + Send
+        + Sync
+        + 'static,
 ) -> Arc<ToolExecute> {
     Arc::new(move |params, context| Box::pin(futures::future::ready(f(params, context))))
 }

@@ -91,13 +91,27 @@ pub fn configure(input: Config) -> GitHubCopilotProvider {
     let chat = {
         let route = chat_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: None,
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
     let responses = {
         let route = responses_route.clone();
         move |model_id: String| -> Model {
-            route.model(RouteModelInput { id: model_id, provider: None, defaults: None, compatibility: None }).unwrap()
+            route
+                .model(RouteModelInput {
+                    id: model_id,
+                    provider: None,
+                    defaults: None,
+                    compatibility: None,
+                })
+                .unwrap()
         }
     };
     GitHubCopilotProvider {
@@ -137,5 +151,8 @@ pub fn routes() -> Vec<Route> {
 /// `provider` — requires explicit `baseURL`.
 /// From reference/packages/llm/src/providers/github-copilot.ts (`provider`)
 pub fn provider(base_url: String) -> GitHubCopilotProvider {
-    configure(Config { base_url, ..Default::default() })
+    configure(Config {
+        base_url,
+        ..Default::default()
+    })
 }

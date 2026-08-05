@@ -6,15 +6,17 @@ use std::collections::BTreeMap;
 
 use crate::route::LlmClient;
 use crate::schema::messages::{
-    ContentInput, ContentPart, LlmRequest, LlmRequestInput, LlmRequestPatch, Message, MessageInput, ResponseFormat,
-    SystemPart, SystemPartRef, ToolChoice, ToolChoiceInput, ToolDefinition, ToolResultPart,
+    ContentInput, ContentPart, LlmRequest, LlmRequestInput, LlmRequestPatch, Message, MessageInput,
+    ResponseFormat, SystemPart, SystemPartRef, ToolChoice, ToolChoiceInput, ToolDefinition,
+    ToolResultPart,
 };
 use crate::schema::options::{GenerationOptions, HttpOptions, Model, ProviderOptions};
 use crate::schema::{LlmError, LlmErrorReason, LlmResponse, MessageRole};
 use crate::tool::{make as make_tool, to_definitions, Tool, ToolConfig};
 
 pub const GENERATE_OBJECT_TOOL_NAME: &str = "generate_object";
-pub const GENERATE_OBJECT_TOOL_DESCRIPTION: &str = "Return the structured result by calling this tool.";
+pub const GENERATE_OBJECT_TOOL_DESCRIPTION: &str =
+    "Return the structured result by calling this tool.";
 
 /// `RequestInput` — the `LLM.request` input shape.
 /// From reference/packages/llm/src/llm.ts (`RequestInput`)
@@ -172,7 +174,10 @@ pub struct GenerateObjectOptions {
 
 /// `LLM.generateObject(client, options)`.
 /// From reference/packages/llm/src/llm.ts (`generateObject`)
-pub async fn generate_object(client: &LlmClient, options: GenerateObjectOptions) -> Result<GenerateObjectResponse, LlmError> {
+pub async fn generate_object(
+    client: &LlmClient,
+    options: GenerateObjectOptions,
+) -> Result<GenerateObjectResponse, LlmError> {
     let base_request = request(options.base);
     let mut tools = BTreeMap::new();
     tools.insert(GENERATE_OBJECT_TOOL_NAME.to_string(), options.tool.clone());
@@ -242,5 +247,11 @@ pub fn generate_object_dynamic(base: RequestInput, json_schema: Value) -> Genera
 }
 
 #[allow(unused)]
-fn _markers(_: &MessageInput, _: &MessageRole, _: &ContentPart, _: &ToolResultPart, _: &HttpOptions) {
+fn _markers(
+    _: &MessageInput,
+    _: &MessageRole,
+    _: &ContentPart,
+    _: &ToolResultPart,
+    _: &HttpOptions,
+) {
 }

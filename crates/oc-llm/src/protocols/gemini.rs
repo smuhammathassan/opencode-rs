@@ -10,9 +10,11 @@ use serde_json::{Map, Value};
 use super::utils::gemini_tool_schema as GeminiToolSchema;
 use super::utils::lifecycle;
 use super::utils::tool_schema::ToolSchemaProjection;
-use crate::route::Protocol;
 use crate::route::protocol::ProtocolStream;
-use crate::schema::messages::{ContentPart, MediaPart, TextPart, ToolCallPart, ToolContent, ToolDefinition};
+use crate::route::Protocol;
+use crate::schema::messages::{
+    ContentPart, MediaPart, TextPart, ToolCallPart, ToolContent, ToolDefinition,
+};
 use crate::schema::{FinishReason, LlmError, LlmEvent, LlmRequest, ToolChoiceType, Usage};
 use crate::shared;
 
@@ -98,7 +100,10 @@ pub struct ParserState {
 fn lower_tool(tool: &ToolDefinition, input_schema: &Value) -> Value {
     let mut declaration = Map::new();
     declaration.insert("name".to_string(), Value::String(tool.name.clone()));
-    declaration.insert("description".to_string(), Value::String(tool.description.clone()));
+    declaration.insert(
+        "description".to_string(),
+        Value::String(tool.description.clone()),
+    );
     let parameters = GeminiToolSchema::convert(input_schema);
     if let Some(parameters) = parameters {
         declaration.insert("parameters".to_string(), parameters);
@@ -116,7 +121,9 @@ fn lower_tool_config(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
         ToolChoiceType::Required => ("ANY", None),
         ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(shared::invalid_request("Gemini tool choice requires a tool name"));
+                return Err(shared::invalid_request(
+                    "Gemini tool choice requires a tool name",
+                ));
             };
             ("ANY", Some(vec![name.clone()]))
         }
@@ -137,10 +144,14 @@ fn lower_tool_config(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
 
 fn lower_user_part(part: &ContentPart) -> Result<Value, LlmError> {
     match part {
-        ContentPart::Text { text, .. } => Ok(Value::Object(Map::from_iter([("text".to_string(), Value::String(text.clone()))]))),
+        ContentPart::Text { text, .. } => Ok(Value::Object(Map::from_iter([(
+            "text".to_string(),
+            Value::String(text.clone()),
+        )]))),
         ContentPart::Media { .. } => {
             let media_part = media_part(part);
-            let supported: std::collections::HashSet<String> = shared::MEDIA_MIMES.iter().map(|s| s.to_string()).collect();
+            let supported: std::collections::HashSet<String> =
+                shared::MEDIA_MIMES.iter().map(|s| s.to_string()).collect();
             let media = shared::validate_media("Gemini", &media_part, &supported)?;
             Ok(Value::Object(Map::from_iter([(
                 "inlineData".to_string(),
@@ -158,9 +169,14 @@ fn google_metadata(metadata: Map<String, Value>) -> crate::schema::ProviderMetad
     crate::schema::ProviderMetadata::from_iter([("google".to_string(), metadata)])
 }
 
-fn thought_signature(provider_metadata: Option<&crate::schema::ProviderMetadata>) -> Option<String> {
+fn thought_signature(
+    provider_metadata: Option<&crate::schema::ProviderMetadata>,
+) -> Option<String> {
     let google = provider_metadata?.get("google")?;
-    google.get("thoughtSignature").and_then(Value::as_str).map(|s| s.to_string())
+    google
+        .get("thoughtSignature")
+        .and_then(Value::as_str)
+        .map(|s| s.to_string())
 }
 
 fn lower_tool_call(part: &ToolCallPart) -> Value {
@@ -172,7 +188,11 @@ fn lower_tool_call(part: &ToolCallPart) -> Value {
             ("args".to_string(), part.input.clone()),
         ])),
     );
-    crate::jset_opt!(obj, "thoughtSignature", thought_signature(part.provider_metadata.as_ref()));
+    crate::jset_opt!(
+        obj,
+        "thoughtSignature",
+        thought_signature(part.provider_metadata.as_ref())
+    );
     Value::Object(obj)
 }
 
@@ -187,7 +207,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                 if prev.get("role").and_then(Value::as_str) == Some("user") {
                     let mut next = prev.clone();
                     if let Some(Value::Array(parts)) = next.get_mut("parts") {
-                        parts.push(Value::Object(Map::from_iter([("text".to_string(), Value::String(part.text.clone()))])));
+                        parts.push(Value::Object(Map::from_iter([(
+                            "text".to_string(),
+                            Value::String(part.text.clone()),
+                        )])));
                     }
                     *contents.last_mut().unwrap() = Value::Object(next);
                     continue;
@@ -197,7 +220,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                 ("role".to_string(), Value::String("user".to_string())),
                 (
                     "parts".to_string(),
-                    Value::Array(vec![Value::Object(Map::from_iter([("text".to_string(), Value::String(part.text.clone()))]))]),
+                    Value::Array(vec![Value::Object(Map::from_iter([(
+                        "text".to_string(),
+                        Value::String(part.text.clone()),
+                    )]))]),
                 ),
             ])));
             continue;
@@ -223,20 +249,35 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
             for part in &message.content {
                 match part {
                     ContentPart::Text { text, .. } => {
-                        parts.push(Value::Object(Map::from_iter([("text".to_string(), Value::String(text.clone()))])));
+                        parts.push(Value::Object(Map::from_iter([(
+                            "text".to_string(),
+                            Value::String(text.clone()),
+                        )])));
                     }
-                    ContentPart::Reasoning { text, provider_metadata, .. } => {
+                    ContentPart::Reasoning {
+                        text,
+                        provider_metadata,
+                        ..
+                    } => {
                         let mut obj = Map::new();
                         obj.insert("text".to_string(), Value::String(text.clone()));
                         obj.insert("thought".to_string(), Value::Bool(true));
-                        crate::jset_opt!(obj, "thoughtSignature", thought_signature(provider_metadata.as_ref()));
+                        crate::jset_opt!(
+                            obj,
+                            "thoughtSignature",
+                            thought_signature(provider_metadata.as_ref())
+                        );
                         parts.push(Value::Object(obj));
                     }
                     ContentPart::ToolCall { .. } => {
                         parts.push(lower_tool_call(&tool_call_part(part)));
                     }
                     _ => {
-                        return Err(shared::unsupported("Gemini", "assistant", &["text", "reasoning", "tool-call"]));
+                        return Err(shared::unsupported(
+                            "Gemini",
+                            "assistant",
+                            &["text", "reasoning", "tool-call"],
+                        ));
                     }
                 }
             }
@@ -275,10 +316,15 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                             ),
                         ])),
                     )])));
-                    for item in value.iter().filter(|item| matches!(item, ToolContent::File { .. })) {
+                    for item in value
+                        .iter()
+                        .filter(|item| matches!(item, ToolContent::File { .. }))
+                    {
                         if let ToolContent::File { .. } = item {
-                            let supported: std::collections::HashSet<String> = shared::MEDIA_MIMES.iter().map(|s| s.to_string()).collect();
-                            let media = shared::validate_tool_file("Gemini", &tool_file(item), &supported)?;
+                            let supported: std::collections::HashSet<String> =
+                                shared::MEDIA_MIMES.iter().map(|s| s.to_string()).collect();
+                            let media =
+                                shared::validate_tool_file("Gemini", &tool_file(item), &supported)?;
                             parts.push(Value::Object(Map::from_iter([(
                                 "inlineData".to_string(),
                                 Value::Object(Map::from_iter([
@@ -298,7 +344,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                                 "response".to_string(),
                                 Value::Object(Map::from_iter([
                                     ("name".to_string(), Value::String(part.name.clone())),
-                                    ("content".to_string(), Value::String(shared::tool_result_text(&part))),
+                                    (
+                                        "content".to_string(),
+                                        Value::String(shared::tool_result_text(&part)),
+                                    ),
                                 ])),
                             ),
                         ])),
@@ -341,20 +390,62 @@ fn thinking_config(request: &LlmRequest) -> Option<Value> {
 /// `Gemini.fromRequest`.
 /// From reference/packages/llm/src/protocols/gemini.ts (`fromRequest`)
 pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
-    let tools_enabled = !request.tools.is_empty() && request.tool_choice.as_ref().map(|tc| tc.kind != ToolChoiceType::None).unwrap_or(true);
+    let tools_enabled = !request.tools.is_empty()
+        && request
+            .tool_choice
+            .as_ref()
+            .map(|tc| tc.kind != ToolChoiceType::None)
+            .unwrap_or(true);
     let generation = request.generation.clone();
-    let tool_schema_compatibility = request.model.compatibility.as_ref().and_then(|c| c.tool_schema);
+    let tool_schema_compatibility = request
+        .model
+        .compatibility
+        .as_ref()
+        .and_then(|c| c.tool_schema);
 
     let mut generation_config = Map::new();
-    crate::jset_opt!(generation_config, "maxOutputTokens", generation.as_ref().and_then(|g| g.max_tokens));
-    crate::jset_opt!(generation_config, "temperature", generation.as_ref().and_then(|g| g.temperature));
-    crate::jset_opt!(generation_config, "topP", generation.as_ref().and_then(|g| g.top_p));
-    crate::jset_opt!(generation_config, "topK", generation.as_ref().and_then(|g| g.top_k));
-    crate::jset_opt!(generation_config, "stopSequences", generation.as_ref().and_then(|g| g.stop.clone()));
-    crate::jset_opt!(generation_config, "thinkingConfig", thinking_config(request));
+    crate::jset_opt!(
+        generation_config,
+        "maxOutputTokens",
+        generation.as_ref().and_then(|g| g.max_tokens)
+    );
+    crate::jset_opt!(
+        generation_config,
+        "temperature",
+        generation
+            .as_ref()
+            .and_then(|g| g.temperature)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        generation_config,
+        "topP",
+        generation
+            .as_ref()
+            .and_then(|g| g.top_p)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        generation_config,
+        "topK",
+        generation.as_ref().and_then(|g| g.top_k)
+    );
+    crate::jset_opt!(
+        generation_config,
+        "stopSequences",
+        generation.as_ref().and_then(|g| g.stop.clone())
+    );
+    crate::jset_opt!(
+        generation_config,
+        "thinkingConfig",
+        thinking_config(request)
+    );
 
     let mut body = Map::new();
-    body.insert("contents".to_string(), Value::Array(lower_messages(request)?));
+    body.insert(
+        "contents".to_string(),
+        Value::Array(lower_messages(request)?),
+    );
     if !request.system.is_empty() {
         body.insert(
             "systemInstruction".to_string(),
@@ -377,7 +468,13 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
                         .tools
                         .iter()
                         .map(|tool| {
-                            lower_tool(tool, &ToolSchemaProjection::model_compatibility(&tool.input_schema, tool_schema_compatibility))
+                            lower_tool(
+                                tool,
+                                &ToolSchemaProjection::model_compatibility(
+                                    &tool.input_schema,
+                                    tool_schema_compatibility,
+                                ),
+                            )
                         })
                         .collect(),
                 ),
@@ -390,7 +487,10 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
         }
     }
     if !generation_config.is_empty() {
-        body.insert("generationConfig".to_string(), Value::Object(generation_config));
+        body.insert(
+            "generationConfig".to_string(),
+            Value::Object(generation_config),
+        );
     }
     Ok(Value::Object(body))
 }
@@ -402,7 +502,9 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
 fn map_usage(usage: &GeminiUsage) -> Option<Usage> {
     let cached = usage.cached_content_token_count;
     let non_cached = shared::subtract_tokens(usage.prompt_token_count, cached);
-    let output_tokens = usage.candidates_token_count.map(|candidates| candidates + usage.thoughts_token_count.unwrap_or(0));
+    let output_tokens = usage
+        .candidates_token_count
+        .map(|candidates| candidates + usage.thoughts_token_count.unwrap_or(0));
     let raw = serde_json::to_value(usage).unwrap_or(Value::Null);
     Some(Usage {
         input_tokens: usage.prompt_token_count,
@@ -410,7 +512,11 @@ fn map_usage(usage: &GeminiUsage) -> Option<Usage> {
         non_cached_input_tokens: non_cached,
         cache_read_input_tokens: cached,
         reasoning_tokens: usage.thoughts_token_count,
-        total_tokens: shared::total_tokens(usage.prompt_token_count, output_tokens, usage.total_token_count),
+        total_tokens: shared::total_tokens(
+            usage.prompt_token_count,
+            output_tokens,
+            usage.total_token_count,
+        ),
         cache_write_input_tokens: None,
         provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([(
             "google".to_string(),
@@ -450,7 +556,10 @@ fn finish(state: &ParserState) -> Vec<LlmEvent> {
             &state.lifecycle,
             &mut events,
             "reasoning-0",
-            Some(&google_metadata(Map::from_iter([("thoughtSignature".to_string(), Value::String(signature.clone()))]))),
+            Some(&google_metadata(Map::from_iter([(
+                "thoughtSignature".to_string(),
+                Value::String(signature.clone()),
+            )]))),
         ),
         None => state.lifecycle.clone(),
     };
@@ -470,7 +579,10 @@ fn step(state: &mut ParserState, event: &GeminiEvent) -> Result<Vec<LlmEvent>, L
             state.usage = Some(usage);
         }
     }
-    let candidate = event.candidates.as_ref().and_then(|candidates| candidates.first());
+    let candidate = event
+        .candidates
+        .as_ref()
+        .and_then(|candidates| candidates.first());
     let Some(content) = candidate.and_then(|c| c.content.as_ref()) else {
         if let Some(finish_reason) = candidate.and_then(|c| c.finish_reason.as_deref()) {
             state.finish_reason = Some(finish_reason.to_string());
@@ -496,9 +608,15 @@ fn step(state: &mut ParserState, event: &GeminiEvent) -> Result<Vec<LlmEvent>, L
                         &mut events,
                         "reasoning-0",
                         text,
-                        part.thought_signature.as_ref().map(|signature| {
-                            google_metadata(Map::from_iter([("thoughtSignature".to_string(), Value::String(signature.clone()))]))
-                        }).as_ref(),
+                        part.thought_signature
+                            .as_ref()
+                            .map(|signature| {
+                                google_metadata(Map::from_iter([(
+                                    "thoughtSignature".to_string(),
+                                    Value::String(signature.clone()),
+                                )]))
+                            })
+                            .as_ref(),
                     );
                     continue;
                 }
@@ -506,9 +624,15 @@ fn step(state: &mut ParserState, event: &GeminiEvent) -> Result<Vec<LlmEvent>, L
                     &lifecycle,
                     &mut events,
                     "reasoning-0",
-                    reasoning_signature.as_ref().map(|signature| {
-                        google_metadata(Map::from_iter([("thoughtSignature".to_string(), Value::String(signature.clone()))]))
-                    }).as_ref(),
+                    reasoning_signature
+                        .as_ref()
+                        .map(|signature| {
+                            google_metadata(Map::from_iter([(
+                                "thoughtSignature".to_string(),
+                                Value::String(signature.clone()),
+                            )]))
+                        })
+                        .as_ref(),
                 );
                 lifecycle = lifecycle::text_delta(&lifecycle, &mut events, "text-0", text);
                 continue;
@@ -516,16 +640,25 @@ fn step(state: &mut ParserState, event: &GeminiEvent) -> Result<Vec<LlmEvent>, L
         }
 
         if let Some(function_call) = &part.function_call {
-            let input = function_call.args.clone().unwrap_or(Value::Object(Map::new()));
+            let input = function_call
+                .args
+                .clone()
+                .unwrap_or(Value::Object(Map::new()));
             let id = format!("tool_{}", next_tool_call_id);
             next_tool_call_id += 1;
             lifecycle = lifecycle::reasoning_end(
                 &lifecycle,
                 &mut events,
                 "reasoning-0",
-                reasoning_signature.as_ref().map(|signature| {
-                    google_metadata(Map::from_iter([("thoughtSignature".to_string(), Value::String(signature.clone()))]))
-                }).as_ref(),
+                reasoning_signature
+                    .as_ref()
+                    .map(|signature| {
+                        google_metadata(Map::from_iter([(
+                            "thoughtSignature".to_string(),
+                            Value::String(signature.clone()),
+                        )]))
+                    })
+                    .as_ref(),
             );
             lifecycle = lifecycle::step_start(&lifecycle, &mut events);
             events.push(LlmEvent::ToolCall {
@@ -534,7 +667,10 @@ fn step(state: &mut ParserState, event: &GeminiEvent) -> Result<Vec<LlmEvent>, L
                 input,
                 provider_executed: None,
                 provider_metadata: part.thought_signature.as_ref().map(|signature| {
-                    google_metadata(Map::from_iter([("thoughtSignature".to_string(), Value::String(signature.clone()))]))
+                    google_metadata(Map::from_iter([(
+                        "thoughtSignature".to_string(),
+                        Value::String(signature.clone()),
+                    )]))
                 }),
             });
             has_tool_calls = true;
@@ -574,9 +710,9 @@ impl ProtocolStream for GeminiStream {
         state: Box<dyn Any + Send>,
         event: &Value,
     ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError> {
-        let mut state = *state.downcast::<ParserState>().map_err(|_| {
-            shared::invalid_request("Gemini parser state mismatch")
-        })?;
+        let mut state = *state
+            .downcast::<ParserState>()
+            .map_err(|_| shared::invalid_request("Gemini parser state mismatch"))?;
         let event: GeminiEvent = serde_json::from_value(event.clone()).unwrap_or_default();
         let events = step(&mut state, &event)?;
         Ok((Box::new(state), events))
@@ -597,7 +733,11 @@ impl ProtocolStream for GeminiStream {
 /// `Gemini.protocol`.
 /// From reference/packages/llm/src/protocols/gemini.ts (`protocol`)
 pub fn protocol() -> Protocol {
-    Protocol::make(ADAPTER, Arc::new(|request| from_request(request)), Arc::new(GeminiStream))
+    Protocol::make(
+        ADAPTER,
+        Arc::new(|request| from_request(request)),
+        Arc::new(GeminiStream),
+    )
 }
 
 /// `Gemini.route`.
@@ -608,8 +748,16 @@ pub fn route() -> crate::route::Route {
         provider: Some("google".to_string()),
         protocol: protocol(),
         endpoint: crate::route::endpoint::path_dynamic(
-            |input| format!("/models/{}:streamGenerateContent?alt=sse", input.request.model.id),
-            crate::route::EndpointOptions { base_url: Some(DEFAULT_BASE_URL.to_string()), query: None },
+            |input| {
+                format!(
+                    "/models/{}:streamGenerateContent?alt=sse",
+                    input.request.model.id
+                )
+            },
+            crate::route::EndpointOptions {
+                base_url: Some(DEFAULT_BASE_URL.to_string()),
+                query: None,
+            },
         ),
         auth: Some(crate::route::Auth::none()),
         framing: Some(crate::route::Framing::Sse),
@@ -624,7 +772,12 @@ pub fn route() -> crate::route::Route {
 
 fn media_part(part: &ContentPart) -> MediaPart {
     match part {
-        ContentPart::Media { media_type, data, filename, metadata } => MediaPart {
+        ContentPart::Media {
+            media_type,
+            data,
+            filename,
+            metadata,
+        } => MediaPart {
             part_type: "media".to_string(),
             media_type: media_type.clone(),
             data: data.clone(),
@@ -637,7 +790,14 @@ fn media_part(part: &ContentPart) -> MediaPart {
 
 fn tool_call_part(part: &ContentPart) -> ToolCallPart {
     match part {
-        ContentPart::ToolCall { id, name, input, provider_executed, metadata, provider_metadata } => ToolCallPart {
+        ContentPart::ToolCall {
+            id,
+            name,
+            input,
+            provider_executed,
+            metadata,
+            provider_metadata,
+        } => ToolCallPart {
             part_type: "tool-call".to_string(),
             id: id.clone(),
             name: name.clone(),
@@ -652,18 +812,24 @@ fn tool_call_part(part: &ContentPart) -> ToolCallPart {
 
 fn tool_result_part(part: &ContentPart) -> crate::schema::messages::ToolResultPart {
     match part {
-        ContentPart::ToolResult { id, name, result, provider_executed, cache, metadata, provider_metadata } => {
-            crate::schema::messages::ToolResultPart {
-                part_type: "tool-result".to_string(),
-                id: id.clone(),
-                name: name.clone(),
-                result: result.clone(),
-                provider_executed: *provider_executed,
-                cache: cache.clone(),
-                metadata: metadata.clone(),
-                provider_metadata: provider_metadata.clone(),
-            }
-        }
+        ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache,
+            metadata,
+            provider_metadata,
+        } => crate::schema::messages::ToolResultPart {
+            part_type: "tool-result".to_string(),
+            id: id.clone(),
+            name: name.clone(),
+            result: result.clone(),
+            provider_executed: *provider_executed,
+            cache: cache.clone(),
+            metadata: metadata.clone(),
+            provider_metadata: provider_metadata.clone(),
+        },
         _ => unreachable!(),
     }
 }

@@ -7,9 +7,9 @@
 
 pub mod cache_policy;
 pub mod llm;
+pub mod protocols;
 pub mod provider;
 pub mod provider_error;
-pub mod protocols;
 pub mod providers;
 pub mod route;
 pub mod schema;
@@ -18,10 +18,14 @@ pub mod tool;
 pub mod tool_runtime;
 
 pub use cache_policy::apply_cache_policy;
-pub use llm::{generate_object, generate_object_dynamic, request, request_input, update_request, RequestInput};
+pub use llm::{
+    generate_object, generate_object_dynamic, request, request_input, update_request, RequestInput,
+};
 pub use provider_error::is_context_overflow;
 pub use provider_error::is_context_overflow_failure;
-pub use route::{compile, LlmClient, Route, RouteDefaults, RouteDefaultsInput, RouteModelInput, RoutePatch};
+pub use route::{
+    compile, LlmClient, Route, RouteDefaults, RouteDefaultsInput, RouteModelInput, RoutePatch,
+};
 pub use schema::*;
 pub use tool::{to_definitions, Tool, ToolConfig, ToolSchema};
 pub use tool_runtime::{dispatch as tool_dispatch, DispatchResult, ToolSettlement};

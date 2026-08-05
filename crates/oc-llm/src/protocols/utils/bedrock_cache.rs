@@ -20,7 +20,10 @@ pub fn breakpoints() -> Breakpoints {
 /// From reference/packages/llm/src/protocols/utils/bedrock-cache.ts (`block`)
 pub fn block(breakpoints: &mut Breakpoints, cache: Option<&CacheHint>) -> Option<Value> {
     let cache = cache?;
-    if !matches!(cache.kind, crate::schema::CacheHintType::Ephemeral | crate::schema::CacheHintType::Persistent) {
+    if !matches!(
+        cache.kind,
+        crate::schema::CacheHintType::Ephemeral | crate::schema::CacheHintType::Persistent
+    ) {
         return None;
     }
     if breakpoints.remaining <= 0 {
@@ -33,5 +36,8 @@ pub fn block(breakpoints: &mut Breakpoints, cache: Option<&CacheHint>) -> Option
     if ttl_bucket(cache.ttl_seconds) == Some("1h") {
         cache_point.insert("ttl".to_string(), Value::String("1h".to_string()));
     }
-    Some(Value::Object(Map::from_iter([("cachePoint".to_string(), Value::Object(cache_point))])))
+    Some(Value::Object(Map::from_iter([(
+        "cachePoint".to_string(),
+        Value::Object(cache_point),
+    )])))
 }

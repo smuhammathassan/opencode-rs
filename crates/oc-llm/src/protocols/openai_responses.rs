@@ -13,9 +13,12 @@ use super::utils::openai_options as OpenAIOptions;
 use super::utils::tool_schema::ToolSchemaProjection;
 use super::utils::tool_stream::{self, ToolStream};
 use crate::provider_error::is_context_overflow;
-use crate::route::Protocol;
 use crate::route::protocol::ProtocolStream;
-use crate::schema::messages::{ContentPart, MediaData, MediaPart, ReasoningPart, ToolCallPart, ToolContent, ToolDefinition, TextPart, ToolResultPart};
+use crate::route::Protocol;
+use crate::schema::messages::{
+    ContentPart, MediaData, MediaPart, ReasoningPart, TextPart, ToolCallPart, ToolContent,
+    ToolDefinition, ToolResultPart,
+};
 use crate::schema::{FinishReason, LlmError, LlmEvent, LlmRequest, ToolChoiceType, Usage};
 use crate::shared;
 
@@ -154,8 +157,14 @@ fn lower_tool(tool: &ToolDefinition, input_schema: &Value) -> Value {
     let mut obj = Map::new();
     obj.insert("type".to_string(), Value::String("function".to_string()));
     obj.insert("name".to_string(), Value::String(tool.name.clone()));
-    obj.insert("description".to_string(), Value::String(tool.description.clone()));
-    obj.insert("parameters".to_string(), ToolSchemaProjection::open_ai(input_schema));
+    obj.insert(
+        "description".to_string(),
+        Value::String(tool.description.clone()),
+    );
+    obj.insert(
+        "parameters".to_string(),
+        ToolSchemaProjection::open_ai(input_schema),
+    );
     obj.insert("strict".to_string(), Value::Bool(false));
     Value::Object(obj)
 }
@@ -167,7 +176,9 @@ fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
         ToolChoiceType::Required => Ok(Value::String("required".to_string())),
         ToolChoiceType::Tool => {
             let Some(name) = &tool_choice.name else {
-                return Err(shared::invalid_request("OpenAI Responses tool choice requires a tool name"));
+                return Err(shared::invalid_request(
+                    "OpenAI Responses tool choice requires a tool name",
+                ));
             };
             let mut obj = Map::new();
             obj.insert("type".to_string(), Value::String("function".to_string()));
@@ -179,15 +190,24 @@ fn lower_tool_choice(tool_choice: &crate::schema::ToolChoice) -> Result<Value, L
 
 fn lower_tool_call(part: &ToolCallPart) -> Value {
     let mut obj = Map::new();
-    obj.insert("type".to_string(), Value::String("function_call".to_string()));
+    obj.insert(
+        "type".to_string(),
+        Value::String("function_call".to_string()),
+    );
     obj.insert("call_id".to_string(), Value::String(part.id.clone()));
     obj.insert("name".to_string(), Value::String(part.name.clone()));
-    obj.insert("arguments".to_string(), Value::String(shared::encode_json(&part.input)));
+    obj.insert(
+        "arguments".to_string(),
+        Value::String(shared::encode_json(&part.input)),
+    );
     Value::Object(obj)
 }
 
 fn lower_reasoning(part: &ReasoningPart) -> Option<ReasoningInput> {
-    let openai = part.provider_metadata.as_ref().and_then(|m| m.get("openai"));
+    let openai = part
+        .provider_metadata
+        .as_ref()
+        .and_then(|m| m.get("openai"));
     let openai = openai?;
     let item_id = openai.get("itemId").and_then(Value::as_str)?;
     if item_id.is_empty() {
@@ -202,11 +222,18 @@ fn lower_reasoning(part: &ReasoningPart) -> Option<ReasoningInput> {
         Vec::new()
     } else {
         vec![Value::Object(Map::from_iter([
-            ("type".to_string(), Value::String("summary_text".to_string())),
+            (
+                "type".to_string(),
+                Value::String("summary_text".to_string()),
+            ),
             ("text".to_string(), Value::String(part.text.clone())),
         ]))]
     };
-    Some(ReasoningInput { id: item_id.to_string(), summary, encrypted_content })
+    Some(ReasoningInput {
+        id: item_id.to_string(),
+        summary,
+        encrypted_content,
+    })
 }
 
 struct ReasoningInput {
@@ -216,7 +243,10 @@ struct ReasoningInput {
 }
 
 fn hosted_tool_item_id(part: &ToolResultPart) -> Option<String> {
-    let openai = part.provider_metadata.as_ref().and_then(|m| m.get("openai"))?;
+    let openai = part
+        .provider_metadata
+        .as_ref()
+        .and_then(|m| m.get("openai"))?;
     let item_id = openai.get("itemId").and_then(Value::as_str)?;
     if item_id.is_empty() {
         None
@@ -233,14 +263,19 @@ fn lower_user_content(part: &ContentPart) -> Result<Value, LlmError> {
         ]))),
         ContentPart::Media { .. } => {
             let media = media_part(part);
-            let supported: std::collections::HashSet<String> = shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
+            let supported: std::collections::HashSet<String> =
+                shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
             let media = shared::validate_media("OpenAI Responses", &media, &supported)?;
             Ok(Value::Object(Map::from_iter([
                 ("type".to_string(), Value::String("input_image".to_string())),
                 ("image_url".to_string(), Value::String(media.data_url)),
             ])))
         }
-        _ => Err(shared::unsupported("OpenAI Responses", "user", &["text", "media"])),
+        _ => Err(shared::unsupported(
+            "OpenAI Responses",
+            "user",
+            &["text", "media"],
+        )),
     }
 }
 
@@ -251,8 +286,10 @@ fn lower_tool_result_content_item(item: &ToolContent) -> Result<Value, LlmError>
             ("text".to_string(), Value::String(text.clone())),
         ]))),
         ToolContent::File { .. } => {
-            let supported: std::collections::HashSet<String> = shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
-            let media = shared::validate_tool_file("OpenAI Responses", &tool_file(item), &supported)?;
+            let supported: std::collections::HashSet<String> =
+                shared::IMAGE_MIMES.iter().map(|s| s.to_string()).collect();
+            let media =
+                shared::validate_tool_file("OpenAI Responses", &tool_file(item), &supported)?;
             Ok(Value::Object(Map::from_iter([
                 ("type".to_string(), Value::String("input_image".to_string())),
                 ("image_url".to_string(), Value::String(media.data_url)),
@@ -280,7 +317,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
     if !request.system.is_empty() {
         input.push(Value::Object(Map::from_iter([
             ("role".to_string(), Value::String("system".to_string())),
-            ("content".to_string(), Value::String(shared::system_part_text(&request.system))),
+            (
+                "content".to_string(),
+                Value::String(shared::system_part_text(&request.system)),
+            ),
         ])));
     }
 
@@ -330,8 +370,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
         if message.role == crate::schema::MessageRole::Assistant {
             let mut content: Vec<TextPart> = Vec::new();
             let mut reasoning_items: BTreeMap<String, ReasoningReplay> = BTreeMap::new();
-            let mut reasoning_references: std::collections::HashSet<String> = std::collections::HashSet::new();
-            let mut hosted_tool_references: std::collections::HashSet<String> = std::collections::HashSet::new();
+            let mut reasoning_references: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
+            let mut hosted_tool_references: std::collections::HashSet<String> =
+                std::collections::HashSet::new();
             let flush_text = |input: &mut Vec<Value>, content: &mut Vec<TextPart>| {
                 if content.is_empty() {
                     return;
@@ -345,7 +387,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                                 .iter()
                                 .map(|part| {
                                     Value::Object(Map::from_iter([
-                                        ("type".to_string(), Value::String("output_text".to_string())),
+                                        (
+                                            "type".to_string(),
+                                            Value::String("output_text".to_string()),
+                                        ),
                                         ("text".to_string(), Value::String(part.text.clone())),
                                     ]))
                                 })
@@ -361,7 +406,12 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                     ContentPart::Text { text, .. } => {
                         content.push(TextPart::make(text));
                     }
-                    ContentPart::Reasoning { text, encrypted, provider_metadata, .. } => {
+                    ContentPart::Reasoning {
+                        text,
+                        encrypted,
+                        provider_metadata,
+                        ..
+                    } => {
                         flush_text(&mut input, &mut content);
                         let reasoning_part = ReasoningPart {
                             part_type: "reasoning".to_string(),
@@ -370,11 +420,16 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                             metadata: None,
                             provider_metadata: provider_metadata.clone(),
                         };
-                        let Some(reasoning) = lower_reasoning(&reasoning_part) else { continue };
+                        let Some(reasoning) = lower_reasoning(&reasoning_part) else {
+                            continue;
+                        };
                         if store != Some(false) {
                             if !reasoning_references.contains(&reasoning.id) {
                                 input.push(Value::Object(Map::from_iter([
-                                    ("type".to_string(), Value::String("item_reference".to_string())),
+                                    (
+                                        "type".to_string(),
+                                        Value::String("item_reference".to_string()),
+                                    ),
                                     ("id".to_string(), Value::String(reasoning.id.clone())),
                                 ])));
                             }
@@ -403,7 +458,9 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                         input.push(Value::Object(replay));
                         continue;
                     }
-                    ContentPart::ToolCall { provider_executed, .. } => {
+                    ContentPart::ToolCall {
+                        provider_executed, ..
+                    } => {
                         flush_text(&mut input, &mut content);
                         if *provider_executed == Some(true) {
                             continue;
@@ -411,7 +468,9 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                         input.push(lower_tool_call(&tool_call_part(part)));
                         continue;
                     }
-                    ContentPart::ToolResult { provider_executed, .. } if *provider_executed == Some(true) => {
+                    ContentPart::ToolResult {
+                        provider_executed, ..
+                    } if *provider_executed == Some(true) => {
                         flush_text(&mut input, &mut content);
                         let part = tool_result_part(part);
                         let item_id = hosted_tool_item_id(&part);
@@ -419,7 +478,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
                             if let Some(item_id) = &item_id {
                                 if !hosted_tool_references.contains(item_id) {
                                     input.push(Value::Object(Map::from_iter([
-                                        ("type".to_string(), Value::String("item_reference".to_string())),
+                                        (
+                                            "type".to_string(),
+                                            Value::String("item_reference".to_string()),
+                                        ),
                                         ("id".to_string(), Value::String(item_id.clone())),
                                     ])));
                                 }
@@ -445,11 +507,18 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
 
         for part in &message.content {
             let ContentPart::ToolResult { .. } = part else {
-                return Err(shared::unsupported("OpenAI Responses", "tool", &["tool-result"]));
+                return Err(shared::unsupported(
+                    "OpenAI Responses",
+                    "tool",
+                    &["tool-result"],
+                ));
             };
             let part = tool_result_part(part);
             let mut obj = Map::new();
-            obj.insert("type".to_string(), Value::String("function_call_output".to_string()));
+            obj.insert(
+                "type".to_string(),
+                Value::String("function_call_output".to_string()),
+            );
             obj.insert("call_id".to_string(), Value::String(part.id.clone()));
             obj.insert("output".to_string(), lower_tool_result_output(&part)?);
             input.push(Value::Object(obj));
@@ -460,7 +529,10 @@ fn lower_messages(request: &LlmRequest) -> Result<Vec<Value>, LlmError> {
         input.retain(|item| {
             if let Value::Object(obj) = item {
                 if obj.get("type").and_then(Value::as_str) == Some("reasoning") {
-                    return obj.get("encrypted_content").map(|v| v.is_string()).unwrap_or(false);
+                    return obj
+                        .get("encrypted_content")
+                        .map(|v| v.is_string())
+                        .unwrap_or(false);
                 }
             }
             true
@@ -506,7 +578,10 @@ fn lower_options(request: &LlmRequest) -> Result<Map<String, Value>, LlmError> {
     if let Some(verbosity) = verbosity {
         options.insert(
             "text".to_string(),
-            Value::Object(Map::from_iter([("verbosity".to_string(), Value::String(verbosity))])),
+            Value::Object(Map::from_iter([(
+                "verbosity".to_string(),
+                Value::String(verbosity),
+            )])),
         );
     }
     crate::jset_opt!(options, "service_tier", service_tier);
@@ -518,9 +593,16 @@ fn lower_options(request: &LlmRequest) -> Result<Map<String, Value>, LlmError> {
 pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
     let generation = request.generation.clone();
     let options = lower_options(request)?;
-    let tool_schema_compatibility = request.model.compatibility.as_ref().and_then(|c| c.tool_schema);
+    let tool_schema_compatibility = request
+        .model
+        .compatibility
+        .as_ref()
+        .and_then(|c| c.tool_schema);
     let mut body = Map::new();
-    body.insert("model".to_string(), Value::String(request.model.id.0.clone()));
+    body.insert(
+        "model".to_string(),
+        Value::String(request.model.id.0.clone()),
+    );
     body.insert("input".to_string(), Value::Array(lower_messages(request)?));
     if !request.tools.is_empty() {
         body.insert(
@@ -530,7 +612,13 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
                     .tools
                     .iter()
                     .map(|tool| {
-                        lower_tool(tool, &ToolSchemaProjection::model_compatibility(&tool.input_schema, tool_schema_compatibility))
+                        lower_tool(
+                            tool,
+                            &ToolSchemaProjection::model_compatibility(
+                                &tool.input_schema,
+                                tool_schema_compatibility,
+                            ),
+                        )
                     })
                     .collect(),
             ),
@@ -540,9 +628,27 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
         body.insert("tool_choice".to_string(), lower_tool_choice(tool_choice)?);
     }
     body.insert("stream".to_string(), Value::Bool(true));
-    crate::jset_opt!(body, "max_output_tokens", generation.as_ref().and_then(|g| g.max_tokens));
-    crate::jset_opt!(body, "temperature", generation.as_ref().and_then(|g| g.temperature));
-    crate::jset_opt!(body, "top_p", generation.as_ref().and_then(|g| g.top_p));
+    crate::jset_opt!(
+        body,
+        "max_output_tokens",
+        generation.as_ref().and_then(|g| g.max_tokens)
+    );
+    crate::jset_opt!(
+        body,
+        "temperature",
+        generation
+            .as_ref()
+            .and_then(|g| g.temperature)
+            .map(shared::json_number)
+    );
+    crate::jset_opt!(
+        body,
+        "top_p",
+        generation
+            .as_ref()
+            .and_then(|g| g.top_p)
+            .map(shared::json_number)
+    );
     for (key, value) in options {
         body.insert(key, value);
     }
@@ -555,8 +661,16 @@ pub fn from_request(request: &LlmRequest) -> Result<Value, LlmError> {
 
 fn map_usage(usage: Option<OpenAIResponsesUsage>) -> Option<Usage> {
     let usage = usage?;
-    let cached = usage.input_tokens_details.as_ref().and_then(|d| d.as_ref()).and_then(|d| d.cached_tokens);
-    let reasoning = usage.output_tokens_details.as_ref().and_then(|d| d.as_ref()).and_then(|d| d.reasoning_tokens);
+    let cached = usage
+        .input_tokens_details
+        .as_ref()
+        .and_then(|d| d.as_ref())
+        .and_then(|d| d.cached_tokens);
+    let reasoning = usage
+        .output_tokens_details
+        .as_ref()
+        .and_then(|d| d.as_ref())
+        .and_then(|d| d.reasoning_tokens);
     let non_cached = shared::subtract_tokens(usage.input_tokens, cached);
     let raw = serde_json::to_value(&usage).unwrap_or(Value::Null);
     Some(Usage {
@@ -565,7 +679,11 @@ fn map_usage(usage: Option<OpenAIResponsesUsage>) -> Option<Usage> {
         non_cached_input_tokens: non_cached,
         cache_read_input_tokens: cached,
         reasoning_tokens: reasoning,
-        total_tokens: shared::total_tokens(usage.input_tokens, usage.output_tokens, usage.total_tokens),
+        total_tokens: shared::total_tokens(
+            usage.input_tokens,
+            usage.output_tokens,
+            usage.total_tokens,
+        ),
         cache_write_input_tokens: None,
         provider_metadata: Some(crate::schema::ProviderMetadata::from_iter([(
             "openai".to_string(),
@@ -575,7 +693,12 @@ fn map_usage(usage: Option<OpenAIResponsesUsage>) -> Option<Usage> {
 }
 
 fn map_finish_reason(event: &OpenAIResponsesEvent, has_function_call: bool) -> FinishReason {
-    let reason = event.response.as_ref().and_then(|r| r.incomplete_details.as_ref()).and_then(|v| v.as_ref()).and_then(|d| d.reason.clone());
+    let reason = event
+        .response
+        .as_ref()
+        .and_then(|r| r.incomplete_details.as_ref())
+        .and_then(|v| v.as_ref())
+        .and_then(|d| d.reason.clone());
     match reason.as_deref() {
         None | Some("") => {
             if has_function_call {
@@ -601,11 +724,16 @@ fn openai_metadata(metadata: serde_json::Map<String, Value>) -> crate::schema::P
 }
 
 fn hosted_tool_events(item: &OpenAIResponsesStreamItem) -> Vec<LlmEvent> {
-    let tool = HOSTED_TOOLS.iter().find(|(kind, _, _)| Some(*kind) == item.item_type.as_deref());
+    let tool = HOSTED_TOOLS
+        .iter()
+        .find(|(kind, _, _)| Some(*kind) == item.item_type.as_deref());
     match tool {
         Some((_, name, input)) => {
             let id = item.id.clone().unwrap_or_default();
-            let provider_metadata = openai_metadata(Map::from_iter([("itemId".to_string(), Value::String(id.clone()))]));
+            let provider_metadata = openai_metadata(Map::from_iter([(
+                "itemId".to_string(),
+                Value::String(id.clone()),
+            )]));
             vec![
                 LlmEvent::ToolCall {
                     id: id.clone(),
@@ -631,15 +759,23 @@ fn hosted_tool_events(item: &OpenAIResponsesStreamItem) -> Vec<LlmEvent> {
 fn hosted_tool_result(item: &OpenAIResponsesStreamItem) -> crate::schema::ToolResultValue {
     let is_error = item.error.is_some() && !item.error.is_none();
     if is_error {
-        crate::schema::ToolResultValue::Error { value: item.error.clone().unwrap_or(Value::Null) }
+        crate::schema::ToolResultValue::Error {
+            value: item.error.clone().unwrap_or(Value::Null),
+        }
     } else {
-        crate::schema::ToolResultValue::Json { value: serde_json::to_value(item).unwrap_or(Value::Null) }
+        crate::schema::ToolResultValue::Json {
+            value: serde_json::to_value(item).unwrap_or(Value::Null),
+        }
     }
 }
 
 const HOSTED_TOOLS: [(&str, &str, fn(&OpenAIResponsesStreamItem) -> Value); 8] = [
-    ("web_search_call", "web_search", |item| item.action.clone().unwrap_or(Value::Object(Map::new()))),
-    ("web_search_preview_call", "web_search_preview", |item| item.action.clone().unwrap_or(Value::Object(Map::new()))),
+    ("web_search_call", "web_search", |item| {
+        item.action.clone().unwrap_or(Value::Object(Map::new()))
+    }),
+    ("web_search_preview_call", "web_search_preview", |item| {
+        item.action.clone().unwrap_or(Value::Object(Map::new()))
+    }),
     ("file_search_call", "file_search", |item| {
         Value::Object(Map::from_iter([(
             "queries".to_string(),
@@ -652,8 +788,12 @@ const HOSTED_TOOLS: [(&str, &str, fn(&OpenAIResponsesStreamItem) -> Value); 8] =
         crate::jset_opt!(obj, "container_id", item.container_id.clone());
         Value::Object(obj)
     }),
-    ("computer_use_call", "computer_use", |item| item.action.clone().unwrap_or(Value::Object(Map::new()))),
-    ("image_generation_call", "image_generation", |_item| Value::Object(Map::new())),
+    ("computer_use_call", "computer_use", |item| {
+        item.action.clone().unwrap_or(Value::Object(Map::new()))
+    }),
+    ("image_generation_call", "image_generation", |_item| {
+        Value::Object(Map::new())
+    }),
     ("mcp_call", "mcp", |item| {
         let mut obj = Map::new();
         crate::jset_opt!(obj, "server_label", item.server_label.clone());
@@ -661,7 +801,9 @@ const HOSTED_TOOLS: [(&str, &str, fn(&OpenAIResponsesStreamItem) -> Value); 8] =
         crate::jset_opt!(obj, "arguments", item.arguments.clone());
         Value::Object(obj)
     }),
-    ("local_shell_call", "local_shell", |item| item.action.clone().unwrap_or(Value::Object(Map::new()))),
+    ("local_shell_call", "local_shell", |item| {
+        item.action.clone().unwrap_or(Value::Object(Map::new()))
+    }),
 ];
 
 type StepResult = (ParserState, Vec<LlmEvent>);
@@ -701,10 +843,19 @@ fn on_reasoning_done(state: &ParserState, _event: &OpenAIResponsesEvent) -> Step
     (state.clone(), vec![])
 }
 
-fn reasoning_metadata(item_id: &str, encrypted: Option<Option<String>>) -> crate::schema::ProviderMetadata {
+fn reasoning_metadata(
+    item_id: &str,
+    encrypted: Option<Option<String>>,
+) -> crate::schema::ProviderMetadata {
     let mut obj = Map::new();
     obj.insert("itemId".to_string(), Value::String(item_id.to_string()));
-    obj.insert("reasoningEncryptedContent".to_string(), encrypted.flatten().map(Value::String).unwrap_or(Value::Null));
+    obj.insert(
+        "reasoningEncryptedContent".to_string(),
+        encrypted
+            .flatten()
+            .map(Value::String)
+            .unwrap_or(Value::Null),
+    );
     openai_metadata(obj)
 }
 
@@ -734,18 +885,25 @@ fn on_output_item_added(state: &ParserState, event: &OpenAIResponsesEvent) -> St
             return (state.clone(), vec![]);
         }
         let id = item.id.clone().unwrap();
-        let provider_metadata = openai_metadata(Map::from_iter([("itemId".to_string(), Value::String(id.clone()))]));
+        let provider_metadata = openai_metadata(Map::from_iter([(
+            "itemId".to_string(),
+            Value::String(id.clone()),
+        )]));
         let mut events = Vec::new();
         let lifecycle = lifecycle::step_start(&state.lifecycle, &mut events);
         let mut next = state.clone();
         next.lifecycle = lifecycle;
-        next.tools = ToolStream::start(&state.tools, id.clone(), tool_stream::PendingToolInput {
-            id: item.call_id.clone().unwrap_or_else(|| id.clone()),
-            name: item.name.clone().unwrap_or_default(),
-            input: item.arguments.clone(),
-            provider_executed: None,
-            provider_metadata: Some(provider_metadata.clone()),
-        });
+        next.tools = ToolStream::start(
+            &state.tools,
+            id.clone(),
+            tool_stream::PendingToolInput {
+                id: item.call_id.clone().unwrap_or_else(|| id.clone()),
+                name: item.name.clone().unwrap_or_default(),
+                input: item.arguments.clone(),
+                provider_executed: None,
+                provider_metadata: Some(provider_metadata.clone()),
+            },
+        );
         events.push(LlmEvent::ToolInputStart {
             id: item.call_id.clone().unwrap_or_else(|| id.clone()),
             name: item.name.clone().unwrap_or_default(),
@@ -756,17 +914,24 @@ fn on_output_item_added(state: &ParserState, event: &OpenAIResponsesEvent) -> St
     (state.clone(), vec![])
 }
 
-fn on_reasoning_summary_part_added(state: &ParserState, event: &OpenAIResponsesEvent) -> StepResult {
+fn on_reasoning_summary_part_added(
+    state: &ParserState,
+    event: &OpenAIResponsesEvent,
+) -> StepResult {
     let Some(item_id) = &event.item_id else {
         return (state.clone(), vec![]);
     };
     let Some(summary_index) = event.summary_index else {
         return (state.clone(), vec![]);
     };
-    let item = state.reasoning_items.get(item_id).cloned().unwrap_or(ReasoningStreamItem {
-        encrypted_content: None,
-        summary_parts: BTreeMap::new(),
-    });
+    let item = state
+        .reasoning_items
+        .get(item_id)
+        .cloned()
+        .unwrap_or(ReasoningStreamItem {
+            encrypted_content: None,
+            summary_parts: BTreeMap::new(),
+        });
     if summary_index == 0 {
         if state.reasoning_items.contains_key(item_id) {
             return (state.clone(), vec![]);
@@ -800,7 +965,10 @@ fn on_reasoning_summary_part_added(state: &ParserState, event: &OpenAIResponsesE
                 &lifecycle,
                 &mut events,
                 &format!("{}:{}", item_id, key),
-                Some(&openai_metadata(Map::from_iter([("itemId".to_string(), Value::String(item_id.clone()))]))),
+                Some(&openai_metadata(Map::from_iter([(
+                    "itemId".to_string(),
+                    Value::String(item_id.clone()),
+                )]))),
             );
         }
     }
@@ -821,7 +989,10 @@ fn on_reasoning_summary_part_added(state: &ParserState, event: &OpenAIResponsesE
     summary_parts.insert(summary_index, ReasoningSummaryStatus::Active);
     next.reasoning_items.insert(
         item_id.clone(),
-        ReasoningStreamItem { encrypted_content: item.encrypted_content.clone(), summary_parts },
+        ReasoningStreamItem {
+            encrypted_content: item.encrypted_content.clone(),
+            summary_parts,
+        },
     );
     (next, events)
 }
@@ -843,7 +1014,10 @@ fn on_reasoning_summary_part_done(state: &ParserState, event: &OpenAIResponsesEv
             &state.lifecycle,
             &mut events,
             &format!("{}:{}", item_id, summary_index),
-            Some(&openai_metadata(Map::from_iter([("itemId".to_string(), Value::String(item_id.clone()))]))),
+            Some(&openai_metadata(Map::from_iter([(
+                "itemId".to_string(),
+                Value::String(item_id.clone()),
+            )]))),
         );
         ReasoningSummaryStatus::Concluded
     } else {
@@ -853,12 +1027,18 @@ fn on_reasoning_summary_part_done(state: &ParserState, event: &OpenAIResponsesEv
     summary_parts.insert(summary_index, status);
     next.reasoning_items.insert(
         item_id.clone(),
-        ReasoningStreamItem { encrypted_content: item.encrypted_content.clone(), summary_parts },
+        ReasoningStreamItem {
+            encrypted_content: item.encrypted_content.clone(),
+            summary_parts,
+        },
     );
     (next, events)
 }
 
-fn on_function_call_arguments_delta(state: &ParserState, event: &OpenAIResponsesEvent) -> Result<StepResult, LlmError> {
+fn on_function_call_arguments_delta(
+    state: &ParserState,
+    event: &OpenAIResponsesEvent,
+) -> Result<StepResult, LlmError> {
     let Some(item_id) = &event.item_id else {
         return Ok((state.clone(), vec![]));
     };
@@ -886,10 +1066,14 @@ fn on_function_call_arguments_delta(state: &ParserState, event: &OpenAIResponses
 }
 
 fn is_reasoning_item(item: &OpenAIResponsesStreamItem) -> bool {
-    item.item_type.as_deref() == Some("reasoning") && item.id.as_deref().map(|id| !id.is_empty()).unwrap_or(false)
+    item.item_type.as_deref() == Some("reasoning")
+        && item.id.as_deref().map(|id| !id.is_empty()).unwrap_or(false)
 }
 
-fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Result<StepResult, LlmError> {
+fn on_output_item_done(
+    state: &ParserState,
+    event: &OpenAIResponsesEvent,
+) -> Result<StepResult, LlmError> {
     let Some(item) = &event.item else {
         return Ok((state.clone(), vec![]));
     };
@@ -904,13 +1088,17 @@ fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Res
         let tools = if state.tools.contains_key(id) {
             state.tools.clone()
         } else {
-            ToolStream::start(&state.tools, id.clone(), tool_stream::PendingToolInput {
-                id: item.call_id.clone().unwrap(),
-                name: item.name.clone().unwrap(),
-                input: None,
-                provider_executed: None,
-                provider_metadata: None,
-            })
+            ToolStream::start(
+                &state.tools,
+                id.clone(),
+                tool_stream::PendingToolInput {
+                    id: item.call_id.clone().unwrap(),
+                    name: item.name.clone().unwrap(),
+                    input: None,
+                    provider_executed: None,
+                    provider_metadata: None,
+                },
+            )
         };
         let result = match &item.arguments {
             None => tool_stream::finish(ADAPTER, &tools, id)?,
@@ -926,7 +1114,10 @@ fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Res
         events.extend(result_events);
         let mut next = state.clone();
         next.lifecycle = lifecycle;
-        next.has_function_call = events.iter().any(|e| matches!(e, LlmEvent::ToolCall { .. })) || state.has_function_call;
+        next.has_function_call = events
+            .iter()
+            .any(|e| matches!(e, LlmEvent::ToolCall { .. }))
+            || state.has_function_call;
         next.tools = result.tools;
         return Ok((next, events));
     }
@@ -948,7 +1139,9 @@ fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Res
         if let Some(reasoning_item) = reasoning_item {
             let mut lifecycle = state.lifecycle.clone();
             for (key, status) in &reasoning_item.summary_parts {
-                if *status == ReasoningSummaryStatus::Active || *status == ReasoningSummaryStatus::CanConclude {
+                if *status == ReasoningSummaryStatus::Active
+                    || *status == ReasoningSummaryStatus::CanConclude
+                {
                     lifecycle = lifecycle::reasoning_end(
                         &lifecycle,
                         &mut events,
@@ -965,13 +1158,20 @@ fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Res
         if !state.lifecycle.reasoning.contains(&id) {
             let mut next = state.clone();
             let lifecycle = lifecycle::step_start(&state.lifecycle, &mut events);
-            events.push(LlmEvent::ReasoningStart { id: id.clone(), provider_metadata: Some(provider_metadata.clone()) });
-            events.push(LlmEvent::ReasoningEnd { id: id.clone(), provider_metadata: Some(provider_metadata) });
+            events.push(LlmEvent::ReasoningStart {
+                id: id.clone(),
+                provider_metadata: Some(provider_metadata.clone()),
+            });
+            events.push(LlmEvent::ReasoningEnd {
+                id: id.clone(),
+                provider_metadata: Some(provider_metadata),
+            });
             next.lifecycle = lifecycle;
             return Ok((next, events));
         }
         let mut next = state.clone();
-        next.lifecycle = lifecycle::reasoning_end(&state.lifecycle, &mut events, &id, Some(&provider_metadata));
+        next.lifecycle =
+            lifecycle::reasoning_end(&state.lifecycle, &mut events, &id, Some(&provider_metadata));
         return Ok((next, events));
     }
 
@@ -979,7 +1179,10 @@ fn on_output_item_done(state: &ParserState, event: &OpenAIResponsesEvent) -> Res
 }
 
 fn is_hosted_tool_item(item: &OpenAIResponsesStreamItem) -> bool {
-    item.item_type.as_deref().map(|kind| HOSTED_TOOLS.iter().any(|(k, _, _)| *k == kind)).unwrap_or(false)
+    item.item_type
+        .as_deref()
+        .map(|kind| HOSTED_TOOLS.iter().any(|(k, _, _)| *k == kind))
+        .unwrap_or(false)
         && item.id.as_deref().map(|id| !id.is_empty()).unwrap_or(false)
 }
 
@@ -998,7 +1201,15 @@ fn on_response_finish(state: &ParserState, event: &OpenAIResponsesEvent) -> Step
         &state.lifecycle,
         &mut events,
         map_finish_reason(event, state.has_function_call),
-        map_usage(event.response.as_ref().and_then(|r| r.usage.as_ref()).and_then(|v| v.as_ref()).cloned()).as_ref(),
+        map_usage(
+            event
+                .response
+                .as_ref()
+                .and_then(|r| r.usage.as_ref())
+                .and_then(|v| v.as_ref())
+                .cloned(),
+        )
+        .as_ref(),
         provider_metadata.as_ref(),
     );
     let mut next = state.clone();
@@ -1007,17 +1218,36 @@ fn on_response_finish(state: &ParserState, event: &OpenAIResponsesEvent) -> Step
 }
 
 fn provider_error_message(event: &OpenAIResponsesEvent, fallback: &str) -> String {
-    let nested = event.response.as_ref().and_then(|r| r.error.as_ref()).and_then(|v| v.as_ref());
+    let nested = event
+        .response
+        .as_ref()
+        .and_then(|r| r.error.as_ref())
+        .and_then(|v| v.as_ref());
     let message = event
         .message
         .clone()
-        .or_else(|| nested.as_ref().and_then(|e| e.message.as_ref()).and_then(|v| v.as_ref()).cloned())
-        .or_else(|| nested.as_ref().and_then(|e| e.code.as_ref()).and_then(|v| v.as_ref()).cloned())
+        .or_else(|| {
+            nested
+                .as_ref()
+                .and_then(|e| e.message.as_ref())
+                .and_then(|v| v.as_ref())
+                .cloned()
+        })
+        .or_else(|| {
+            nested
+                .as_ref()
+                .and_then(|e| e.code.as_ref())
+                .and_then(|v| v.as_ref())
+                .cloned()
+        })
         .unwrap_or_else(|| fallback.to_string());
-    let code = event
-        .code
-        .clone()
-        .or_else(|| nested.as_ref().and_then(|e| e.code.as_ref()).and_then(|v| v.as_ref()).cloned());
+    let code = event.code.clone().or_else(|| {
+        nested
+            .as_ref()
+            .and_then(|e| e.code.as_ref())
+            .and_then(|v| v.as_ref())
+            .cloned()
+    });
     match (message.as_str(), code.as_deref()) {
         (m, Some(c)) if !m.is_empty() => format!("{}: {}", c, m),
         (m, None) => m.to_string(),
@@ -1026,34 +1256,43 @@ fn provider_error_message(event: &OpenAIResponsesEvent, fallback: &str) -> Strin
 }
 
 fn provider_error(event: &OpenAIResponsesEvent, fallback: &str) -> LlmEvent {
-    let code = event
-        .code
-        .clone()
-        .or_else(|| {
-            event
-                .response
-                .as_ref()
-                .and_then(|r| r.error.as_ref())
-                .and_then(|v| v.as_ref())
-                .and_then(|e| e.code.as_ref())
-                .and_then(|v| v.as_ref())
-                .cloned()
-        });
+    let code = event.code.clone().or_else(|| {
+        event
+            .response
+            .as_ref()
+            .and_then(|r| r.error.as_ref())
+            .and_then(|v| v.as_ref())
+            .and_then(|e| e.code.as_ref())
+            .and_then(|v| v.as_ref())
+            .cloned()
+    });
     let message = provider_error_message(event, fallback);
-    let classification = if code.as_deref() == Some("context_length_exceeded") || is_context_overflow(&message) {
-        Some(crate::schema::ProviderFailureClassification::ContextOverflow)
-    } else {
-        None
-    };
-    LlmEvent::ProviderError { message, classification, retryable: None, provider_metadata: None }
+    let classification =
+        if code.as_deref() == Some("context_length_exceeded") || is_context_overflow(&message) {
+            Some(crate::schema::ProviderFailureClassification::ContextOverflow)
+        } else {
+            None
+        };
+    LlmEvent::ProviderError {
+        message,
+        classification,
+        retryable: None,
+        provider_metadata: None,
+    }
 }
 
 fn on_response_failed(state: &ParserState, event: &OpenAIResponsesEvent) -> StepResult {
-    (state.clone(), vec![provider_error(event, "OpenAI Responses response failed")])
+    (
+        state.clone(),
+        vec![provider_error(event, "OpenAI Responses response failed")],
+    )
 }
 
 fn on_error(state: &ParserState, event: &OpenAIResponsesEvent) -> StepResult {
-    (state.clone(), vec![provider_error(event, "OpenAI Responses stream error")])
+    (
+        state.clone(),
+        vec![provider_error(event, "OpenAI Responses stream error")],
+    )
 }
 
 fn step(state: &mut ParserState, event: &OpenAIResponsesEvent) -> Result<Vec<LlmEvent>, LlmError> {
@@ -1063,12 +1302,16 @@ fn step(state: &mut ParserState, event: &OpenAIResponsesEvent) -> Result<Vec<Llm
             *state = next;
             Ok(events)
         }
-        "response.reasoning_text.delta" | "response.reasoning_summary.delta" | "response.reasoning_summary_text.delta" => {
+        "response.reasoning_text.delta"
+        | "response.reasoning_summary.delta"
+        | "response.reasoning_summary_text.delta" => {
             let (next, events) = on_reasoning_delta(state, event);
             *state = next;
             Ok(events)
         }
-        "response.reasoning_text.done" | "response.reasoning_summary.done" | "response.reasoning_summary_text.done" => {
+        "response.reasoning_text.done"
+        | "response.reasoning_summary.done"
+        | "response.reasoning_summary_text.done" => {
             let (next, events) = on_reasoning_done(state, event);
             *state = next;
             Ok(events)
@@ -1121,7 +1364,11 @@ fn step(state: &mut ParserState, event: &OpenAIResponsesEvent) -> Result<Vec<Llm
 // Protocol
 // =============================================================================
 
-const TERMINAL_TYPES: [&str; 3] = ["response.completed", "response.incomplete", "response.failed"];
+const TERMINAL_TYPES: [&str; 3] = [
+    "response.completed",
+    "response.incomplete",
+    "response.failed",
+];
 
 struct OpenAIResponsesStream;
 
@@ -1141,9 +1388,9 @@ impl ProtocolStream for OpenAIResponsesStream {
         state: Box<dyn Any + Send>,
         event: &Value,
     ) -> Result<(Box<dyn Any + Send>, Vec<LlmEvent>), LlmError> {
-        let mut state = *state.downcast::<ParserState>().map_err(|_| {
-            shared::invalid_request("OpenAI Responses parser state mismatch")
-        })?;
+        let mut state = *state
+            .downcast::<ParserState>()
+            .map_err(|_| shared::invalid_request("OpenAI Responses parser state mismatch"))?;
         let event: OpenAIResponsesEvent = serde_json::from_value(event.clone()).unwrap_or_default();
         let events = step(&mut state, &event)?;
         Ok((Box::new(state), events))
@@ -1181,7 +1428,10 @@ pub fn route() -> crate::route::Route {
         protocol: protocol(),
         endpoint: crate::route::endpoint::path(
             PATH,
-            crate::route::EndpointOptions { base_url: Some(DEFAULT_BASE_URL.to_string()), query: None },
+            crate::route::EndpointOptions {
+                base_url: Some(DEFAULT_BASE_URL.to_string()),
+                query: None,
+            },
         ),
         auth: Some(crate::route::Auth::none()),
         framing: Some(crate::route::Framing::Sse),
@@ -1202,7 +1452,12 @@ pub fn route() -> crate::route::Route {
 
 fn media_part(part: &ContentPart) -> MediaPart {
     match part {
-        ContentPart::Media { media_type, data, filename, metadata } => MediaPart {
+        ContentPart::Media {
+            media_type,
+            data,
+            filename,
+            metadata,
+        } => MediaPart {
             part_type: "media".to_string(),
             media_type: media_type.clone(),
             data: data.clone(),
@@ -1215,7 +1470,14 @@ fn media_part(part: &ContentPart) -> MediaPart {
 
 fn tool_call_part(part: &ContentPart) -> ToolCallPart {
     match part {
-        ContentPart::ToolCall { id, name, input, provider_executed, metadata, provider_metadata } => ToolCallPart {
+        ContentPart::ToolCall {
+            id,
+            name,
+            input,
+            provider_executed,
+            metadata,
+            provider_metadata,
+        } => ToolCallPart {
             part_type: "tool-call".to_string(),
             id: id.clone(),
             name: name.clone(),
@@ -1230,18 +1492,24 @@ fn tool_call_part(part: &ContentPart) -> ToolCallPart {
 
 fn tool_result_part(part: &ContentPart) -> ToolResultPart {
     match part {
-        ContentPart::ToolResult { id, name, result, provider_executed, cache, metadata, provider_metadata } => {
-            ToolResultPart {
-                part_type: "tool-result".to_string(),
-                id: id.clone(),
-                name: name.clone(),
-                result: result.clone(),
-                provider_executed: *provider_executed,
-                cache: cache.clone(),
-                metadata: metadata.clone(),
-                provider_metadata: provider_metadata.clone(),
-            }
-        }
+        ContentPart::ToolResult {
+            id,
+            name,
+            result,
+            provider_executed,
+            cache,
+            metadata,
+            provider_metadata,
+        } => ToolResultPart {
+            part_type: "tool-result".to_string(),
+            id: id.clone(),
+            name: name.clone(),
+            result: result.clone(),
+            provider_executed: *provider_executed,
+            cache: cache.clone(),
+            metadata: metadata.clone(),
+            provider_metadata: provider_metadata.clone(),
+        },
         _ => unreachable!(),
     }
 }
