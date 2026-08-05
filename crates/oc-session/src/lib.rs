@@ -6,8 +6,10 @@
 //! JSON identical to the reference zod output; the system prompt templates are
 //! embedded verbatim from `assets/prompt/*.txt`.
 
+pub mod compaction;
 pub mod compaction_core;
 pub mod identifier;
+pub mod instruction;
 pub mod llm;
 pub mod message;
 pub mod message_v2;
@@ -15,11 +17,14 @@ pub mod overflow;
 pub mod permission;
 pub mod prompt;
 pub mod provider;
+pub mod reminders;
 pub mod retry;
 pub mod schema;
 pub mod session;
+pub mod status;
 pub mod summary;
 pub mod system;
+pub mod todo;
 pub mod util;
 pub mod v1;
 pub mod v2;

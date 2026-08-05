@@ -512,6 +512,23 @@ impl Part {
             Part::Compaction(p) => &p.base.id,
         }
     }
+
+    pub fn message_id(&self) -> &str {
+        match self {
+            Part::Text(p) => &p.base.message_id,
+            Part::Subtask(p) => &p.base.message_id,
+            Part::Reasoning(p) => &p.base.message_id,
+            Part::File(p) => &p.base.message_id,
+            Part::Tool(p) => &p.base.message_id,
+            Part::StepStart(p) => &p.base.message_id,
+            Part::StepFinish(p) => &p.base.message_id,
+            Part::Snapshot(p) => &p.base.message_id,
+            Part::Patch(p) => &p.base.message_id,
+            Part::Agent(p) => &p.base.message_id,
+            Part::Retry(p) => &p.base.message_id,
+            Part::Compaction(p) => &p.base.message_id,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -640,6 +657,13 @@ impl Info {
         match self {
             Info::User(_) => "user",
             Info::Assistant(_) => "assistant",
+        }
+    }
+
+    pub fn id_session(&self) -> &str {
+        match self {
+            Info::User(user) => &user.session_id,
+            Info::Assistant(assistant) => &assistant.session_id,
         }
     }
 }
