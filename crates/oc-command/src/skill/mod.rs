@@ -165,7 +165,9 @@ impl SkillService {
             scan_into(&mut matches, &mut dirs, dir, SKILL_PATTERN, false)?;
         }
 
-        matches.sort();
+        // `add` is ordered: each root's matches are sorted, and later scans
+        // (config, paths, urls) override earlier ones (external dirs), which
+        // mirrors the reference's scan order.
         for path in &matches {
             add(&mut service, path);
         }
@@ -282,6 +284,8 @@ fn add(service: &mut SkillService, path: &Path) {
     let md = match frontmatter::parse_file(path) {
         Ok(md) => md,
         Err(error) => {
+            // TODO(integration): publish Session.Event.Error via the oc-core
+            // event bus, mirroring the reference's error path.
             tracing::error!(skill = %path.display(), error = %error, "failed to load skill");
             return;
         }

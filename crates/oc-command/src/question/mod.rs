@@ -60,6 +60,11 @@ impl QuestionService {
 
     /// Create a pending question and return it with a handle that resolves
     /// once the user replies or rejects.
+    ///
+    /// The reference `Question.ask` blocks on a `Deferred`; here the creation
+    /// and the resolution handle are split so callers can register the pending
+    /// request (visible via [`QuestionService::list`]) before awaiting.
+    /// TODO(integration): use `oc-session`'s `SessionID` instead of `&str`.
     pub fn ask(
         &self,
         session_id: &str,
