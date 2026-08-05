@@ -18,3 +18,8 @@ oc-llm = { version = "0.1", path = "../oc-llm" }
 oc-tool = { version = "0.1", path = "../oc-tool" }
 oc-core = { version = "0.1", path = "../oc-core" }
 tokio = { workspace = true }
+chrono = { workspace = true }
+url = { workspace = true }
+indexmap = { workspace = true }
+base64 = "0.22"
+async-trait = "0.1"
