@@ -1,0 +1,66 @@
+Finding ID,Original severity,Release blocker,Owner agent,Current applicability,Root cause,Implementation phase,Files changed,Fix commit,Regression tests,Static verification,Runtime verification,Reference comparison,Status,Remaining work
+INTEGRATION-001,Critical,YES,20-AG-02,OPEN,"The parallel worktree build produced isolated, mutually-dependent-by-declaration crates; the integration/wiring phase (oc-cli calling into oc-server/oc-session/oc-llm/oc-tool/oc-database/oc-plugin/oc-tui) was never performed.",WAVE1,,,,,,,OPEN,"Phase 1 integration: implement oc-cli wiring to oc-server::Server::listen, LocalClient over the real router, oc-session/oc-session-runner over real stores, and promote canonical types to oc-schema (remove 266 mirror markers)."
+CLI-001,Critical,YES,20-AG-12,OPEN,LocalClient::create always returns the not-wired error; the in-process server path was never connected.,WAVE4,,,,,,,OPEN,Wire LocalClient over oc_server router + oc-session/oc-session-runner/oc-llm/oc-tool.
+CLI-002,Critical,YES,20-AG-10,OPEN,serve.rs binds a TcpListener and discards bytes instead of calling oc_server::Server::listen.,WAVE3,,,,,,,OPEN,Mount oc_server router in the serve command with proper shutdown.
+CLI-003,Critical,YES,20-AG-16,OPEN,TUI launch seam never connected; non-TTY fallback prints 'starting TUI (requires a TTY)' and exits.,WAVE4,,,,,,,OPEN,Wire oc-cli default command to oc_tui::app::run_async with server-backed client.
+DB-001,Critical,YES,20-AG-03,OPEN,DB-backed commands stubbed; no production caller of Database::open.,WAVE2,,,,,,,OPEN,Wire Database::open into oc-server stores and session storage; implement session/export/import commands over it.
+SESSION-001,Critical,YES,20-AG-12,OPEN,Stubs until oc-database/oc-session integration.,WAVE4,,,,,,,OPEN,Implement over oc-database.
+PROTO-001,Critical,YES,20-AG-13,OPEN,Wire crates unreachable + stale version constants + golden fixtures encoding the stale version.,WAVE2,,,,,,,OPEN,Wire MCP/ACP into server/cli; update protocolVersion to reference; regenerate fixtures from reference capture.
+SEC-001,Critical,YES,20-AG-08,OPEN,Approval hooks are record-only; no allow/ask/deny evaluation path exists.,WAVE2,,,,,,,OPEN,Implement a real permission service (allow/ask/deny rule evaluation + server prompt round trip) and bind it to tool execution.
+SEC-002,High,YES,20-AG-10,OPEN,Ticket generation/validation simplified to a stub.,WAVE2,,,,,,,OPEN,Random single-use ticket with server-side cache validation.
+SEC-003,High,YES,20-AG-10,OPEN,Containment guard omitted during port.,WAVE2,,,,,,,OPEN,Restore workspace-containment check on all fs handlers.
+TOOLS-001,High,YES,20-AG-07,OPEN,Runner never wired into server/cli.,WAVE3,,,,,,,OPEN,Wire runner + tool registry + permission enforcement together.
+TOOLS-002,High,YES,20-AG-09,OPEN,Whole-file read instead of capped streaming.,WAVE2,,,,,,,OPEN,Stream up to the byte cap like the reference.
+TOOLS-003,Medium,NO,20-AG-09,OPEN,Lexical path check; symlink_metadata follows intermediate links.,WAVE2,,,,,,,OPEN,Resolve symlinks and re-check containment; or deny writes through symlinks.
+TOOLS-004,Medium,NO,20-AG-09,OPEN,No process-group kill.,WAVE2,,,,,,,OPEN,Start in a new process group and kill the group.
+PLUGIN-001,High,YES,20-AG-15,OPEN,No runtime limits or interrupt hook.,WAVE1,,,,,,,OPEN,Set memory limit + interrupt handler with timeout; add a watchdog.
+PLUGIN-002,High,YES,20-AG-15,OPEN,Missing path containment on module resolution.,WAVE1,,,,,,,OPEN,Restrict module resolution to the plugin dir + allowed node_modules; sandbox host functions.
+PLUGIN-003,Medium,NO,20-AG-15,OPEN,No event-loop pumping for host-queued microtasks.,WAVE1,,,,,,,OPEN,Pump host-queued microtasks; provide a real event loop bridge.
+PLUGIN-004,Medium,NO,20-AG-15,OPEN,Integration seam.,WAVE2,,,,,,,OPEN,Wire plugin host into server/cli after PLUGIN-001/002 fixes.
+RUST-001,High,YES,20-AG-15,OPEN,panic inside extern C without catch_unwind.,WAVE1,,,,,,,OPEN,Wrap trampoline bodies in catch_unwind and map to a JS error.
+RUST-002,High,YES,20-AG-15,OPEN,Missing cycle detection for arrays.,WAVE1,,,,,,,OPEN,Include arrays in the visited set.
+RUST-003,Medium,NO,20-AG-15,OPEN,Missing bounds/cap on array conversion.,WAVE1,,,,,,,OPEN,Cap array conversion size.
+ASYNC-001,High,YES,20-AG-07,OPEN,Waiter checks result then awaits Notify::notified(); notify_waiters can fire in between.,WAVE2,,,,,,,OPEN,Use a condition-variable style wait (re-check under lock) or Notified guard that re-checks.
+ASYNC-002,High,YES,20-AG-09,OPEN,One-shot runtime used inside an existing runtime.,WAVE2,,,,,,,OPEN,"Detect ambient runtime and run inline, or restructure to always await."
+ASYNC-003,High,YES,20-AG-06,OPEN,Buffered Vec<LLMEvent> instead of a real stream.,WAVE2,,,,,,,OPEN,Expose a real stream from oc-llm and publish incrementally.
+ASYNC-004,High,YES,20-AG-07,OPEN,Runner not wired to server.,WAVE3,,,,,,,OPEN,Connect interrupt handler to cancellation token.
+LLM-001,High,YES,20-AG-06,OPEN,Fallback metadata logic dead-coded.,WAVE2,,,,,,,OPEN,Port the fallback chain.
+LLM-002,Medium,NO,20-AG-06,OPEN,Deterministic pseudo-jitter.,WAVE2,,,,,,,OPEN,Use a real random jitter bounded by MAX_DELAY; parse HTTP-date Retry-After.
+CONFIG-001,High,YES,20-AG-04,OPEN,json5 crate is more permissive than jsonc-parser.,WAVE1,,,,,,,OPEN,Replace with a jsonc-parser-equivalent implementation.
+CONFIG-002,Medium,NO,20-AG-04,OPEN,Error-handling shortcuts in the loader.,WAVE1,,,,,,,OPEN,Mirror reference error semantics.
+SSE-001,High,YES,20-AG-11,OPEN,Buffer reset across chunk processing.,WAVE2,,,,,,,OPEN,Persist the SSE buffer across events.
+SSE-002,Medium,NO,20-AG-10,OPEN,Frame format hand-rolled.,WAVE2,,,,,,,OPEN,Match reference framing byte-for-byte; regenerate fixtures from captured reference bytes.
+PERF-001,High,YES,20-AG-20,OPEN,Benchmark methodology compares time-to-answer for paths doing different work.,WAVE5,,,,,,,OPEN,"Benchmark equivalent-work scenarios (config load, server startup, session round-trip) and document the workload caveat."
+TEST-001,High,YES,20-AG-18,OPEN,No binary-level test harness built.,WAVE1,,,,,,,OPEN,Add binary + differential test harness (golden against reference executable).
+TEST-002,High,YES,20-AG-01,OPEN,Crate isolation during parallel build.,WAVE1,,,,,,,OPEN,Promote canonical types to oc-schema and re-test.
+TEST-003,Medium,NO,20-AG-18,OPEN,"Fixtures authored by hand, not captured from reference.",WAVE1,,,,,,,OPEN,Capture fixtures from the reference binary/recordings.
+TEST-004,Medium,NO,20-AG-18,OPEN,Coverage gaps.,WAVE1,,,,,,,OPEN,Add targeted tests for the mutation-proof paths.
+UX-001,High,YES,20-AG-16,OPEN,No control-char sanitization before rendering.,WAVE4,,,,,,,OPEN,Sanitize/escape control sequences in rendered text (filter via set_stringn or explicit csi handling).
+UX-002,High,YES,20-AG-16,OPEN,Missing cleanup hooks.,WAVE4,,,,,,,OPEN,Panic hook + signal handlers restoring terminal state.
+UX-003,Medium,NO,20-AG-16,OPEN,Unwired keymap entries.,WAVE4,,,,,,,OPEN,Wire or remove no-op bindings.
+SUPPLY-001,High,YES,20-AG-15,OPEN,Ancient vendored engine.,WAVE1,,,,,,,OPEN,Upgrade to a maintained QuickJS (quickjs-ng / boa) with active maintenance.
+SUPPLY-002,High,YES,20-AG-19,OPEN,Lockfile excluded during scaffold.,WAVE1,,,,,,,OPEN,Commit Cargo.lock.
+SUPPLY-003,High,YES,20-AG-19,OPEN,License file and attribution omitted.,WAVE1,,,,,,,OPEN,"Add LICENSE (MIT, with upstream copyright notice) and per-asset attribution."
+SUPPLY-004,Medium,NO,20-AG-19,OPEN,Default release profile.,WAVE1,,,,,,,OPEN,"Add [profile.release] with lto=true, strip=true, panic=abort (after auditing panic paths)."
+RELEASE-001,High,YES,20-AG-19,OPEN,Logging never wired.,WAVE1,,,,,,,OPEN,Install a tracing subscriber honoring --print-logs/--log-level; write opencode.log.
+RELEASE-002,Medium,NO,20-AG-19,OPEN,Version injection omitted.,WAVE1,,,,,,,OPEN,Inject a distinct port version (e.g. 0.1.0-opencode-1.18.13) via build metadata.
+RELEASE-003,Medium,NO,20-AG-17,OPEN,Update/install engineering omitted.,WAVE4,,,,,,,OPEN,Implement signed updates and full uninstall.
+RELEASE-004,Medium,NO,20-AG-19,OPEN,Release engineering omitted.,WAVE5,,,,,,,OPEN,Add CI (build/clippy/test on Linux/macOS/Windows) and a release pipeline with SBOM.
+ASYNC-005,Medium,NO,20-AG-07,OPEN,Missing cleanup on disconnect.,WAVE2,,,,,,,OPEN,Remove closed senders.
+ASYNC-006,Medium,NO,20-AG-09,OPEN,Process lifecycle not managed.,WAVE2,,,,,,,OPEN,Set kill_on_drop / add Drop guards.
+SEC-004,Medium,NO,20-AG-09,OPEN,Missing caps.,WAVE2,,,,,,,OPEN,Bound captures and channel capacities.
+RUST-004,Medium,NO,20-AG-09,OPEN,Sync work in async context.,WAVE2,,,,,,,OPEN,spawn_blocking for CPU/IO-heavy work.
+DB-002,Low,NO,20-AG-03,OPEN,JSON column handling + channel logic not wired.,WAVE2,,,,,,,OPEN,JSON-stringify JSON-mode columns; honor channel env vars in the CLI command.
+CLI-004,Low,NO,20-AG-17,OPEN,clap vs yargs surface differences.,WAVE4,,,,,,,OPEN,"Align output streams, error formatting, broken-pipe handling."
+PROTO-002,Low,NO,20-AG-13,OPEN,Version not injected.,WAVE2,,,,,,,OPEN,Share the workspace version.
+CONFIG-003,Low,NO,20-AG-04,OPEN,Merge/rewrite logic divergence.,WAVE1,,,,,,,OPEN,Mirror reference key retention and URL normalization.
+RUST-005,Low,NO,20-AG-09,OPEN,Assertion-style panics on external input.,WAVE2,,,,,,,OPEN,Convert to error returns.
+PERF-002,Low,NO,20-AG-20,OPEN,Methodology.,WAVE5,,,,,,,OPEN,Report median with cold/warm split and equivalent-work scenarios.
+RELEASE-005,Low,NO,20-AG-19,OPEN,External deps assumed.,WAVE5,,,,,,,OPEN,Bundle or document required external binaries; offline fallbacks.
+ARCH-001,High,NO,20-AG-01,OPEN,Crates built as islands.,WAVE1,,,,,,,OPEN,Promote canonical types; delete mirrors.
+CLI-005,High,YES,20-AG-12,OPEN,Integration seams on nearly every command.,WAVE4,,,,,,,OPEN,Implement per command over the wired crates.
+UX-004,Medium,NO,20-AG-16,OPEN,Non-TTY path not implemented.,WAVE4,,,,,,,OPEN,Implement stdin-as-prompt path.
+SEC-005,Low,NO,20-AG-05,OPEN,Auth UX/surface incomplete.,WAVE2,,,,,,,OPEN,Mask keys; add OAuth flows.
+INFO-001,Informational,NO,20-AG-20,INFO,N/A,N/A,,,,,,,INFORMATIONAL_NO_CHANGE,Document the privacy posture.
+INFO-002,Informational,NO,20-AG-03,INFO,N/A,N/A,,,,,,,INFORMATIONAL_NO_CHANGE,Wire it in (see DB-001).
+INFO-003,Informational,NO,20-AG-06,INFO,N/A,N/A,,,,,,,INFORMATIONAL_NO_CHANGE,Wire the runner to a real stream.
