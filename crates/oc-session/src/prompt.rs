@@ -253,8 +253,8 @@ pub fn resolve_prompt_parts(
             continue;
         }
         seen.insert(name.clone());
-        let filepath = if name.starts_with("~/") {
-            std::path::Path::new(home).join(&name[2..])
+        let filepath = if let Some(rest) = name.strip_prefix("~/") {
+            std::path::Path::new(home).join(rest)
         } else {
             std::path::Path::new(worktree).join(&name)
         };

@@ -61,7 +61,7 @@ pub fn load(
     let rows = db.message_rows(session_id);
     message_rows(&rows, compaction, epoch)
         .into_iter()
-        .map(|row| decode_row(row))
+        .map(decode_row)
         .collect()
 }
 
@@ -75,7 +75,7 @@ pub fn load_for_runner(
     let rows = db.message_rows(session_id);
     message_rows(&rows, compaction, Some(baseline_seq))
         .into_iter()
-        .map(|row| decode_row(row))
+        .map(decode_row)
         .collect()
 }
 

@@ -72,7 +72,7 @@ pub fn is_overflow(input: &OverflowInput) -> bool {
     let tokens = input.tokens;
     let count = tokens
         .total
-        .unwrap_or_else(|| tokens.input + tokens.output + tokens.cache.read + tokens.cache.write);
+        .unwrap_or(tokens.input + tokens.output + tokens.cache.read + tokens.cache.write);
     count
         >= usable(&UsableInput {
             cfg: input.cfg,

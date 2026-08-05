@@ -102,8 +102,8 @@ pub fn system_paths(
         if raw.starts_with("https://") || raw.starts_with("http://") {
             continue;
         }
-        let instruction = if raw.starts_with("~/") {
-            format!("{home}/{}", &raw[2..])
+        let instruction = if let Some(rest) = raw.strip_prefix("~/") {
+            format!("{home}/{rest}")
         } else {
             raw.clone()
         };

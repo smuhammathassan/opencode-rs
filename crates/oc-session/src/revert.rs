@@ -60,10 +60,9 @@ pub fn compute_revert(
                 None
             };
             revert = Some(crate::session::Revert {
-                message_id: if part_id.is_none() && last_user.is_some() {
-                    last_user.unwrap().to_string()
-                } else {
-                    msg.info.id().to_string()
+                message_id: match (part_id.is_none(), last_user) {
+                    (true, Some(last_user)) => last_user.to_string(),
+                    _ => msg.info.id().to_string(),
                 },
                 part_id,
                 snapshot: None,

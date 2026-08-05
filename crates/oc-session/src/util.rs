@@ -1,6 +1,5 @@
 /// Small shared helpers: base64 (url-safe), HTTP-date parsing, JSON data-url
 /// decoding. Implemented locally to keep oc-session dependency-lean.
-
 const B64: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const B64URL: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 

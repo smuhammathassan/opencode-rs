@@ -638,10 +638,10 @@ impl<'a, D: ProcessorDeps> Handle<'a, D> {
                 self.deps
                     .summarize(&self.ctx.session_id, &self.ctx.assistant_message.parent_id)?;
                 let tokens = assistant_tokens(&usage_result.tokens);
-                if !self.ctx.assistant_message.summary.unwrap_or(false) {
-                    if self.deps.is_overflow(&tokens) {
-                        self.ctx.needs_compaction = true;
-                    }
+                if !self.ctx.assistant_message.summary.unwrap_or(false)
+                    && self.deps.is_overflow(&tokens)
+                {
+                    self.ctx.needs_compaction = true;
                 }
                 let _ = provider_metadata;
                 Ok(())

@@ -269,7 +269,7 @@ pub fn get_usage(input: &GetUsageInput) -> UsageResult {
         .cost
         .tiers
         .as_ref()
-        .map(|tiers| {
+        .and_then(|tiers| {
             let mut filtered: Vec<&CostTier> = tiers
                 .iter()
                 .filter(|item| item.tier.type_ == "context" && context_tokens > item.tier.size)
@@ -286,7 +286,6 @@ pub fn get_usage(input: &GetUsageInput) -> UsageResult {
                 cache: tier.cache.clone(),
             })
         })
-        .flatten()
         .or_else(|| {
             if context_tokens > 200_000.0 {
                 input.model.cost.experimental_over_200_k.clone()

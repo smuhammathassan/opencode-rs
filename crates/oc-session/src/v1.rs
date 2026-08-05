@@ -725,6 +725,7 @@ pub struct SessionModel {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct SessionTime {
     pub created: u64,
     pub updated: u64,
@@ -734,19 +735,9 @@ pub struct SessionTime {
     pub archived: Option<f64>,
 }
 
-impl Default for SessionTime {
-    fn default() -> Self {
-        SessionTime {
-            created: 0,
-            updated: 0,
-            compacting: None,
-            archived: None,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+#[derive(Default)]
 pub struct SessionInfo {
     pub id: String,
     pub slug: String,
@@ -780,32 +771,6 @@ pub struct SessionInfo {
     pub permission: Option<Ruleset>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub revert: Option<SessionRevert>,
-}
-
-impl Default for SessionInfo {
-    fn default() -> Self {
-        SessionInfo {
-            id: String::new(),
-            slug: String::new(),
-            project_id: String::new(),
-            workspace_id: None,
-            directory: String::new(),
-            path: None,
-            parent_id: None,
-            summary: None,
-            cost: None,
-            tokens: None,
-            share: None,
-            title: String::new(),
-            agent: None,
-            model: None,
-            version: String::new(),
-            metadata: None,
-            time: SessionTime::default(),
-            permission: None,
-            revert: None,
-        }
-    }
 }
 
 #[cfg(test)]
