@@ -12,6 +12,16 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+tokio = { workspace = true }
+sha1 = "0.10"
+sha2 = "0.10"
+rand = "0.8"
+url = { workspace = true }
+base64 = "0.22"
+regex = { workspace = true }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-core = { version = "0.1", path = "../oc-core" }
+
+[dev-dependencies]
+tracing-subscriber = { workspace = true }
