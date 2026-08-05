@@ -8,6 +8,7 @@
 
 pub mod compaction;
 pub mod compaction_core;
+pub mod history;
 pub mod identifier;
 pub mod instruction;
 pub mod llm;
@@ -19,9 +20,12 @@ pub mod prompt;
 pub mod provider;
 pub mod reminders;
 pub mod retry;
+pub mod revert;
+pub mod run_state;
 pub mod schema;
 pub mod session;
 pub mod status;
+pub mod store;
 pub mod summary;
 pub mod system;
 pub mod todo;
