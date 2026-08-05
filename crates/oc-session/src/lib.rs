@@ -10,6 +10,7 @@ pub mod compaction_core;
 pub mod identifier;
 pub mod llm;
 pub mod message;
+pub mod message_v2;
 pub mod overflow;
 pub mod permission;
 pub mod provider;

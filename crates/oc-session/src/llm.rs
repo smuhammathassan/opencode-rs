@@ -256,6 +256,8 @@ pub struct UiTextPart {
     #[serde(rename = "type")]
     pub type_: String,
     pub text: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider_metadata: Option<JsonMap>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

@@ -335,10 +335,12 @@ mod tests {
 
     #[test]
     fn go_usage_limit_message() {
-        let body =
-            json!({ "type": "error", "metadata": { "workspace": "ws1", "limitName": "Pro" } })
-                .to_string();
-        let body = format!("GoUsageLimitError {body}");
+        let body = json!({
+            "type": "error",
+            "error": { "code": "GoUsageLimitError" },
+            "metadata": { "workspace": "ws1", "limitName": "Pro" }
+        })
+        .to_string();
         let err = api_error("nope", true, None, Some(&body), None);
         let retry = retryable(&err, "openai").unwrap();
         let action = retry.action.unwrap();
