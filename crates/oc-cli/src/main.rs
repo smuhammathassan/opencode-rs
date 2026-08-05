@@ -104,6 +104,15 @@ fn main() {
         std::process::exit(0);
     }
 
+    // Logging wiring (RELEASE-001): apply global middleware env vars, then
+    // initialize the tracing subscriber so every command logs to
+    // `<data>/log/opencode.log` (stderr only with `--print-logs`).
+    // Deliberately after the `--version` short-circuit above so that path
+    // stays logging-free and byte-parity clean.
+    cli.apply_env();
+    oc_util::logging::init();
+    tracing::debug!(pid = %std::process::id(), "opencode starting");
+
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

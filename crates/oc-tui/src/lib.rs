@@ -18,6 +18,8 @@ pub mod util;
 
 pub use app::{run_async, App, TuiInput};
 
+/// The version reported in the TUI: the reference version for drop-in parity
+/// (RELEASE-006), shared via `oc-util`.
 pub fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+    oc_util::version::REFERENCE_VERSION
 }

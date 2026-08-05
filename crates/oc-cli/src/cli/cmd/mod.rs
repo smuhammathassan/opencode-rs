@@ -30,7 +30,6 @@ use crate::cli::ui;
 
 /// Dispatch a parsed CLI invocation and return the process exit code.
 pub async fn dispatch(cli: &Cli) -> i32 {
-    cli.apply_env();
     let result = match &cli.command {
         None => crate::cli::cmd::attach::run_default_tui(cli).await,
         Some(Command::Completion) => completion::run(),
