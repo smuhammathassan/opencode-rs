@@ -450,7 +450,7 @@ pub fn handle_plugin_auth(
                             prompt.spinner_stop("Failed to authorize", true);
                         }
                         AuthCallbackResult::Success { oauth, api, .. } => {
-                            store_oauth_or_api(auth, provider, oauth, api);
+                            store_oauth_or_api(auth, provider, oauth, api)?;
                             prompt.spinner_stop("Login successful", false);
                         }
                     }
@@ -473,7 +473,7 @@ pub fn handle_plugin_auth(
                     match result {
                         AuthCallbackResult::Failed => prompt.log_error("Failed to authorize"),
                         AuthCallbackResult::Success { oauth, api, .. } => {
-                            store_oauth_or_api(auth, provider, oauth, api);
+                            store_oauth_or_api(auth, provider, oauth, api)?;
                             prompt.log_success("Login successful");
                         }
                     }
@@ -529,9 +529,9 @@ fn store_oauth_or_api(
     provider: &str,
     oauth: Option<crate::provider::auth::OAuthCredential>,
     api: Option<crate::provider::auth::ApiCredential>,
-) {
+) -> Result<(), LoginError> {
     if let Some(oauth) = oauth {
-        let _ = auth.set(
+        auth.set(
             provider,
             Info::Oauth(super::Oauth {
                 refresh: oauth.refresh,
@@ -540,17 +540,20 @@ fn store_oauth_or_api(
                 account_id: oauth.account_id,
                 enterprise_url: oauth.enterprise_url,
             }),
-        );
+        )
+        .map_err(|e| LoginError::Failed(e.to_string()))?;
     }
     if let Some(api) = api {
-        let _ = auth.set(
+        auth.set(
             provider,
             Info::Api(super::Api {
                 key: api.key,
                 metadata: api.metadata,
             }),
-        );
+        )
+        .map_err(|e| LoginError::Failed(e.to_string()))?;
     }
+    Ok(())
 }
 
 /// A catalog provider used by the login flow.
