@@ -113,9 +113,7 @@ pub fn requires_extensions(servers: &IndexMap<String, Entry>) -> Option<String> 
                         continue;
                     }
                 }
-                return Some(format!(
-                    "For custom LSP servers, 'extensions' array is required (server \"{id}\")."
-                ));
+                return Some("For custom LSP servers, 'extensions' array is required.".to_string());
             }
         }
     }

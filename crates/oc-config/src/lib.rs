@@ -13,6 +13,7 @@ pub mod error;
 pub mod glob;
 pub mod jsnum;
 pub mod load;
+pub mod managed;
 pub mod merge;
 pub mod parse;
 pub mod paths;
@@ -26,3 +27,13 @@ pub use load::{
 };
 pub use parse::schema as parse_schema;
 pub use v1::Info as Config;
+
+// TODO(integration):
+// - Remote well-known / account-org configs need the auth + HTTP layers
+//   (`Config.loadInstanceState` fetches `{url}/.well-known/opencode` and
+//   `{url}/api/config`).
+// - `Config.update` / `Config.updateGlobal` (config write-back, including
+//   JSONC `patchJsonc`).
+// - macOS managed preferences plist reading
+//   (`ConfigManaged.readManagedPreferences`, via `plutil`).
+// - Background npm dependency installs per config directory.

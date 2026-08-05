@@ -1,6 +1,9 @@
 // Core config v2 schema types (`ConfigV2.*`).
 //
 // From reference/packages/core/src/config/
+//
+// TODO(integration): the `PermissionV2.Ruleset`/`Rule` types and the provider
+// `ModelApi` union belong in oc-schema (branded IDs, `ModelV2.*`).
 
 pub mod agent;
 pub mod attachments;

@@ -313,6 +313,10 @@ fn scalar_or_flow(value: &str) -> Option<Value> {
     if value.starts_with('{') && value.ends_with('}') {
         return parse_inline_map(&value[1..value.len() - 1]);
     }
+    if value.starts_with('[') || value.starts_with('{') {
+        // Unbalanced flow collection — js-yaml would reject this.
+        return None;
+    }
     if let Some(quoted) = parse_quoted(value) {
         return Some(Value::String(quoted));
     }

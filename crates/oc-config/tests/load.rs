@@ -9,16 +9,6 @@ use oc_config::load::{load_instance_state, LoadOptions};
 use oc_config::v1::config::{Compaction, Share};
 use serde_json::json;
 
-fn load_with(home: &TestHome, username: Option<&str>) -> oc_config::load::InstanceState {
-    load_instance_state(&LoadOptions {
-        directory: home.project.to_string_lossy().into_owned(),
-        worktree: Some(home.home.to_string_lossy().into_owned()),
-        env: Default::default(),
-        username: username.map(String::from),
-    })
-    .expect("load")
-}
-
 #[test]
 fn loads_with_defaults_and_seeds_global_config() {
     let home = TestHome::new();
@@ -448,4 +438,25 @@ fn load_instance_state_directories_include_opencode_dirs() {
     assert!(state
         .directories
         .contains(&home.global_config.to_string_lossy().into_owned()));
+}
+
+#[test]
+fn legacy_toml_config_is_migrated() {
+    let home = TestHome::new();
+    std::fs::write(
+        home.global_config.join("config"),
+        "provider = \"anthropic\"\nmodel = \"claude-sonnet-4\"\nshell = \"zsh\"\n",
+    )
+    .expect("write legacy toml");
+    let state = home.load();
+    assert_eq!(
+        state.config.model.as_deref(),
+        Some("anthropic/claude-sonnet-4")
+    );
+    assert_eq!(state.config.shell.as_deref(), Some("zsh"));
+    // The legacy file is migrated away and config.json is written.
+    assert!(!home.global_config.join("config").exists());
+    let migrated =
+        std::fs::read_to_string(home.global_config.join("config.json")).expect("config.json");
+    assert!(migrated.contains("anthropic/claude-sonnet-4"));
 }
