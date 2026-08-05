@@ -138,7 +138,7 @@ mod tests {
 
     fn user_with_text(id: &str, part_id: &str) -> WithParts {
         WithParts {
-            info: Info::User(crate::v1::User {
+            info: crate::v1::Info::User(crate::v1::User {
                 id: id.into(),
                 session_id: "s".into(),
                 role: "user".into(),
