@@ -12,7 +12,7 @@ use std::time::{Duration, Instant};
 use futures::StreamExt;
 
 use ratatui::backend::CrosstermBackend;
-use ratatui::style::Style;
+use ratatui::style::{Color, Modifier, Style};
 use ratatui::Terminal;
 use tokio::sync::mpsc;
 
@@ -812,13 +812,14 @@ impl App {
         let now = Instant::now();
         match self.keymap.handle(&key, now) {
             MatchResult::Command(command) => {
+                self.leader_active = false;
                 self.dispatch(&command);
             }
             MatchResult::Pending => {
                 self.leader_active = true;
             }
             MatchResult::None => {
-                self.leader_active = false;
+                self.leader_active = self.keymap.leader_active;
                 // Raw character input into the focused prompt.
                 if self.dialog.is_none() && self.route_is_prompt_focusable() {
                     use crossterm::event::KeyCode;
@@ -2892,4 +2893,90 @@ fn parse_model_arg(input: &str) -> Option<(String, String)> {
     } else {
         Some((provider.to_string(), model.to_string()))
     }
+}
+
+// ---- sidebar -----------------------------------------------------------------
+
+impl App {
+    /// Render the session sidebar (title + todo list).
+    /// From reference/packages/tui/src/routes/session/sidebar.tsx
+    fn render_sidebar(
+        &self,
+        frame: &mut ratatui::Frame<'_>,
+        rect: ratatui::layout::Rect,
+        session_id: &str,
+    ) {
+        let theme = &self.theme;
+        let mut lines: Vec<StyledLine> = Vec::new();
+        if let Some(session) = self.sync.session(session_id) {
+            let title = locale::truncate(&session.title, 38);
+            lines.push(vec![(
+                title,
+                Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
+            )]);
+            if let Some(workspace_id) = &session.workspace_id {
+                lines.push(vec![(
+                    format!("  {workspace_id}"),
+                    Style::default().fg(theme.text_muted),
+                )]);
+            }
+        }
+        lines.push(vec![("".to_string(), Style::default())]);
+        let todos = self.sync.todos.get(session_id).cloned().unwrap_or_default();
+        if todos.is_empty() {
+            lines.push(vec![(
+                "  No todos".to_string(),
+                Style::default().fg(theme.text_muted),
+            )]);
+        }
+        for todo in todos {
+            let mark = match todo.status.as_str() {
+                "completed" => "✓",
+                "in_progress" => "•",
+                _ => " ",
+            };
+            let fg = if todo.status == "in_progress" {
+                theme.warning
+            } else {
+                theme.text_muted
+            };
+            let mut line: StyledLine = vec![
+                ("  ".to_string(), Style::default()),
+                (format!("[{mark}] "), Style::default().fg(fg)),
+            ];
+            let content = locale::truncate(&todo.content, 34);
+            line.push((content, Style::default().fg(fg)));
+            lines.push(line);
+        }
+        lines.push(vec![("".to_string(), Style::default())]);
+        lines.push(vec![
+            ("  • Open".to_string(), Style::default().fg(theme.success)),
+            ("Code ".to_string(), Style::default().fg(theme.text)),
+            (
+                crate::version().to_string(),
+                Style::default().fg(theme.text_muted),
+            ),
+        ]);
+        let mut rendered: Vec<ratatui::text::Line<'static>> = Vec::new();
+        for line in lines {
+            rendered.push(to_ratatui(&pad_line(
+                line,
+                rect.width as usize,
+                theme.background_panel,
+            )));
+        }
+        frame.render_widget(
+            ratatui::widgets::Paragraph::new(ratatui::text::Text::from(rendered))
+                .style(ratatui::style::Style::default().bg(theme.background_panel)),
+            rect,
+        );
+    }
+}
+
+fn pad_line(mut line: StyledLine, width: usize, bg: Color) -> StyledLine {
+    let used: usize = line.iter().map(|(s, _)| s.chars().count()).sum();
+    if used < width {
+        line.push((" ".repeat(width - used), Style::default().bg(bg)));
+    }
+    line
 }
