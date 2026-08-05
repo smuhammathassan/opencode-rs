@@ -288,7 +288,7 @@ impl Worktree {
                 &info.directory,
                 &project_id.0,
                 workspace_id.as_deref(),
-                "worktree.failed",
+                crate::schema::WORKTREE_FAILED,
                 &serde_json::json!({ "message": message }),
             );
             return;
@@ -309,7 +309,7 @@ impl Worktree {
                     &info.directory,
                     &project_id.0,
                     workspace_id.as_deref(),
-                    "worktree.failed",
+                    crate::schema::WORKTREE_FAILED,
                     &serde_json::json!({ "message": message }),
                 );
                 false
@@ -327,7 +327,7 @@ impl Worktree {
             &info.directory,
             &project_id.0,
             workspace_id.as_deref(),
-            "worktree.ready",
+            crate::schema::WORKTREE_READY,
             &properties,
         );
 

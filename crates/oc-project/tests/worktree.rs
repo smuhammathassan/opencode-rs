@@ -63,6 +63,17 @@ async fn worktree_path_rule_and_lifecycle() {
         .unwrap_or_default()
         .starts_with("opencode/"));
 
+    // Golden: worktree Info serializes with the exact zod shape.
+    let json = serde_json::to_value(&created).unwrap();
+    assert_eq!(
+        json,
+        serde_json::json!({
+            "name": created.name,
+            "branch": created.branch,
+            "directory": created.directory,
+        })
+    );
+
     // The created worktree shows up in list (primary repo is excluded).
     let list = runtime.worktree.list(&ctx).await.expect("worktree list");
     let listed = list
