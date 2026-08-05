@@ -86,6 +86,7 @@ pub struct SessionView {
     pub question: Option<QuestionState>,
     pub permission: Option<PermissionState>,
     pub message_height: usize,
+    pub sidebar_init: bool,
 }
 
 pub struct App {
@@ -2266,12 +2267,17 @@ impl App {
         let show_details = self.kv_get_bool("tool_details_visibility", true);
         let show_generic = self.kv_get_bool("generic_tool_output_visibility", false);
 
-        // Compute message list from the view + sync.
-        let sidebar_visible = self
-            .views
-            .get(&session_id)
-            .map(|v| v.sidebar_visible)
-            .unwrap_or(false);
+        // Compute message list from the view + sync. Sidebar defaults to
+        // "auto" (visible on wide terminals) until explicitly toggled.
+        let wide = size.width > 120;
+        let sidebar_visible = {
+            let view = self.views.entry(session_id.clone()).or_default();
+            if !view.sidebar_init {
+                view.sidebar_init = true;
+                view.sidebar_visible = wide;
+            }
+            view.sidebar_visible
+        };
         let content_width = (size.width as usize)
             .saturating_sub(if sidebar_visible { 42 } else { 0 })
             .saturating_sub(4);
@@ -2343,6 +2349,13 @@ impl App {
             });
         }
         self.draw_message_lines(frame, messages_rect, &visible);
+
+        // Sidebar.
+        if sidebar_visible {
+            let sidebar_rect =
+                ratatui::layout::Rect::new(size.width.saturating_sub(42), 0, 42, size.height);
+            self.render_sidebar(frame, sidebar_rect, &session_id);
+        }
 
         // Permission / question / subagent footer / prompt below.
         let prompt_rect = ratatui::layout::Rect::new(
