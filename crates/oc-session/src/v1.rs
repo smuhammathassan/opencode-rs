@@ -354,7 +354,7 @@ pub struct StepTokens {
     pub cache: CacheTokens,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheTokens {
     pub read: f64,
@@ -626,6 +626,22 @@ pub enum Info {
     User(User),
     #[serde(rename = "assistant")]
     Assistant(Assistant),
+}
+
+impl Info {
+    pub fn id(&self) -> &str {
+        match self {
+            Info::User(user) => &user.id,
+            Info::Assistant(assistant) => &assistant.id,
+        }
+    }
+
+    pub fn role(&self) -> &str {
+        match self {
+            Info::User(_) => "user",
+            Info::Assistant(_) => "assistant",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
