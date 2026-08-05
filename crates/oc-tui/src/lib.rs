@@ -3,6 +3,7 @@
 //! Mirrors `reference/packages/tui/` + `reference/packages/session-ui/`.
 
 pub mod client;
+pub mod components;
 pub mod config;
 pub mod keybind;
 pub mod keymap;

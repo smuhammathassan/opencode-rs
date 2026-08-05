@@ -8,7 +8,7 @@ use serde_json::Value;
 
 /// Map a tool name to its display variant; unknown tools render generically.
 /// From reference/packages/tui/src/routes/session/index.tsx (`toolDisplay`)
-pub fn tool_display(tool: &str) -> &'static str {
+pub fn tool_display(tool: &str) -> &str {
     const KNOWN: &[&str] = &[
         "bash",
         "glob",
@@ -26,7 +26,7 @@ pub fn tool_display(tool: &str) -> &'static str {
         "execute",
     ];
     if KNOWN.contains(&tool) {
-        "known"
+        tool
     } else {
         "generic"
     }
@@ -40,12 +40,12 @@ pub fn web_search_provider_label(provider: &Value) -> &'static str {
     }
 }
 
-pub fn string_value(value: &Value) -> Option<String> {
-    value.as_str().map(|s| s.to_string())
+pub fn string_value(value: Option<&Value>) -> Option<String> {
+    value.and_then(Value::as_str).map(|s| s.to_string())
 }
 
-pub fn number_value(value: &Value) -> Option<i64> {
-    value.as_i64()
+pub fn number_value(value: Option<&Value>) -> Option<i64> {
+    value.and_then(Value::as_i64)
 }
 
 pub fn record_value(value: &Value) -> Option<&serde_json::Map<String, Value>> {
@@ -101,12 +101,12 @@ pub fn parse_apply_patch_files(value: &Value) -> Vec<ApplyPatchFile> {
         .iter()
         .filter_map(|item| {
             let map = record_value(item)?;
-            let type_ = string_value(map.get("type")?)?;
-            let relative_path = string_value(map.get("relativePath")?)?;
-            let file_path = string_value(map.get("filePath")?)?;
-            let patch = string_value(map.get("patch")?)?;
-            let deletions = number_value(map.get("deletions")?)?;
-            let move_path = map.get("movePath").and_then(string_value);
+            let type_ = string_value(map.get("type"))?;
+            let relative_path = string_value(map.get("relativePath"))?;
+            let file_path = string_value(map.get("filePath"))?;
+            let patch = string_value(map.get("patch"))?;
+            let deletions = number_value(map.get("deletions"))?;
+            let move_path = map.get("movePath").and_then(|v| string_value(Some(v)));
             Some(ApplyPatchFile {
                 type_,
                 relative_path,
@@ -134,8 +134,8 @@ pub fn parse_todos(value: &Value) -> Vec<TodoItem> {
         .iter()
         .filter_map(|item| {
             let map = record_value(item)?;
-            let status = string_value(map.get("status")?)?;
-            let content = string_value(map.get("content")?)?;
+            let status = string_value(map.get("status"))?;
+            let content = string_value(map.get("content"))?;
             Some(TodoItem { status, content })
         })
         .collect()
@@ -155,7 +155,7 @@ pub fn parse_questions(value: &Value) -> Vec<Question> {
         .iter()
         .filter_map(|item| {
             let map = record_value(item)?;
-            let question = string_value(map.get("question")?)?;
+            let question = string_value(map.get("question"))?;
             Some(Question { question })
         })
         .collect()
@@ -169,7 +169,7 @@ pub fn parse_question_answers(value: &Value) -> Option<Vec<Vec<String>>> {
             .iter()
             .map(|a| {
                 a.as_array()
-                    .map(|inner| inner.iter().filter_map(string_value).collect())
+                    .map(|inner| inner.iter().filter_map(|v| string_value(Some(v))).collect())
                     .unwrap_or_default()
             })
             .collect(),
@@ -246,8 +246,8 @@ pub fn parse_execute_calls(value: &Value) -> Vec<ExecuteCall> {
         .iter()
         .filter_map(|item| {
             let map = record_value(item)?;
-            let tool = string_value(map.get("tool")?)?;
-            let status = string_value(map.get("status")?)?;
+            let tool = string_value(map.get("tool"))?;
+            let status = string_value(map.get("status"))?;
             if !["running", "completed", "error"].contains(&status.as_str()) {
                 return None;
             }

@@ -55,7 +55,7 @@ pub struct Session {
     pub model: Option<ModelRef>,
     pub version: String,
     #[serde(default)]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
     pub time: SessionTime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub permission: Option<Vec<PermissionRule>>,
@@ -353,7 +353,7 @@ pub struct TextPart {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time: Option<PartTime>,
     #[serde(default)]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl TextPart {
@@ -399,7 +399,7 @@ pub struct ReasoningPart {
     pub message_id: String,
     pub text: String,
     #[serde(default)]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
     pub time: PartTime,
 }
 
@@ -487,7 +487,7 @@ pub struct ToolPart {
     pub tool: String,
     pub state: ToolState,
     #[serde(default)]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 impl ToolPart {
@@ -516,17 +516,17 @@ pub enum ToolState {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ToolStatePending {
-    pub input: HashMap<String, serde_json::Value>,
+    pub input: serde_json::Map<String, serde_json::Value>,
     pub raw: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ToolStateRunning {
-    pub input: HashMap<String, serde_json::Value>,
+    pub input: serde_json::Map<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
     #[serde(default)]
     pub time: Option<ToolStateTime>,
 }
@@ -542,10 +542,10 @@ pub struct ToolStateTime {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ToolStateCompleted {
-    pub input: HashMap<String, serde_json::Value>,
+    pub input: serde_json::Map<String, serde_json::Value>,
     pub output: String,
     pub title: String,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: serde_json::Map<String, serde_json::Value>,
     pub time: ToolStateTime,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attachments: Option<Vec<FilePart>>,
@@ -553,10 +553,10 @@ pub struct ToolStateCompleted {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ToolStateError {
-    pub input: HashMap<String, serde_json::Value>,
+    pub input: serde_json::Map<String, serde_json::Value>,
     pub error: String,
     #[serde(default)]
-    pub metadata: Option<HashMap<String, serde_json::Value>>,
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
     pub time: ToolStateTime,
 }
 
@@ -725,13 +725,14 @@ pub struct Provider {
     pub env: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub key: Option<String>,
-    pub options: HashMap<String, serde_json::Value>,
+    pub options: serde_json::Map<String, serde_json::Value>,
     pub models: HashMap<String, Model>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct Model {
     pub id: String,
+    #[serde(rename = "providerID")]
     pub provider_id: String,
     #[serde(default)]
     pub api: serde_json::Value,
@@ -744,12 +745,12 @@ pub struct Model {
     pub limit: ModelLimit,
     pub status: String,
     #[serde(default)]
-    pub options: HashMap<String, serde_json::Value>,
+    pub options: serde_json::Map<String, serde_json::Value>,
     #[serde(default)]
     pub headers: HashMap<String, String>,
     pub release_date: String,
     #[serde(default)]
-    pub variants: Option<HashMap<String, HashMap<String, serde_json::Value>>>,
+    pub variants: Option<HashMap<String, serde_json::Map<String, serde_json::Value>>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -804,7 +805,7 @@ pub struct Agent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub prompt: Option<String>,
     #[serde(default)]
-    pub options: HashMap<String, serde_json::Value>,
+    pub options: serde_json::Map<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub steps: Option<u64>,
 }
@@ -836,7 +837,7 @@ pub struct PermissionRequest {
     pub session_id: String,
     pub permission: String,
     pub patterns: Vec<String>,
-    pub metadata: HashMap<String, serde_json::Value>,
+    pub metadata: serde_json::Map<String, serde_json::Value>,
     pub always: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tool: Option<PermissionTool>,
