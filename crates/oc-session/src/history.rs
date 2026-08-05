@@ -104,7 +104,7 @@ mod tests {
             id: id.into(),
             session_id: "ses1".into(),
             type_: type_.into(),
-            data: serde_json::json!({ "text": "x" }),
+            data: serde_json::json!({ "text": "x", "time": { "created": 1 } }),
         }
     }
 
