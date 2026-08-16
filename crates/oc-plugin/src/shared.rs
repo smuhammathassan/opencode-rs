@@ -174,9 +174,22 @@ pub fn resolve_plugin_target(spec: &str) -> Result<String, String> {
     } else {
         spec.to_string()
     };
-    let dir = crate::npm::add(&full, &crate::paths::GlobalPaths::new())
+    // `npm::add` uses a `reqwest::blocking` client, which panics when dropped
+    // inside a tokio runtime (server bootstrap calls this synchronously). Run
+    // the install on a dedicated thread so the blocking client never crosses
+    // the async context boundary.
+    let spec_for_thread = full.clone();
+    let paths_for_thread = crate::paths::GlobalPaths::new();
+    let result = std::thread::spawn(move || crate::npm::add(&spec_for_thread, &paths_for_thread))
+        .join()
+        .unwrap_or_else(|_| {
+            Err(crate::npm::NpmError::Metadata {
+                pkg: pkg.clone(),
+                message: "npm install thread panicked".to_string(),
+            })
+        })
         .map_err(|e| format!("failed to install plugin {spec}: {e}"))?;
-    Ok(dir.to_string_lossy().into_owned())
+    Ok(result.to_string_lossy().into_owned())
 }
 
 /// Resolve a path-like plugin spec to a target. Mirrors
