@@ -8,15 +8,8 @@ use crate::cli::context::Context;
 
 /// Mirrors `Database.path()` from
 /// reference/packages/core/src/database/database.ts.
-pub fn database_path(ctx: &Context) -> PathBuf {
-    if let Some(db) = std::env::var_os("OPENCODE_DB") {
-        let db = PathBuf::from(db);
-        if db == PathBuf::from(":memory:") || db.is_absolute() {
-            return db;
-        }
-        return ctx.paths.data.join(db);
-    }
-    ctx.paths.data.join("opencode.db")
+pub fn database_path(_ctx: &Context) -> PathBuf {
+    oc_database::database::path()
 }
 
 pub async fn run(_cli: &Cli, args: &DbArgs) -> anyhow::Result<i32> {

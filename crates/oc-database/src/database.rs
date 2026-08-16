@@ -45,10 +45,14 @@ pub fn path() -> PathBuf {
 
 /// XDG data dir for the `opencode` app (`~/.local/share/opencode`).
 /// From reference/packages/core/src/global.ts:9
+///
+/// Mirrors `oc_util::global::path::data()` so the CLI, server, and database
+/// all share one canonical data directory (the reference uses `Global.Path.data`
+/// everywhere). The `directories` crate would resolve macOS to
+/// `~/Library/Application Support/opencode`, splitting the session store from
+/// the CLI's XDG data dir.
 fn data_dir() -> PathBuf {
-    directories::ProjectDirs::from("", "", "opencode")
-        .map(|dirs| dirs.data_dir().to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir().join("opencode"))
+    oc_util::global::path::data()
 }
 
 /// The database service. `db` is the underlying [`Sqlite`] client.
@@ -245,6 +249,14 @@ mod tests {
         std::env::set_var("OPENCODE_DB", "relative.db");
         assert_eq!(path(), data.join("relative.db"));
         std::env::remove_var("OPENCODE_DB");
+    }
+
+    #[test]
+    fn data_dir_matches_oc_util_global_path() {
+        // The database must live under the same XDG data dir as the CLI's
+        // `GlobalPaths.data`; macOS `directories::ProjectDirs` would resolve to
+        // `~/Library/Application Support/opencode` and split the store.
+        assert_eq!(data_dir(), oc_util::global::path::data());
     }
 
     #[test]
