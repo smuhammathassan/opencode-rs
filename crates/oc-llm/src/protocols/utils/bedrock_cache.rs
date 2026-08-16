@@ -26,7 +26,7 @@ pub fn block(breakpoints: &mut Breakpoints, cache: Option<&CacheHint>) -> Option
     ) {
         return None;
     }
-    if breakpoints.remaining <= 0 {
+    if breakpoints.remaining == 0 {
         breakpoints.dropped += 1;
         return None;
     }

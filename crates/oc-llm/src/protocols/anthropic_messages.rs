@@ -124,7 +124,7 @@ fn cache_control(breakpoints: &mut Cache::Breakpoints, cache: Option<&CacheHint>
     ) {
         return None;
     }
-    if breakpoints.remaining <= 0 {
+    if breakpoints.remaining == 0 {
         breakpoints.dropped += 1;
         return None;
     }

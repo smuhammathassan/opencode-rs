@@ -115,7 +115,6 @@ impl Auth {
         }
         #[cfg(not(unix))]
         {
-            let _ = Path::new(".");
             std::fs::write(&self.file, text)?;
             Ok(())
         }
