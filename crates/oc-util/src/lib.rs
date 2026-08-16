@@ -12,7 +12,9 @@
 pub mod fs_util;
 pub mod glob;
 pub mod global;
+pub mod logging;
 pub mod npm;
+pub mod version;
 pub mod which;
 
 pub mod format;
@@ -20,6 +22,8 @@ pub mod ripgrep;
 
 pub mod util;
 
+/// The version the port reports at runtime: the upstream reference version
+/// (`REFERENCE_VERSION`), not the crate version, for drop-in parity.
 pub fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+    version::REFERENCE_VERSION
 }

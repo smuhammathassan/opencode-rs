@@ -7,12 +7,12 @@
 //! data shapes and models the plugin hooks with the [`AuthHook`] trait so the
 //! authorize/callback flow is testable without a plugin runtime.
 //!
-//! TODO(integration): wire `oc-plugin`'s hook discovery into [`ProviderAuth`]
-//! so `methods()` reflects installed plugin auth hooks, and run hook
-//! authorize/callback (async in the reference) on the crate's async runtime.
+//! Plugin discovery is intentionally outside this crate. Hosts can provide
+//! hooks through [`ProviderAuth::new`]; an empty hook map is an honest
+//! unsupported-auth state rather than a fabricated OAuth implementation.
 
-use std::cell::RefCell;
 use std::collections::BTreeMap;
+use std::sync::Mutex;
 
 use serde::{Deserialize, Serialize};
 
@@ -165,10 +165,24 @@ pub struct OauthCodeMissing {
     pub provider_id: String,
 }
 
+/// Callback method did not match the pending authorization request.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("ProviderAuthOauthMethodMismatch: {provider_id}")]
+pub struct OauthMethodMismatch {
+    pub provider_id: String,
+}
+
 /// `ProviderAuthOauthCallbackFailed` from `auth.ts`.
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("OAuth callback failed")]
 pub struct OauthCallbackFailed;
+
+/// A refresh hook returned a token without an access token.
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("ProviderAuthOauthRefreshInvalid: {provider_id}")]
+pub struct OauthRefreshInvalid {
+    pub provider_id: String,
+}
 
 /// The `AuthOAuthResult` returned by a plugin `authorize()`.
 ///
@@ -207,6 +221,17 @@ pub struct OAuthCredential {
     pub enterprise_url: Option<String>,
 }
 
+/// Result of checking an OAuth credential for refresh.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum OauthRefreshResult {
+    /// The credential is still valid, or is not an OAuth credential.
+    NotNeeded,
+    /// The credential is expired, but no refresh hook/token is available.
+    Unsupported,
+    /// The hook returned a replacement and it was persisted.
+    Refreshed,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ApiCredential {
     pub key: String,
@@ -230,12 +255,64 @@ pub trait AuthHook: Send + Sync {
     ) -> Result<AuthOAuthResult, anyhow::Error>;
     /// Completes an OAuth authorization with an optional code.
     fn callback(&self, code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error>;
+
+    /// Refreshes an expired OAuth credential when the host/plugin owns that
+    /// capability. The default is deliberately unsupported: this crate does
+    /// not invent a token endpoint or perform network I/O.
+    fn refresh(
+        &self,
+        _credential: &crate::auth::Oauth,
+    ) -> Result<Option<OAuthCredential>, anyhow::Error> {
+        Ok(None)
+    }
+}
+
+impl<T> AuthHook for Box<T>
+where
+    T: AuthHook + ?Sized,
+{
+    fn methods(&self) -> Vec<Method> {
+        (**self).methods()
+    }
+
+    fn validate(&self, method_index: usize, key: &str, value: &str) -> Option<String> {
+        (**self).validate(method_index, key, value)
+    }
+
+    fn authorize(
+        &self,
+        method_index: usize,
+        inputs: &BTreeMap<String, String>,
+    ) -> Result<AuthOAuthResult, anyhow::Error> {
+        (**self).authorize(method_index, inputs)
+    }
+
+    fn callback(&self, code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error> {
+        (**self).callback(code)
+    }
+
+    fn refresh(
+        &self,
+        credential: &crate::auth::Oauth,
+    ) -> Result<Option<OAuthCredential>, anyhow::Error> {
+        (**self).refresh(credential)
+    }
+}
+
+/// The host-facing registry shape used by the server when it has dynamic
+/// hooks. Hosts that do not load plugins should leave it empty.
+pub type BuiltinProviderAuth = ProviderAuth<Box<dyn AuthHook>>;
+
+#[derive(Debug, Clone)]
+struct PendingAuthorization {
+    method: usize,
+    result: AuthOAuthResult,
 }
 
 /// `ProviderAuth.Service` from `auth.ts`.
 pub struct ProviderAuth<H> {
     hooks: BTreeMap<String, H>,
-    pending: RefCell<BTreeMap<String, AuthOAuthResult>>,
+    pending: Mutex<BTreeMap<String, PendingAuthorization>>,
 }
 
 impl<H> ProviderAuth<H>
@@ -245,7 +322,7 @@ where
     pub fn new(hooks: BTreeMap<String, H>) -> Self {
         ProviderAuth {
             hooks,
-            pending: RefCell::new(BTreeMap::new()),
+            pending: Mutex::new(BTreeMap::new()),
         }
     }
 
@@ -261,6 +338,18 @@ where
             .iter()
             .map(|(provider_id, hook)| (provider_id.clone(), hook.methods()))
             .collect()
+    }
+
+    /// Cancels the pending authorization for a provider, if any.
+    ///
+    /// Integration attempts have their own public IDs, so cancellation is
+    /// deliberately best-effort at this lower layer and does not error when
+    /// a callback already consumed the pending authorization.
+    pub fn cancel(&self, provider_id: &str) {
+        self.pending
+            .lock()
+            .expect("provider auth pending lock poisoned")
+            .remove(provider_id);
     }
 
     /// `ProviderAuth.authorize` from `auth.ts`.
@@ -305,13 +394,75 @@ where
             .authorize(input.method, &inputs)
             .map_err(ProviderAuthError::Other)?;
         self.pending
-            .borrow_mut()
-            .insert(provider_id.to_string(), result.clone());
+            .lock()
+            .expect("provider auth pending lock poisoned")
+            .insert(
+                provider_id.to_string(),
+                PendingAuthorization {
+                    method: input.method,
+                    result: result.clone(),
+                },
+            );
         Ok(Some(Authorization {
             url: result.url,
             method: result.method,
             instructions: result.instructions,
         }))
+    }
+
+    /// Refreshes an expired persisted OAuth credential through the optional
+    /// host/plugin hook and replaces it through [`AuthStore::set`].
+    ///
+    /// The timestamp is supplied by the caller so this method remains
+    /// deterministic and transport-agnostic. A refresh hook may rotate the
+    /// refresh token; when it omits one, the existing refresh token is kept.
+    pub fn refresh(
+        &self,
+        provider_id: &str,
+        now_ms: u64,
+        auth: &mut impl crate::auth::AuthStore,
+    ) -> Result<OauthRefreshResult, ProviderAuthError> {
+        let Some(info) = auth.get(provider_id)? else {
+            return Err(ProviderAuthError::OauthMissing(OauthMissing {
+                provider_id: provider_id.to_string(),
+            }));
+        };
+        let crate::auth::Info::Oauth(current) = info else {
+            return Ok(OauthRefreshResult::NotNeeded);
+        };
+        if !current.is_expired_at(now_ms) {
+            return Ok(OauthRefreshResult::NotNeeded);
+        }
+        if current.refresh.is_empty() {
+            return Ok(OauthRefreshResult::Unsupported);
+        }
+        let Some(hook) = self.hooks.get(provider_id) else {
+            return Ok(OauthRefreshResult::Unsupported);
+        };
+        let Some(refreshed) = hook.refresh(&current).map_err(ProviderAuthError::Other)? else {
+            return Ok(OauthRefreshResult::Unsupported);
+        };
+        if refreshed.access.is_empty() {
+            return Err(ProviderAuthError::OauthRefreshInvalid(
+                OauthRefreshInvalid {
+                    provider_id: provider_id.to_string(),
+                },
+            ));
+        }
+
+        let rotated = crate::auth::Oauth {
+            refresh: if refreshed.refresh.is_empty() {
+                current.refresh
+            } else {
+                refreshed.refresh
+            },
+            access: refreshed.access,
+            expires: refreshed.expires,
+            account_id: refreshed.account_id.or(current.account_id),
+            enterprise_url: refreshed.enterprise_url.or(current.enterprise_url),
+        };
+        auth.set(provider_id, crate::auth::Info::Oauth(rotated))?;
+        Ok(OauthRefreshResult::Refreshed)
     }
 
     /// `ProviderAuth.callback` from `auth.ts`.
@@ -321,13 +472,26 @@ where
         input: &CallbackInput,
         auth: &mut impl crate::auth::AuthStore,
     ) -> Result<(), ProviderAuthError> {
-        let pending = self.pending.borrow();
-        let Some(match_result) = pending.get(provider_id) else {
+        let pending = self
+            .pending
+            .lock()
+            .expect("provider auth pending lock poisoned")
+            .get(provider_id)
+            .cloned();
+        let Some(pending) = pending else {
             return Err(ProviderAuthError::OauthMissing(OauthMissing {
                 provider_id: provider_id.to_string(),
             }));
         };
-        if match_result.method == CallbackMethod::Code && input.code.is_none() {
+        if pending.method != input.method {
+            return Err(ProviderAuthError::OauthMethodMismatch(
+                OauthMethodMismatch {
+                    provider_id: provider_id.to_string(),
+                },
+            ));
+        }
+        let code = input.code.as_deref();
+        if pending.result.method == CallbackMethod::Code && code.map_or(true, str::is_empty) {
             return Err(ProviderAuthError::OauthCodeMissing(OauthCodeMissing {
                 provider_id: provider_id.to_string(),
             }));
@@ -338,17 +502,30 @@ where
                 provider_id: provider_id.to_string(),
             })
         })?;
+        // Match the plugin contract: only code-based flows receive the
+        // submitted code. Auto callbacks are invoked without an argument,
+        // even if a client included one in the request.
         let result = hook
-            .callback(input.code.as_deref())
+            .callback(match pending.result.method {
+                CallbackMethod::Auto => None,
+                CallbackMethod::Code => code,
+            })
             .map_err(ProviderAuthError::Other)?;
 
-        let AuthCallbackResult::Success { oauth, api, .. } = result else {
+        let AuthCallbackResult::Success {
+            provider,
+            oauth,
+            api,
+        } = result
+        else {
             return Err(ProviderAuthError::OauthCallbackFailed(OauthCallbackFailed));
         };
 
+        let credential_provider = provider.unwrap_or_else(|| provider_id.to_string());
+
         if let Some(api) = api {
             auth.set(
-                provider_id,
+                &credential_provider,
                 crate::auth::Info::Api(crate::auth::Api {
                     key: api.key,
                     metadata: api.metadata,
@@ -358,7 +535,7 @@ where
 
         if let Some(oauth) = oauth {
             auth.set(
-                provider_id,
+                &credential_provider,
                 crate::auth::Info::Oauth(crate::auth::Oauth {
                     refresh: oauth.refresh,
                     access: oauth.access,
@@ -368,6 +545,11 @@ where
                 }),
             )?;
         }
+
+        self.pending
+            .lock()
+            .expect("provider auth pending lock poisoned")
+            .remove(provider_id);
 
         Ok(())
     }
@@ -381,7 +563,11 @@ pub enum ProviderAuthError {
     #[error(transparent)]
     OauthCodeMissing(#[from] OauthCodeMissing),
     #[error(transparent)]
+    OauthMethodMismatch(#[from] OauthMethodMismatch),
+    #[error(transparent)]
     OauthCallbackFailed(#[from] OauthCallbackFailed),
+    #[error(transparent)]
+    OauthRefreshInvalid(#[from] OauthRefreshInvalid),
     #[error(transparent)]
     ValidationFailed(#[from] ValidationFailed),
     #[error(transparent)]

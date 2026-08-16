@@ -6,12 +6,18 @@
 //! plugin hooks and a bundled SDK loader. The Rust port extracts the registry
 //! construction into a pure [`build_registry`] function over injected inputs
 //! (models.dev catalog, config, env, auth), which is what the CLI and server
-//! surfaces need. Plugin model/auth hooks and the SDK resolution
-//! (`resolveSDK`/`getLanguage`) are LLM-layer concerns not present here.
+//! surfaces need. The executable plugin callback and SDK resolution
+//! (`resolveSDK`/`getLanguage`) remain LLM-layer concerns not present here.
 //!
-//! TODO(integration): run plugin `models` hooks (opencode.json `plugin` model
-//! overrides) and plugin `auth.loader` option patches before/after the config
-//! merge; wire `gitlab` workflow-model discovery (network) in oc-llm.
+//! A typed model-hook result seam is provided by
+//! [`build_registry_with_model_hooks`]. It accepts already materialized model
+//! data so callers can preserve the reference ordering (hook result, then
+//! config overrides) without pretending that a JavaScript callback is
+//! executable here. The server documents and owns the remaining runtime
+//! boundary.
+
+//! TODO(integration): run plugin `auth.loader` option patches before/after the
+//! config merge; wire `gitlab` workflow-model discovery (network) in oc-llm.
 
 use std::collections::{BTreeMap, HashSet};
 
@@ -218,6 +224,26 @@ pub struct RegistryInput<'a> {
     pub enable_experimental_models: bool,
 }
 
+/// Materialized result of a plugin `Hooks.provider.models` callback.
+///
+/// The reference callback returns a complete model map for an existing
+/// provider. Keeping this seam typed makes replacement and subsequent config
+/// merging deterministic while leaving callback execution to the host layer.
+#[derive(Debug, Clone, PartialEq)]
+pub struct ProviderModelHookRegistration {
+    pub provider_id: String,
+    pub models: IndexMap<String, Model>,
+}
+
+impl ProviderModelHookRegistration {
+    pub fn new(provider_id: impl Into<String>, models: IndexMap<String, Model>) -> Self {
+        Self {
+            provider_id: provider_id.into(),
+            models,
+        }
+    }
+}
+
 /// The result of a custom provider loader (options + autoload).
 pub(crate) struct LoaderResult {
     pub autoload: bool,
@@ -225,7 +251,12 @@ pub(crate) struct LoaderResult {
 }
 
 fn env_get<'a>(envs: &'a BTreeMap<String, Option<String>>, key: &str) -> Option<&'a str> {
-    envs.get(key).and_then(|v| v.as_deref())
+    // JavaScript's `Boolean(env[key])` is used by the reference loader, so an
+    // explicitly configured empty string is not a credential. Keep whitespace
+    // intact: a non-empty value is still truthy in the reference runtime.
+    envs.get(key)
+        .and_then(|v| v.as_deref())
+        .filter(|value| !value.is_empty())
 }
 
 /// The provider-specific loaders from `custom()` in `provider.ts`.
@@ -688,6 +719,21 @@ fn custom_loader(
                 options,
             }
         }
+        _ if provider.source == Source::Config
+            && (provider.models.len() > 0
+                || provider.options.contains_key("apiKey")
+                || provider.options.contains_key("baseURL")
+                || provider.options.contains_key("baseUrl")) =>
+        {
+            // A config-defined provider with explicit models or endpoint
+            // options is usable without a built-in provider loader. Keep it
+            // in the active registry so OpenAI-compatible adapters can route
+            // it through the configured base URL.
+            LoaderResult {
+                autoload: true,
+                options: Map::new(),
+            }
+        }
         _ => return Ok(None),
     };
     Ok(Some(loader))
@@ -1020,11 +1066,21 @@ fn merge_config_model(
     parsed.models.insert(model_id.to_string(), parsed_model);
 }
 
-/// Builds the provider registry.
-///
-/// From the layer effect in `provider.ts` (plugin hooks, plugin auth loaders
-/// and gitlab workflow discovery excluded).
+/// Builds the provider registry without executable plugin model-hook results.
 pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, anyhow::Error> {
+    build_registry_with_model_hooks(input, &[])
+}
+
+/// Builds the provider registry with materialized plugin model-hook results.
+///
+/// Hook model maps replace the catalog model map for an existing provider,
+/// matching the reference `Hooks.provider.models` ordering. Config-defined
+/// model entries are then merged over that result below, preserving the
+/// declarative provider behavior already exposed by the registry.
+pub fn build_registry_with_model_hooks(
+    input: &RegistryInput,
+    model_hooks: &[ProviderModelHookRegistration],
+) -> Result<IndexMap<String, Info>, anyhow::Error> {
     let mut database: IndexMap<String, Info> = input
         .catalog
         .iter()
@@ -1049,6 +1105,30 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
         }
         !disabled.contains(provider_id)
     };
+
+    // The reference executes provider model hooks after plugins are loaded
+    // and before config models are applied. A typed registration is already a
+    // host-owned result, so no callback is invoked in this pure registry.
+    for hook in model_hooks {
+        if disabled.contains(hook.provider_id.as_str()) {
+            continue;
+        }
+        let Some(provider) = database.get_mut(&hook.provider_id) else {
+            // Reference provider hooks only replace models for providers that
+            // already exist in the catalog.
+            continue;
+        };
+        provider.models = hook
+            .models
+            .iter()
+            .map(|(model_id, model)| {
+                let mut model = model.clone();
+                model.id = model_id.clone();
+                model.provider_id = hook.provider_id.clone();
+                (model_id.clone(), model)
+            })
+            .collect();
+    }
 
     // extend database from config
     for (provider_id, provider) in input.config.provider.iter() {
@@ -1104,9 +1184,7 @@ pub fn build_registry(input: &RegistryInput) -> Result<IndexMap<String, Info>, a
         let api_key = provider
             .env
             .iter()
-            .map(|item| input.envs.get(item).and_then(|v| v.as_deref()))
-            .find(|v| v.is_some())
-            .flatten();
+            .find_map(|item| env_get(input.envs, item));
         if api_key.is_none() {
             continue;
         }

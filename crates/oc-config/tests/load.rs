@@ -4,7 +4,7 @@
 
 mod common;
 
-use common::TestHome;
+use common::{EnvGuard, TestHome};
 use oc_config::load::{load_instance_state, LoadOptions};
 use oc_config::v1::config::{Compaction, Share};
 use serde_json::json;
@@ -420,6 +420,39 @@ fn managed_config_overrides_user_config() {
     let state = home.load();
     assert_eq!(state.config.model.as_deref(), Some("managed/model"));
     assert_eq!(state.config.share, Some(Share::Disabled));
+}
+
+#[test]
+fn managed_config_directory_override_is_used() {
+    let home = TestHome::new();
+    let override_dir = home.tmp.path().join("enterprise-policy");
+    std::fs::create_dir_all(&override_dir).expect("mkdir override");
+    std::fs::write(
+        override_dir.join("opencode.json"),
+        r#"{"model":"override/model"}"#,
+    )
+    .expect("write override");
+    let _override = EnvGuard::set(
+        "OPENCODE_MANAGED_CONFIG_DIR",
+        override_dir.to_str().unwrap(),
+    );
+    let _disable_fixture = EnvGuard::unset("OPENCODE_TEST_MANAGED_CONFIG_DIR");
+
+    let state = home.load();
+    assert_eq!(state.config.model.as_deref(), Some("override/model"));
+}
+
+#[test]
+fn managed_plist_is_loaded_and_mdm_metadata_is_removed() {
+    let home = TestHome::new();
+    std::fs::write(
+        home.managed.join("ai.opencode.plist"),
+        r#"{"PayloadDisplayName":"OpenCode","PayloadUUID":"uuid","model":"mdm/plist-model"}"#,
+    )
+    .expect("write plist fixture");
+
+    let state = home.load();
+    assert_eq!(state.config.model.as_deref(), Some("mdm/plist-model"));
 }
 
 #[test]

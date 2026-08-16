@@ -1,14 +1,17 @@
 //! Tests for the ProviderAuth authorize/callback flow and the login flows.
 
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 
 use oc_provider::auth::login::{
-    login_url, resolve_plugin_providers, HasAuth, LoginOptions, LoginPrompt, WellKnownMetadata,
+    handle_plugin_auth, login_url, resolve_plugin_providers, HasAuth, LoginError, LoginOptions,
+    LoginPrompt, WellKnownMetadata,
 };
-use oc_provider::auth::{AuthStore, Info as AuthInfo, MemoryAuthStore};
+use oc_provider::auth::{AuthStore, Info as AuthInfo, MemoryAuthStore, Oauth};
 use oc_provider::provider::auth::{
     AuthCallbackResult, AuthHook, AuthOAuthResult, AuthorizeInput, CallbackInput, CallbackMethod,
-    Method, MethodType, OAuthCredential, Prompt, ProviderAuth, ProviderAuthError,
+    Method, MethodType, OAuthCredential, OauthRefreshResult, Prompt, ProviderAuth,
+    ProviderAuthError,
 };
 
 /// A scriptable plugin auth hook for tests.
@@ -16,6 +19,8 @@ struct MockHook {
     methods: Vec<Method>,
     authorize_result: Result<AuthOAuthResult, anyhow::Error>,
     callback_result: Result<AuthCallbackResult, anyhow::Error>,
+    callback_codes: Arc<Mutex<Vec<Option<String>>>>,
+    refresh_result: Option<OAuthCredential>,
 }
 
 impl MockHook {
@@ -42,6 +47,8 @@ impl MockHook {
                 }),
                 api: None,
             }),
+            callback_codes: Arc::new(Mutex::new(Vec::new())),
+            refresh_result: None,
         }
     }
 }
@@ -67,11 +74,19 @@ impl AuthHook for MockHook {
             Err(err) => Err(anyhow::anyhow!("{}", err)),
         }
     }
-    fn callback(&self, _code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error> {
+    fn callback(&self, code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error> {
+        self.callback_codes
+            .lock()
+            .unwrap()
+            .push(code.map(str::to_string));
         match &self.callback_result {
             Ok(ok) => Ok(ok.clone()),
             Err(err) => Err(anyhow::anyhow!("{}", err)),
         }
+    }
+
+    fn refresh(&self, _credential: &Oauth) -> Result<Option<OAuthCredential>, anyhow::Error> {
+        Ok(self.refresh_result.clone())
     }
 }
 
@@ -207,6 +222,145 @@ fn callback_code_method_without_code_returns_code_missing() {
 }
 
 #[test]
+fn callback_code_method_with_empty_code_returns_code_missing() {
+    let service = ProviderAuth::new(hooks_map());
+    service
+        .authorize(
+            "github",
+            &AuthorizeInput {
+                method: 0,
+                inputs: None,
+            },
+        )
+        .unwrap();
+    let err = service
+        .callback(
+            "github",
+            &CallbackInput {
+                method: 0,
+                code: Some(String::new()),
+            },
+            &mut MemoryAuthStore::new(),
+        )
+        .unwrap_err();
+    assert!(matches!(err, ProviderAuthError::OauthCodeMissing(_)));
+}
+
+#[test]
+fn callback_auto_method_does_not_forward_submitted_code() {
+    let mut hook = MockHook::oauth("x");
+    hook.authorize_result = Ok(AuthOAuthResult {
+        url: "https://example.com/authorize".to_string(),
+        method: CallbackMethod::Auto,
+        instructions: "Waiting for authorization".to_string(),
+    });
+    let callback_codes = hook.callback_codes.clone();
+    let service = ProviderAuth::new(BTreeMap::from([("github".to_string(), hook)]));
+    let mut auth = MemoryAuthStore::new();
+
+    service
+        .authorize(
+            "github",
+            &AuthorizeInput {
+                method: 0,
+                inputs: None,
+            },
+        )
+        .unwrap();
+    service
+        .callback(
+            "github",
+            &CallbackInput {
+                method: 0,
+                code: Some("client-supplied-code".to_string()),
+            },
+            &mut auth,
+        )
+        .unwrap();
+
+    assert_eq!(*callback_codes.lock().unwrap(), vec![None]);
+}
+
+#[test]
+fn expired_oauth_credentials_refresh_and_rotate_tokens() {
+    let mut hook = MockHook::oauth("x");
+    hook.refresh_result = Some(OAuthCredential {
+        refresh: "rotated-refresh".into(),
+        access: "rotated-access".into(),
+        expires: 3_000,
+        account_id: Some("account".into()),
+        enterprise_url: None,
+    });
+    let service = ProviderAuth::new(BTreeMap::from([("github".to_string(), hook)]));
+    let mut auth = MemoryAuthStore::new();
+    auth.set(
+        "github",
+        AuthInfo::Oauth(Oauth {
+            refresh: "old-refresh".into(),
+            access: "old-access".into(),
+            expires: 1_000,
+            account_id: None,
+            enterprise_url: None,
+        }),
+    )
+    .unwrap();
+
+    assert_eq!(
+        service.refresh("github", 2_000, &mut auth).unwrap(),
+        OauthRefreshResult::Refreshed
+    );
+    let AuthInfo::Oauth(oauth) = auth.get("github").unwrap().unwrap() else {
+        panic!("expected refreshed oauth credential")
+    };
+    assert_eq!(oauth.access, "rotated-access");
+    assert_eq!(oauth.refresh, "rotated-refresh");
+    assert_eq!(oauth.expires, 3_000);
+    assert_eq!(oauth.account_id.as_deref(), Some("account"));
+}
+
+#[test]
+fn valid_oauth_credentials_do_not_refresh() {
+    let service = ProviderAuth::new(hooks_map());
+    let mut auth = MemoryAuthStore::new();
+    auth.set(
+        "github",
+        AuthInfo::Oauth(Oauth {
+            refresh: "refresh".into(),
+            access: "access".into(),
+            expires: 5_000,
+            account_id: None,
+            enterprise_url: None,
+        }),
+    )
+    .unwrap();
+    assert_eq!(
+        service.refresh("github", 2_000, &mut auth).unwrap(),
+        OauthRefreshResult::NotNeeded
+    );
+}
+
+#[test]
+fn expired_oauth_without_hook_is_explicitly_unsupported() {
+    let service = ProviderAuth::new(BTreeMap::<String, MockHook>::new());
+    let mut auth = MemoryAuthStore::new();
+    auth.set(
+        "github",
+        AuthInfo::Oauth(Oauth {
+            refresh: "refresh".into(),
+            access: "access".into(),
+            expires: 1_000,
+            account_id: None,
+            enterprise_url: None,
+        }),
+    )
+    .unwrap();
+    assert_eq!(
+        service.refresh("github", 2_000, &mut auth).unwrap(),
+        OauthRefreshResult::Unsupported
+    );
+}
+
+#[test]
 fn callback_failed_result_returns_oauth_callback_failed() {
     let hook = MockHook {
         callback_result: Ok(AuthCallbackResult::Failed),
@@ -270,6 +424,38 @@ fn authorize_runs_text_prompt_validation() {
 struct ScriptedPrompt {
     api_key: Option<String>,
     recorded: std::sync::Mutex<Vec<String>>,
+}
+
+struct TextPromptScript {
+    value: String,
+}
+
+impl LoginPrompt for TextPromptScript {
+    fn intro(&self, _title: &str) {}
+    fn log_info(&self, _message: &str) {}
+    fn log_warn(&self, _message: &str) {}
+    fn log_error(&self, _message: &str) {}
+    fn log_success(&self, _message: &str) {}
+    fn outro(&self, _message: &str) {}
+    fn text(
+        &self,
+        _message: &str,
+        _placeholder: Option<&str>,
+        _validate: Option<&dyn Fn(&str) -> Option<String>>,
+    ) -> Option<String> {
+        Some(self.value.clone())
+    }
+    fn password(&self, _message: &str) -> Option<String> {
+        None
+    }
+    fn select(&self, _message: &str, _options: &[(String, String)]) -> Option<usize> {
+        None
+    }
+    fn autocomplete(&self, _message: &str, _options: &[(String, String)]) -> Option<String> {
+        None
+    }
+    fn spinner_start(&self, _message: &str) {}
+    fn spinner_stop(&self, _message: &str, _failed: bool) {}
 }
 
 impl ScriptedPrompt {
@@ -385,6 +571,65 @@ fn login_url_failed_command_does_not_store() {
         |_command: &[String]| -> Result<(i32, String), anyhow::Error> { Ok((1, String::new())) };
     login_url("https://auth.example.com", &mut auth, &prompt, fetch, run).unwrap();
     assert!(auth.get("https://auth.example.com").unwrap().is_none());
+}
+
+#[test]
+fn plugin_oauth_login_validates_prompt_before_authorize() {
+    let hook = MockHook {
+        methods: vec![Method {
+            r#type: MethodType::OAuth,
+            label: "OAuth".to_string(),
+            prompts: Some(vec![Prompt::Text(
+                oc_provider::provider::auth::TextPrompt {
+                    r#type: "text".to_string(),
+                    key: "account".to_string(),
+                    message: "Account".to_string(),
+                    placeholder: None,
+                    when: None,
+                },
+            )]),
+        }],
+        ..MockHook::oauth("x")
+    };
+    let mut auth = MemoryAuthStore::new();
+    let prompt = TextPromptScript {
+        value: "bad".to_string(),
+    };
+
+    let error = handle_plugin_auth(&mut auth, &prompt, &hook, "provider", None).unwrap_err();
+    assert!(
+        matches!(error, LoginError::Failed(message) if message.contains("account") && message.contains("must not be bad"))
+    );
+    assert!(auth.all().unwrap().is_empty());
+}
+
+#[test]
+fn plugin_oauth_login_honors_callback_provider_override() {
+    let hook = MockHook {
+        callback_result: Ok(AuthCallbackResult::Success {
+            provider: Some("canonical-provider".to_string()),
+            oauth: Some(OAuthCredential {
+                refresh: "refresh".to_string(),
+                access: "access".to_string(),
+                expires: 10_000,
+                account_id: None,
+                enterprise_url: None,
+            }),
+            api: None,
+        }),
+        ..MockHook::oauth("x")
+    };
+    let mut auth = MemoryAuthStore::new();
+    let prompt = TextPromptScript {
+        value: "authorization-code".to_string(),
+    };
+
+    handle_plugin_auth(&mut auth, &prompt, &hook, "requested-provider", None).unwrap();
+    assert!(auth.get("requested-provider").unwrap().is_none());
+    assert!(matches!(
+        auth.get("canonical-provider").unwrap(),
+        Some(AuthInfo::Oauth(_))
+    ));
 }
 
 #[test]

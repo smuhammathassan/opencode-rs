@@ -171,6 +171,7 @@ pub struct Info {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub snapshot: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(alias = "plugins")]
     pub plugin: Option<Vec<plugin::Spec>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub share: Option<Share>,

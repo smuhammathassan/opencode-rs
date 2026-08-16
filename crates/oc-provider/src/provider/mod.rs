@@ -647,7 +647,12 @@ fn camel_case_key(key: &str) -> String {
 /// symbols, and all `Model` values are typed (always schema-valid), so this is
 /// a clone.
 pub fn to_public_info(provider: &Info) -> Info {
-    provider.clone()
+    let mut public = provider.clone();
+    // `key` is an internal registry field used by the transport layer. The
+    // catalog endpoints expose this value through `Info`, so never serialize
+    // persisted or environment-provided credentials across that boundary.
+    public.key = None;
+    public
 }
 
 /// Computes the default model ID for every provider.
@@ -791,4 +796,6 @@ pub(crate) fn merge_provider(
     providers.insert(provider_id.to_string(), info);
 }
 
-pub use registry::{build_registry, RegistryInput};
+pub use registry::{
+    build_registry, build_registry_with_model_hooks, ProviderModelHookRegistration, RegistryInput,
+};

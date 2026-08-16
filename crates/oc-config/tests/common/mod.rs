@@ -82,6 +82,7 @@ impl TestHome {
                 "OPENCODE_TEST_MANAGED_CONFIG_DIR",
                 Some(managed.to_str().unwrap()),
             ),
+            ("OPENCODE_MANAGED_CONFIG_DIR", None),
             ("OPENCODE_CONFIG", None),
             ("OPENCODE_CONFIG_DIR", None),
             ("OPENCODE_CONFIG_CONTENT", None),

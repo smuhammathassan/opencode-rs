@@ -543,7 +543,11 @@ mod tests {
         .await
         .unwrap();
         let text = String::from_utf8_lossy(&out.stdout);
-        assert!(text.contains(dir.to_string_lossy().as_ref()));
+        // macOS may expose the temporary directory through `/var` while
+        // `pwd` resolves it through `/private/var`; compare the canonical
+        // spelling so this remains a real cwd assertion on both paths.
+        let expected_dir = std::fs::canonicalize(&dir).unwrap_or(dir);
+        assert!(text.contains(expected_dir.to_string_lossy().as_ref()));
         assert!(text.contains("bar"));
     }
 

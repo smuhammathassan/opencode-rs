@@ -138,13 +138,95 @@ pub struct ApiCallErrorInput {
     pub url: Option<String>,
 }
 
-fn is_context_overflow(message: &str) -> bool {
+/// Shared context-overflow classifier used by provider and LLM HTTP errors.
+///
+/// Keep this predicate independent from either crate's public error enum so
+/// both layers agree on the classification without changing their error
+/// shapes or messages.
+pub fn is_context_overflow(message: &str) -> bool {
+    let exclusions = [
+        regex::Regex::new(r"(?i)^(throttling error|service unavailable):").unwrap(),
+        regex::Regex::new(r"(?i)rate limit").unwrap(),
+        regex::Regex::new(r"(?i)too many requests").unwrap(),
+    ];
+    if exclusions.iter().any(|pattern| pattern.is_match(message)) {
+        return false;
+    }
+    let patterns = [
+        regex::Regex::new(r"(?i)prompt is too long").unwrap(),
+        regex::Regex::new(r"(?i)request_too_large").unwrap(),
+        regex::Regex::new(r"(?i)input is too long for requested model").unwrap(),
+        regex::Regex::new(r"(?i)exceeds the context window").unwrap(),
+        regex::Regex::new(r"(?i)exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))").unwrap(),
+        regex::Regex::new(r"(?i)input token count.*exceeds the maximum").unwrap(),
+        regex::Regex::new(r"(?i)tokens in request more than max tokens allowed").unwrap(),
+        regex::Regex::new(r"(?i)maximum prompt length is \d+").unwrap(),
+        regex::Regex::new(r"(?i)reduce the length of the messages").unwrap(),
+        regex::Regex::new(r"(?i)maximum context length is \d+ tokens").unwrap(),
+        regex::Regex::new(r"(?i)exceeds (?:the )?maximum allowed input length of [\d,]+ tokens?").unwrap(),
+        regex::Regex::new(r"(?i)input \(\d+ tokens\) is longer than the model'?s context length \(\d+ tokens\)").unwrap(),
+        regex::Regex::new(r"(?i)exceeds the limit of \d+").unwrap(),
+        regex::Regex::new(r"(?i)exceeds the available context size").unwrap(),
+        regex::Regex::new(r"(?i)greater than the context length").unwrap(),
+        regex::Regex::new(r"(?i)context window exceeds limit").unwrap(),
+        regex::Regex::new(r"(?i)exceeded model token limit").unwrap(),
+        regex::Regex::new(r"(?i)context[_ ]length[_ ]exceeded").unwrap(),
+        regex::Regex::new(r"(?i)request entity too large").unwrap(),
+        regex::Regex::new(r"(?i)context length is only \d+ tokens").unwrap(),
+        regex::Regex::new(r"(?i)input length.*exceeds.*context length").unwrap(),
+        regex::Regex::new(r"(?i)prompt too long; exceeded (?:max )?context length").unwrap(),
+        regex::Regex::new(r"(?i)too large for model with \d+ maximum context length").unwrap(),
+        regex::Regex::new(r"(?i)prompt has [\d,]+ tokens?, but the configured context size is [\d,]+ tokens?").unwrap(),
+        regex::Regex::new(r"(?i)model_context_window_exceeded").unwrap(),
+        regex::Regex::new(r"(?i)too many tokens").unwrap(),
+        regex::Regex::new(r"(?i)token limit exceeded").unwrap(),
+    ];
+    let no_body = regex::Regex::new(r"(?i)^4(00|13)\s*(status code)?\s*\(no body\)").unwrap();
     let lower = message.to_lowercase();
-    lower.contains("context_length_exceeded")
+    patterns.iter().any(|pattern| pattern.is_match(message))
+        || no_body.is_match(message)
+        // Retain the broad checks used by the provider parser before this
+        // predicate was shared with oc-llm.
         || lower.contains("token limit")
         || lower.contains("maximum context length")
         || lower.contains("input is too long")
         || lower.contains("context window")
+}
+
+/// Whether a provider response describes an exhausted quota rather than a
+/// transient rate limit. Separators mirror the reference classifier.
+pub fn is_quota_exceeded(message: &str) -> bool {
+    let lower = message.to_lowercase();
+    [
+        "insufficientquota",
+        "insufficient-quota",
+        "insufficient_quota",
+        "insufficient quota",
+        "quotaexceeded",
+        "quota-exceeded",
+        "quota_exceeded",
+        "quota exceeded",
+    ]
+    .iter()
+    .any(|pattern| lower.contains(pattern))
+}
+
+/// HTTP statuses that should be treated as transient provider failures.
+pub fn is_retryable_status(status: u16) -> bool {
+    status == 429 || (500..=599).contains(&status)
+}
+
+/// Provider-specific retry policy used by the provider API parser.
+///
+/// The caller-supplied flag remains authoritative for all providers; OpenAI
+/// additionally treats a model lookup 404 as retryable, matching the existing
+/// public behavior.
+pub fn is_retryable_provider_error(
+    provider_id: &str,
+    status_code: Option<u16>,
+    supplied_retryable: bool,
+) -> bool {
+    supplied_retryable || (provider_id.starts_with("openai") && status_code == Some(404))
 }
 
 /// Whether the provider error message should be enriched from the response
@@ -264,13 +346,10 @@ pub fn parse_api_call_error(input: &ApiCallErrorInput) -> ParsedApiCallError {
         map.insert("url".to_string(), url);
         map
     });
-    let is_openai = input.provider_id.starts_with("openai");
-    let is_retryable = if is_openai {
-        // openai sometimes returns 404 for models that are actually available
-        input.status_code == Some(404) || input.is_retryable
-    } else {
-        input.is_retryable
-    };
+    // openai sometimes returns 404 for models that are actually available;
+    // preserve that provider-specific exception through the shared policy.
+    let is_retryable =
+        is_retryable_provider_error(&input.provider_id, input.status_code, input.is_retryable);
     ParsedApiCallError::ApiError {
         message,
         status_code: input.status_code,
@@ -472,5 +551,62 @@ mod tests {
     fn parse_api_call_error_413_context_overflow() {
         let err = parse_api_call_error(&input("openai", "Payload Too Large", Some(413), None));
         assert!(matches!(err, ParsedApiCallError::ContextOverflow { .. }));
+    }
+
+    #[test]
+    fn shared_context_classifier_matches_provider_boundaries() {
+        for message in [
+            "prompt is too long",
+            "context_length_exceeded",
+            "This model's maximum context length is 128000 tokens",
+            "request entity too large",
+        ] {
+            assert!(
+                is_context_overflow(message),
+                "expected context overflow: {message}"
+            );
+        }
+        for message in [
+            "rate limit exceeded",
+            "too many requests",
+            "Service Unavailable: retry later",
+        ] {
+            assert!(
+                !is_context_overflow(message),
+                "unexpected context overflow: {message}"
+            );
+        }
+    }
+
+    #[test]
+    fn shared_retry_and_quota_classifiers_cover_http_boundaries() {
+        for status in [429, 500, 501, 502, 503, 504, 529, 599] {
+            assert!(
+                is_retryable_status(status),
+                "expected retryable status: {status}"
+            );
+        }
+        for status in [400, 401, 404, 413, 422] {
+            assert!(
+                !is_retryable_status(status),
+                "unexpected retryable status: {status}"
+            );
+        }
+        assert!(is_quota_exceeded("insufficient_quota"));
+        assert!(is_quota_exceeded("quota-exceeded"));
+        assert!(is_quota_exceeded("quota exceeded"));
+        assert!(!is_quota_exceeded("rate limit exceeded"));
+    }
+
+    #[test]
+    fn provider_specific_retryability_preserves_openai_exception() {
+        assert!(is_retryable_provider_error("openai", Some(404), false));
+        assert!(is_retryable_provider_error(
+            "openai-compatible",
+            Some(404),
+            false
+        ));
+        assert!(!is_retryable_provider_error("anthropic", Some(404), false));
+        assert!(is_retryable_provider_error("anthropic", Some(400), true));
     }
 }

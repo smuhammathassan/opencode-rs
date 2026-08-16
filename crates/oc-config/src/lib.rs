@@ -20,20 +20,18 @@ pub mod paths;
 pub mod v1;
 pub mod v2;
 pub mod variable;
+pub mod watch;
 
 pub use error::{ConfigError, Issue, Result};
 pub use load::{
-    load_config, load_file, load_global, load_instance_state, LoadOptions, PluginOrigin, Scope,
+    load_config, load_file, load_global, load_instance_state, load_instance_state_with_remotes,
+    InstanceState, LoadOptions, PluginOrigin, RemoteConfigCredential, RemoteConfigOptions, Scope,
 };
 pub use parse::schema as parse_schema;
 pub use v1::Info as Config;
+pub use watch::{ConfigReloadWatcher, DEFAULT_DEBOUNCE};
 
 // TODO(integration):
-// - Remote well-known / account-org configs need the auth + HTTP layers
-//   (`Config.loadInstanceState` fetches `{url}/.well-known/opencode` and
-//   `{url}/api/config`).
 // - `Config.update` / `Config.updateGlobal` (config write-back, including
 //   JSONC `patchJsonc`).
-// - macOS managed preferences plist reading
-//   (`ConfigManaged.readManagedPreferences`, via `plutil`).
 // - Background npm dependency installs per config directory.

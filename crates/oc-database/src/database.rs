@@ -125,6 +125,42 @@ impl Database {
         Ok(())
     }
 
+    /// Insert a row unless its key already exists, in which case update the
+    /// existing row. This is the small persistence primitive used by the
+    /// server's durable projections; it deliberately mirrors the reference's
+    /// idempotent `insert`/`update` helpers without requiring table-specific
+    /// SQL in every caller.
+    pub fn upsert<T: serde::Serialize>(
+        &self,
+        table: &str,
+        row: &T,
+        json_columns: &[&str],
+        key: &str,
+        key_value: &Value,
+    ) -> Result<()> {
+        let object = serde_json::to_value(row)?
+            .as_object()
+            .cloned()
+            .ok_or_else(|| Error::Row(format!("row for {table} must be a JSON object")))?;
+        if object.is_empty() {
+            return Err(Error::Row(format!("row for {table} has no columns")));
+        }
+
+        let mut changed = 0;
+        for (column, value) in &object {
+            if column == key {
+                continue;
+            }
+            let sqlite_value =
+                super::sqlite::json_to_sqlite(value, json_columns.contains(&column.as_str()))?;
+            changed += self.update_by(table, column, &sqlite_value, key, key_value)?;
+        }
+        if changed == 0 {
+            self.insert(table, row, json_columns)?;
+        }
+        Ok(())
+    }
+
     /// Fetch all rows of `table`, deserialized into `T`.
     pub fn list<T: serde::de::DeserializeOwned>(
         &self,
@@ -188,6 +224,7 @@ impl Database {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::tables::ProjectRow;
 
     #[test]
     fn path_resolution() {
@@ -290,5 +327,38 @@ mod tests {
             .list::<Project>("project", &["sandboxes", "commands"])
             .unwrap()
             .is_empty());
+    }
+
+    #[test]
+    fn project_helpers_round_trip_and_update_by_id() {
+        let db = Database::open_memory().unwrap();
+        let mut project = ProjectRow {
+            id: "project-id".to_string(),
+            worktree: "/repo".to_string(),
+            vcs: Some("git".to_string()),
+            name: Some("Repo".to_string()),
+            icon_url: None,
+            icon_url_override: None,
+            icon_color: None,
+            time_created: 10,
+            time_updated: 10,
+            time_initialized: None,
+            sandboxes: serde_json::json!([]),
+            commands: None,
+        };
+
+        db.upsert_project(&project).unwrap();
+        assert_eq!(db.get_project("project-id").unwrap(), Some(project.clone()));
+        assert_eq!(
+            db.get_project_by_worktree("/repo").unwrap(),
+            Some(project.clone())
+        );
+        assert_eq!(db.list_projects().unwrap(), vec![project.clone()]);
+
+        project.name = Some("Renamed".to_string());
+        project.time_updated = 20;
+        db.upsert_project(&project).unwrap();
+        assert_eq!(db.get_project("project-id").unwrap(), Some(project));
+        assert_eq!(db.list_projects().unwrap().len(), 1);
     }
 }

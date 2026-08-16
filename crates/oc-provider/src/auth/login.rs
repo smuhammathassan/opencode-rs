@@ -423,6 +423,14 @@ pub fn handle_plugin_auth(
                     prompt_value(prompt.text(&p.message, p.placeholder.as_deref(), None))?
                 }
             };
+            if matches!(auth_prompt, AuthPrompt::Text(_)) {
+                if let Some(error) = hook.validate(index, key, &value) {
+                    return Err(LoginError::Failed(format!(
+                        "Validation failed for {}: {}",
+                        key, error
+                    )));
+                }
+            }
             inputs.insert(key.to_string(), value);
         }
     }
@@ -449,8 +457,14 @@ pub fn handle_plugin_auth(
                         AuthCallbackResult::Failed => {
                             prompt.spinner_stop("Failed to authorize", true);
                         }
-                        AuthCallbackResult::Success { oauth, api, .. } => {
-                            store_oauth_or_api(auth, provider, oauth, api)?;
+                        AuthCallbackResult::Success {
+                            provider: callback_provider,
+                            oauth,
+                            api,
+                        } => {
+                            let credential_provider =
+                                callback_provider.as_deref().unwrap_or(provider);
+                            store_oauth_or_api(auth, credential_provider, oauth, api)?;
                             prompt.spinner_stop("Login successful", false);
                         }
                     }
@@ -472,8 +486,14 @@ pub fn handle_plugin_auth(
                         .map_err(|e| LoginError::from_cli("Failed to authorize: ", e))?;
                     match result {
                         AuthCallbackResult::Failed => prompt.log_error("Failed to authorize"),
-                        AuthCallbackResult::Success { oauth, api, .. } => {
-                            store_oauth_or_api(auth, provider, oauth, api)?;
+                        AuthCallbackResult::Success {
+                            provider: callback_provider,
+                            oauth,
+                            api,
+                        } => {
+                            let credential_provider =
+                                callback_provider.as_deref().unwrap_or(provider);
+                            store_oauth_or_api(auth, credential_provider, oauth, api)?;
                             prompt.log_success("Login successful");
                         }
                     }
@@ -494,7 +514,12 @@ pub fn handle_plugin_auth(
                 .map_err(|e| LoginError::from_cli("Failed to authorize: ", e))?;
             match result {
                 AuthCallbackResult::Failed => prompt.log_error("Failed to authorize"),
-                AuthCallbackResult::Success { oauth: _, api, .. } => {
+                AuthCallbackResult::Success {
+                    provider: callback_provider,
+                    oauth: _,
+                    api,
+                } => {
+                    let credential_provider = callback_provider.as_deref().unwrap_or(provider);
                     let api = api.unwrap_or(crate::provider::auth::ApiCredential {
                         key,
                         metadata: None,
@@ -508,7 +533,7 @@ pub fn handle_plugin_auth(
                         (None, b) => b,
                     };
                     auth.set(
-                        provider,
+                        credential_provider,
                         Info::Api(super::Api {
                             key: api.key,
                             metadata: merged_metadata,

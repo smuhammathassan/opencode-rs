@@ -11,6 +11,7 @@ use crate::schema::{
     LlmErrorReason, ProviderFailureClassification,
 };
 use crate::shared;
+use oc_provider::provider::error::{is_context_overflow, is_quota_exceeded, is_retryable_status};
 
 pub const BODY_LIMIT: usize = 16_384;
 pub const MAX_RETRIES: usize = 2;
@@ -144,7 +145,7 @@ fn request_id(headers: &BTreeMap<String, String>) -> Option<String> {
 }
 
 fn retryable_status(status: StatusCode) -> bool {
-    matches!(status.as_u16(), 429 | 503 | 504 | 529)
+    is_retryable_status(status.as_u16())
 }
 
 fn retry_after_ms(headers: &BTreeMap<String, String>) -> Option<i64> {
@@ -228,10 +229,6 @@ fn provider_message(status: StatusCode, body: &str) -> String {
     format!("Provider request failed with HTTP {}", status.as_u16())
 }
 
-fn is_context_overflow(message: &str) -> bool {
-    crate::provider_error::is_context_overflow(message)
-}
-
 fn status_reason(
     status: StatusCode,
     message: &str,
@@ -263,10 +260,7 @@ fn status_reason(
             http: Some(http),
         },
         429 => {
-            if regex::Regex::new(r"(?i)insufficient[-_\s]?quota|quota[-_\s]?exceeded")
-                .unwrap()
-                .is_match(body)
-            {
+            if is_quota_exceeded(body) {
                 LlmErrorReason::QuotaExceeded {
                     message: message.to_string(),
                     provider_metadata: None,
@@ -285,7 +279,8 @@ fn status_reason(
         400 | 404 | 409 | 413 | 422 => LlmErrorReason::InvalidRequest {
             message: message.to_string(),
             parameter: None,
-            classification: if is_context_overflow(body) {
+            classification: if status == StatusCode::PAYLOAD_TOO_LARGE || is_context_overflow(body)
+            {
                 Some(ProviderFailureClassification::ContextOverflow)
             } else {
                 None
@@ -498,4 +493,103 @@ pub fn stream_error_text(error: &anyhow::Error) -> String {
 #[allow(unused)]
 pub(crate) fn _shared_marker() {
     let _ = shared::error_text_str;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request() -> HttpRequestValue {
+        let mut headers = BTreeMap::new();
+        headers.insert(
+            "Authorization".to_string(),
+            "Bearer header-secret".to_string(),
+        );
+        headers.insert("x-safe".to_string(), "visible".to_string());
+        HttpRequestValue {
+            url: "https://api.example.test/v1?key=url-secret&safe=visible".to_string(),
+            body: "{}".to_string(),
+            headers,
+        }
+    }
+
+    #[test]
+    fn status_error_marks_retryable_429_and_5xx_but_not_quota() {
+        let request = request();
+        let headers = BTreeMap::new();
+        for status in [429, 500, 501, 502, 503, 504, 529] {
+            let body = if status == 429 {
+                r#"{"error":{"code":"rate_limit"}}"#
+            } else {
+                r#"{"error":{"code":"server_error"}}"#
+            };
+            let error = status_error(
+                &request,
+                StatusCode::from_u16(status).unwrap(),
+                body,
+                &headers,
+            );
+            assert!(error.retryable(), "status {status} should be retryable");
+        }
+
+        let quota = status_error(
+            &request,
+            StatusCode::TOO_MANY_REQUESTS,
+            r#"{"error":{"code":"insufficient_quota"}}"#,
+            &headers,
+        );
+        assert!(matches!(quota.reason, LlmErrorReason::QuotaExceeded { .. }));
+        assert!(!quota.retryable());
+    }
+
+    #[test]
+    fn status_error_classifies_context_overflow_like_provider_parser() {
+        let request = request();
+        let headers = BTreeMap::new();
+        let by_code = status_error(
+            &request,
+            StatusCode::BAD_REQUEST,
+            r#"{"error":{"code":"context_length_exceeded"}}"#,
+            &headers,
+        );
+        let by_status = status_error(
+            &request,
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "Payload Too Large",
+            &headers,
+        );
+        for error in [by_code, by_status] {
+            assert_eq!(
+                error.reason.classification(),
+                Some(ProviderFailureClassification::ContextOverflow)
+            );
+            assert!(!error.retryable());
+        }
+    }
+
+    #[test]
+    fn status_error_redacts_request_and_body_secrets() {
+        let request = request();
+        let headers = BTreeMap::new();
+        let error = status_error(
+            &request,
+            StatusCode::BAD_REQUEST,
+            r#"{"apiKey":"body-secret","message":"failed"}"#,
+            &headers,
+        );
+        let http = match &error.reason {
+            LlmErrorReason::InvalidRequest {
+                http: Some(http), ..
+            } => http,
+            reason => panic!(
+                "expected HTTP invalid-request details, got {}",
+                reason.tag()
+            ),
+        };
+        let request_details = http.request.as_ref().unwrap();
+        assert!(!request_details.url.contains("url-secret"));
+        assert_eq!(request_details.headers["Authorization"], REDACTED);
+        assert!(!http.body.as_deref().unwrap().contains("body-secret"));
+        assert!(http.body.as_deref().unwrap().contains(REDACTED));
+    }
 }

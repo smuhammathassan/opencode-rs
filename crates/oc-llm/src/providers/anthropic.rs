@@ -10,6 +10,8 @@ use crate::route::{EndpointPatch, Route, RouteModelInput, RoutePatch};
 use crate::schema::{GenerationOptions, HttpOptions, Model, ModelLimits, ProviderOptions};
 
 pub const ID: &str = "anthropic";
+const DEFAULT_BETA_HEADER: &str =
+    "interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14";
 
 /// `Config`.
 /// From reference/packages/llm/src/providers/anthropic.ts (`Config`)
@@ -34,6 +36,17 @@ fn auth_for(options: &Config) -> Auth {
         .header_auth("x-api-key")
 }
 
+fn headers_for(options: &Config) -> BTreeMap<String, String> {
+    let mut headers = BTreeMap::from([(
+        "anthropic-beta".to_string(),
+        DEFAULT_BETA_HEADER.to_string(),
+    )]);
+    if let Some(overrides) = &options.headers {
+        headers.extend(overrides.clone());
+    }
+    headers
+}
+
 /// `Anthropic.configure(input)`.
 /// From reference/packages/llm/src/providers/anthropic.ts (`configure`)
 pub fn configure(input: Config) -> AnthropicProvider {
@@ -45,7 +58,7 @@ pub fn configure(input: Config) -> AnthropicProvider {
             .clone()
             .unwrap_or_else(|| anthropic_messages::DEFAULT_BASE_URL.to_string()),
     ));
-    patch.headers = input.headers.clone();
+    patch.headers = Some(headers_for(&input));
     patch.limits = input.limits.clone();
     patch.generation = input.generation.clone();
     patch.provider_options = input.provider_options.clone();

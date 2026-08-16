@@ -50,6 +50,8 @@ pub enum ConfigError {
     },
     /// `ConfigRemoteAuthError`: a remote config URL answered with a login page.
     RemoteAuth { url: String, remote: String },
+    /// A remote config endpoint could not be fetched or decoded.
+    Remote { url: String, message: String },
     /// I/O failures while reading or writing config files.
     Io { path: String, error: String },
 }
@@ -77,7 +79,7 @@ impl ConfigError {
             | Self::Frontmatter { path, .. }
             | Self::DirectoryTypo { path, .. }
             | Self::Io { path, .. } => path,
-            Self::RemoteAuth { remote, .. } => remote,
+            Self::RemoteAuth { remote, .. } | Self::Remote { url: remote, .. } => remote,
         }
     }
 
@@ -142,6 +144,9 @@ impl ConfigError {
                     format!("\nRun `opencode auth login {url}` to re-authenticate.")
                 }
             ),
+            Self::Remote { url, message } => {
+                format!("Failed to load remote config from {url}: {message}")
+            }
             Self::Io { path, error } => format!("Failed to read config file at {path}: {error}"),
         }
     }

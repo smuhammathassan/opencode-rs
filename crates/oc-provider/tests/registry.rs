@@ -436,6 +436,27 @@ fn build_registry_merges_env_and_api_keys() {
 }
 
 #[test]
+fn build_registry_ignores_empty_environment_credentials() {
+    let catalog = snapshot();
+    let mut envs = BTreeMap::new();
+    envs.insert("OPENAI_API_KEY".to_string(), Some(String::new()));
+
+    let input = RegistryInput {
+        catalog: &catalog,
+        config: ConfigInput::default(),
+        envs: &envs,
+        auths: &BTreeMap::new(),
+        enable_experimental_models: false,
+    };
+
+    let providers = build_registry(&input).unwrap();
+    assert!(
+        !providers.contains_key("openai"),
+        "an empty env value must not connect a provider"
+    );
+}
+
+#[test]
 fn build_registry_respects_disabled_providers() {
     let catalog = snapshot();
     let provider_config = IndexMap::new();

@@ -8,6 +8,7 @@
 use crate::entry_name::config_entry_name_from_path;
 use crate::error::{ConfigError, Issue, Result};
 use crate::glob;
+use crate::managed;
 use crate::merge::{concat_unique, dedupe_keep_last, merge_deep};
 use crate::parse;
 use crate::paths;
@@ -18,7 +19,13 @@ use crate::v1::permission::{Action, Rule};
 use crate::v1::plugin::Spec;
 use crate::variable::{self, Missing, Source};
 use indexmap::IndexMap;
+use serde::Deserialize;
 use serde_json::Value;
+use std::collections::BTreeMap;
+use std::time::Duration;
+
+const REMOTE_CONFIG_MAX_BODY_BYTES: usize = 1024 * 1024;
+const REMOTE_CONFIG_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Environment-derived flags mirroring `@opencode-ai/core/flag/flag`.
 #[derive(Debug, Clone, Default)]
@@ -99,12 +106,336 @@ pub struct LoadOptions {
     pub username: Option<String>,
 }
 
+/// A credential entry that opts a caller into OpenCode's well-known remote
+/// config discovery. This intentionally mirrors the `wellknown` auth record
+/// without making `oc-config` depend on the provider/auth crate.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RemoteConfigCredential {
+    /// The enterprise/account base URL, without a trailing slash.
+    pub origin: String,
+    /// Environment variable name made available to remote and local config
+    /// substitutions while this instance is loaded.
+    pub key: String,
+    /// Token associated with `key`.
+    pub token: String,
+}
+
+impl RemoteConfigCredential {
+    pub fn new(
+        origin: impl Into<String>,
+        key: impl Into<String>,
+        token: impl Into<String>,
+    ) -> Self {
+        Self {
+            origin: origin.into(),
+            key: key.into(),
+            token: token.into(),
+        }
+    }
+}
+
+/// Inputs for remote config discovery. The reference obtains these entries
+/// from its auth service; callers of this crate provide the already-resolved
+/// credentials at the config boundary.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct RemoteConfigOptions {
+    pub credentials: Vec<RemoteConfigCredential>,
+}
+
+impl RemoteConfigOptions {
+    pub fn new(credentials: Vec<RemoteConfigCredential>) -> Self {
+        Self { credentials }
+    }
+}
+
 /// The result of loading an instance's config.
 #[derive(Debug, Clone)]
 pub struct InstanceState {
     pub config: Info,
     pub directories: Vec<String>,
     pub plugin_origins: Vec<PluginOrigin>,
+}
+
+#[derive(Debug, Deserialize)]
+struct WellKnownResponse {
+    #[serde(default)]
+    config: Value,
+    #[serde(default)]
+    remote_config: Value,
+}
+
+/// Loads the normal instance state with authenticated well-known remote
+/// config sources applied before local/global config.
+///
+/// The remote protocol is the reference OpenCode protocol:
+/// `GET {origin}/.well-known/opencode` returns optional `config` and
+/// `remote_config` JSON values. When `remote_config.url` is present, that URL
+/// is fetched and its object (or its object-valued `config` member) is merged
+/// over the well-known inline config. Remote failures are returned rather than
+/// silently producing a partially configured instance.
+///
+/// This function is async because the reference performs network I/O during
+/// instance loading. The existing synchronous [`load_instance_state`] remains
+/// unchanged for embedders that do not provide auth-backed remotes.
+pub async fn load_instance_state_with_remotes(
+    options: &LoadOptions,
+    remotes: &RemoteConfigOptions,
+) -> Result<InstanceState> {
+    if remotes.credentials.is_empty() {
+        return load_instance_state(options);
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(REMOTE_CONFIG_TIMEOUT)
+        .redirect(reqwest::redirect::Policy::limited(5))
+        .build()
+        .map_err(|error| ConfigError::Remote {
+            url: String::new(),
+            message: format!("failed to create HTTP client: {error}"),
+        })?;
+
+    let mut env = options.env.clone();
+    let mut remote = Info::default();
+    let mut remote_origins = Vec::new();
+
+    for credential in &remotes.credentials {
+        let origin = normalize_remote_origin(&credential.origin)?;
+        if credential.key.is_empty() {
+            return Err(ConfigError::Remote {
+                url: origin,
+                message: "well-known credential has an empty environment key".to_string(),
+            });
+        }
+        env.insert(credential.key.clone(), credential.token.clone());
+
+        let wellknown_url = format!("{origin}/.well-known/opencode");
+        let wellknown_value = fetch_remote_json(&client, &wellknown_url, None, &origin).await?;
+        let wellknown: WellKnownResponse =
+            serde_json::from_value(wellknown_value).map_err(|error| ConfigError::Remote {
+                url: wellknown_url.clone(),
+                message: format!("expected a JSON object with config fields: {error}"),
+            })?;
+
+        let inline = object_or_empty(wellknown.config);
+        let fetched = if let Value::Object(remote_config) = wellknown.remote_config {
+            // The reference treats a non-object or an object without a string
+            // `url` as absent; preserve that forward-compatible behavior.
+            if let Some(raw_url) = remote_config.get("url").and_then(Value::as_str) {
+                let endpoint_url = substitute_remote_value(raw_url, &wellknown_url, &env)?;
+                let headers = remote_config
+                    .get("headers")
+                    .and_then(Value::as_object)
+                    .map(|headers| {
+                        headers
+                            .iter()
+                            .filter_map(|(key, value)| value.as_str().map(|value| (key, value)))
+                            .map(|(key, value)| {
+                                Ok::<_, ConfigError>((
+                                    key.clone(),
+                                    substitute_remote_value(value, &wellknown_url, &env)?,
+                                ))
+                            })
+                            .collect::<Result<BTreeMap<_, _>>>()
+                    })
+                    .transpose()?
+                    .unwrap_or_default();
+                let endpoint_value =
+                    fetch_remote_json(&client, &endpoint_url, Some(&headers), &origin).await?;
+                match endpoint_value {
+                    Value::Object(mut object) => match object.shift_remove("config") {
+                        Some(Value::Object(config)) => Value::Object(config),
+                        Some(other) => {
+                            object.insert("config".to_string(), other);
+                            Value::Object(object)
+                        }
+                        None => Value::Object(object),
+                    },
+                    _ => {
+                        return Err(ConfigError::Remote {
+                            url: endpoint_url,
+                            message: "expected a JSON object".to_string(),
+                        })
+                    }
+                }
+            } else {
+                Value::Object(Default::default())
+            }
+        } else {
+            Value::Object(Default::default())
+        };
+
+        let mut combined = crate::merge::merge_deep(&inline, &fetched);
+        if let Value::Object(ref mut object) = combined {
+            object
+                .entry("$schema")
+                .or_insert_with(|| Value::String("https://opencode.ai/config.json".to_string()));
+        }
+        let text = serde_json::to_string(&combined).map_err(|error| ConfigError::Remote {
+            url: wellknown_url.clone(),
+            message: format!("failed to encode merged remote config: {error}"),
+        })?;
+        let next = load_config(
+            &text,
+            &Source::Virtual {
+                source: wellknown_url.clone(),
+                dir: origin.clone(),
+            },
+            Some(&env),
+        )?;
+        let mut next_for_merge = next.clone();
+        next_for_merge.plugin = None;
+        merge_plugins(
+            &mut remote,
+            &mut remote_origins,
+            next.plugin.clone().unwrap_or_default(),
+            &wellknown_url,
+            Scope::Global,
+        );
+        remote = merge_config(&remote, &next_for_merge);
+    }
+
+    let local_options = LoadOptions {
+        env,
+        ..options.clone()
+    };
+    let local = load_instance_state(&local_options)?;
+    let mut local_config = local.config.clone();
+    local_config.plugin = None;
+    let mut config = merge_config(&remote, &local_config);
+
+    // Keep remote plugin provenance while allowing later local declarations
+    // to win exactly as they do in the normal loader.
+    let mut origins = remote_origins;
+    origins.extend(local.plugin_origins);
+    origins = dedupe_keep_last(origins, |origin| plugin_identity(&origin.spec));
+    config.plugin = Some(origins.iter().map(|origin| origin.spec.clone()).collect());
+
+    // `load_instance_state` supplies the final username default before this
+    // wrapper can merge the remote base. Preserve an explicit remote username
+    // when the local value is only that default.
+    let default_username = options.username.clone().unwrap_or_else(current_username);
+    if remote.username.is_some() && local.config.username.as_deref() == Some(&default_username) {
+        config.username = remote.username.clone();
+    }
+
+    Ok(InstanceState {
+        config,
+        directories: local.directories,
+        plugin_origins: origins,
+    })
+}
+
+fn normalize_remote_origin(origin: &str) -> Result<String> {
+    let normalized = origin.trim_end_matches('/');
+    let parsed = url::Url::parse(normalized).map_err(|error| ConfigError::Remote {
+        url: origin.to_string(),
+        message: format!("invalid URL: {error}"),
+    })?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err(ConfigError::Remote {
+            url: origin.to_string(),
+            message: "only http and https URLs are supported".to_string(),
+        });
+    }
+    if normalized.is_empty() {
+        return Err(ConfigError::Remote {
+            url: origin.to_string(),
+            message: "URL is empty".to_string(),
+        });
+    }
+    Ok(normalized.to_string())
+}
+
+fn object_or_empty(value: Value) -> Value {
+    match value {
+        Value::Object(_) => value,
+        _ => Value::Object(Default::default()),
+    }
+}
+
+fn substitute_remote_value(
+    value: &str,
+    source: &str,
+    env: &IndexMap<String, String>,
+) -> Result<String> {
+    variable::substitute(
+        value,
+        &Source::Virtual {
+            source: source.to_string(),
+            dir: source.to_string(),
+        },
+        Some(env),
+        Missing::Empty,
+    )
+}
+
+async fn fetch_remote_json(
+    client: &reqwest::Client,
+    url: &str,
+    headers: Option<&BTreeMap<String, String>>,
+    login_origin: &str,
+) -> Result<Value> {
+    let parsed = url::Url::parse(url).map_err(|error| ConfigError::Remote {
+        url: url.to_string(),
+        message: format!("invalid URL: {error}"),
+    })?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return Err(ConfigError::Remote {
+            url: url.to_string(),
+            message: "only http and https URLs are supported".to_string(),
+        });
+    }
+
+    let mut request = client.get(url);
+    if let Some(headers) = headers {
+        for (name, value) in headers {
+            request = request.header(name, value);
+        }
+    }
+    let response = request.send().await.map_err(|error| ConfigError::Remote {
+        url: url.to_string(),
+        message: error.to_string(),
+    })?;
+    let status = response.status();
+    let content_type = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    let body = response
+        .bytes()
+        .await
+        .map_err(|error| ConfigError::Remote {
+            url: url.to_string(),
+            message: error.to_string(),
+        })?;
+    if body.len() > REMOTE_CONFIG_MAX_BODY_BYTES {
+        return Err(ConfigError::Remote {
+            url: url.to_string(),
+            message: format!("response exceeds {REMOTE_CONFIG_MAX_BODY_BYTES} bytes"),
+        });
+    }
+    let text = String::from_utf8_lossy(&body);
+    if content_type.contains("html")
+        || text.trim_start().starts_with("<!doctype")
+        || text.trim_start().starts_with("<html")
+    {
+        return Err(ConfigError::RemoteAuth {
+            url: login_origin.to_string(),
+            remote: url.to_string(),
+        });
+    }
+    if !status.is_success() {
+        return Err(ConfigError::Remote {
+            url: url.to_string(),
+            message: format!("server returned HTTP {status}"),
+        });
+    }
+    serde_json::from_slice(&body).map_err(|error| ConfigError::Remote {
+        url: url.to_string(),
+        message: format!("invalid JSON: {error}"),
+    })
 }
 
 /// Parses config text into a `Config` struct.
@@ -304,14 +635,12 @@ pub fn load_instance_state(options: &LoadOptions) -> Result<InstanceState> {
         acc.merge(next, "OPENCODE_CONFIG_CONTENT", Scope::Local);
     }
 
-    // Managed system config (e.g. MDM). Remote/managed plist sources are
-    // TODO(integration): `ConfigManaged.readManagedPreferences`.
+    // Managed system config (e.g. MDM), with plist normalization on macOS.
     if let Some(managed_dir) = managed_config_dir() {
-        for file in ["opencode.json", "opencode.jsonc"] {
-            let source = managed_dir.join(file);
-            let path = source.to_string_lossy().into_owned();
+        for source in managed::config_files(&managed_dir) {
             if source.exists() {
-                acc.merge(load_file(&path, env)?, &path, Scope::Global);
+                let path = source.to_string_lossy().into_owned();
+                acc.merge(load_managed_file(&source, env)?, &path, Scope::Global);
             }
         }
     }
@@ -527,22 +856,30 @@ fn ensure_gitignore(dir: &std::path::Path) -> std::io::Result<()> {
 
 /// `ConfigManaged.managedConfigDir()` — system-managed config directory.
 pub fn managed_config_dir() -> Option<std::path::PathBuf> {
-    if let Some(dir) = std::env::var("OPENCODE_TEST_MANAGED_CONFIG_DIR").ok() {
-        return Some(std::path::PathBuf::from(dir));
+    managed::managed_config_dir()
+}
+
+fn load_managed_file(
+    path: &std::path::Path,
+    env: Option<&IndexMap<String, String>>,
+) -> Result<Info> {
+    let display = path.to_string_lossy().into_owned();
+    let text = managed::read_config(path).map_err(|error| ConfigError::Io {
+        path: display.clone(),
+        error: error.to_string(),
+    })?;
+    if text.trim().is_empty() {
+        return Ok(Info::default());
     }
-    #[cfg(target_os = "macos")]
-    {
-        return Some(std::path::PathBuf::from(
-            "/Library/Application Support/opencode",
-        ));
-    }
-    #[cfg(target_os = "windows")]
-    {
-        let program_data =
-            std::env::var("ProgramData").unwrap_or_else(|_| "C:\\ProgramData".to_string());
-        return Some(std::path::PathBuf::from(program_data).join("opencode"));
-    }
-    Some(std::path::PathBuf::from("/etc/opencode"))
+    let mut config = load_config(
+        &text,
+        &Source::Path {
+            path: display.clone(),
+        },
+        env,
+    )?;
+    resolve_loaded_plugins(&mut config, &display);
+    Ok(config)
 }
 
 /// `ConfigCommand.load(dir)` — discovers `{command,commands}/**/*.md`.
@@ -685,6 +1022,10 @@ pub fn resolve_plugin_spec(plugin: Spec, config_filepath: &str) -> Spec {
     match plugin {
         Spec::Package(_) => Spec::Package(resolved),
         Spec::Entry((_, options)) => Spec::Entry((resolved, options)),
+        Spec::Object { options, .. } => Spec::Object {
+            package: resolved,
+            options,
+        },
     }
 }
 
@@ -692,6 +1033,7 @@ pub fn plugin_specifier(plugin: &Spec) -> &str {
     match plugin {
         Spec::Package(package) => package,
         Spec::Entry((package, _)) => package,
+        Spec::Object { package, .. } => package,
     }
 }
 
@@ -699,6 +1041,8 @@ pub fn plugin_options(plugin: &Spec) -> Option<&IndexMap<String, Value>> {
     match plugin {
         Spec::Package(_) => None,
         Spec::Entry((_, options)) => Some(options),
+        Spec::Object { options, .. } if options.is_empty() => None,
+        Spec::Object { options, .. } => Some(options),
     }
 }
 

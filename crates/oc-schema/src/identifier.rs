@@ -1,12 +1,14 @@
 //! From reference/packages/schema/src/identifier.ts
 
-use std::sync::atomic::{AtomicI64, AtomicU64, Ordering};
+use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{LazyLock, Mutex};
 
 const LENGTH: usize = 26;
 const CHARS: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-static LAST_TIMESTAMP: AtomicI64 = AtomicI64::new(0);
-static COUNTER: AtomicU64 = AtomicU64::new(0);
+static COUNTERS: LazyLock<Mutex<BTreeMap<i64, u64>>> =
+    LazyLock::new(|| Mutex::new(BTreeMap::new()));
 static PRNG_STATE: AtomicU64 = AtomicU64::new(0);
 
 /// `create(false)` from identifier.ts.
@@ -22,11 +24,12 @@ pub fn descending() -> String {
 /// Mirror of `create(descending, timestamp)` in identifier.ts: 12 hex chars from
 /// `timestamp * 0x1000 + counter`, then 14 chars drawn from the base62 alphabet.
 pub fn create(descending: bool, timestamp: i64) -> String {
-    if timestamp != LAST_TIMESTAMP.load(Ordering::SeqCst) {
-        LAST_TIMESTAMP.store(timestamp, Ordering::SeqCst);
-        COUNTER.store(0, Ordering::SeqCst);
-    }
-    let counter = COUNTER.fetch_add(1, Ordering::SeqCst) + 1;
+    let counter = {
+        let mut counters = COUNTERS.lock().expect("identifier counter lock poisoned");
+        let counter = counters.entry(timestamp).or_default();
+        *counter += 1;
+        *counter
+    };
     let current = (timestamp as u64).wrapping_mul(0x1000) + counter;
     let value = if descending { !current } else { current };
     let mut result = String::with_capacity(LENGTH);

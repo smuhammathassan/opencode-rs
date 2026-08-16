@@ -228,6 +228,43 @@ rows! {
 }
 
 impl Database {
+    /// Fetch a persisted project by its stable project id.
+    pub fn get_project(&self, project_id: &str) -> Result<Option<ProjectRow>> {
+        self.get_by(
+            "project",
+            "id",
+            &Value::Text(project_id.to_string()),
+            json_columns("project"),
+        )
+    }
+
+    /// Fetch the project whose canonical worktree matches `worktree`.
+    pub fn get_project_by_worktree(&self, worktree: &str) -> Result<Option<ProjectRow>> {
+        self.get_by(
+            "project",
+            "worktree",
+            &Value::Text(worktree.to_string()),
+            json_columns("project"),
+        )
+    }
+
+    /// List all persisted project rows.
+    pub fn list_projects(&self) -> Result<Vec<ProjectRow>> {
+        self.list("project", json_columns("project"))
+    }
+
+    /// Persist a project row using the same idempotent upsert semantics as the
+    /// reference Project service's `onConflictDoUpdate` path.
+    pub fn upsert_project(&self, row: &ProjectRow) -> Result<()> {
+        self.upsert(
+            "project",
+            row,
+            json_columns("project"),
+            "id",
+            &Value::Text(row.id.clone()),
+        )
+    }
+
     /// `MessageV2.get` shape — message by `id` scoped to `session_id`.
     /// From reference/packages/opencode/src/session/message-v2.ts:506
     pub fn get_message(&self, message_id: &str, session_id: &str) -> Result<Option<MessageRow>> {
@@ -306,6 +343,48 @@ impl Database {
             .collect()
     }
 
+    /// Load the event-sourced session message stream in sequence order.
+    ///
+    /// The session runner consumes this table rather than the legacy
+    /// `message` projection when it reconstructs V2 history.
+    pub fn list_session_messages(&self, session_id: &str) -> Result<Vec<SessionMessageRow>> {
+        let sql = "SELECT * FROM `session_message` WHERE `session_id` = ? ORDER BY `seq`";
+        self.db
+            .run_all(sql, &[Value::Text(session_id.into())])?
+            .iter()
+            .map(|row| row.from_row(json_columns("session_message")))
+            .collect()
+    }
+
+    /// Load one event-sourced session message by its stable id.
+    pub fn get_session_message(&self, message_id: &str) -> Result<Option<SessionMessageRow>> {
+        self.get_by(
+            "session_message",
+            "id",
+            &Value::Text(message_id.into()),
+            json_columns("session_message"),
+        )
+    }
+
+    /// Return the newest compaction sequence for a session, if one exists.
+    pub fn latest_compaction_seq(&self, session_id: &str) -> Result<Option<i64>> {
+        let sql = "SELECT `seq` FROM `session_message` WHERE `session_id` = ? AND `type` = 'compaction' ORDER BY `seq` DESC LIMIT 1";
+        self.db
+            .get(sql, &[Value::Text(session_id.into())])?
+            .map(|row| row.get_by_name::<i64>("seq"))
+            .transpose()
+    }
+
+    /// Load the context-epoch baseline used to trim runner history.
+    pub fn context_epoch(&self, session_id: &str) -> Result<Option<SessionContextEpochRow>> {
+        self.get_by(
+            "session_context_epoch",
+            "session_id",
+            &Value::Text(session_id.into()),
+            json_columns("session_context_epoch"),
+        )
+    }
+
     /// Whether a session exists.
     pub fn session_exists(&self, session_id: &str) -> Result<bool> {
         let sql = "SELECT `id` FROM `session` WHERE `id` = ? LIMIT 1";
@@ -350,6 +429,118 @@ impl Database {
             .iter()
             .map(|row| row.from_row(json_columns("todo")))
             .collect()
+    }
+
+    /// Load the durable sync cursors used by the event store.
+    pub fn list_event_sequences(&self) -> Result<Vec<EventSequenceRow>> {
+        self.list("event_sequence", &[])
+    }
+
+    /// Load durable sync events in aggregate/cursor order for store hydration.
+    pub fn list_events(&self) -> Result<Vec<EventRow>> {
+        self.db
+            .run("SELECT * FROM `event` ORDER BY `aggregate_id`, `seq`")?
+            .iter()
+            .map(|row| row.from_row(json_columns("event")))
+            .collect()
+    }
+
+    /// Append a sequence cursor and its event row as one SQLite transaction.
+    /// The expected cursor check keeps multiple store handles from silently
+    /// overwriting one another's event order.
+    pub fn persist_event(&self, sequence: &EventSequenceRow, event: &EventRow) -> Result<()> {
+        if sequence.aggregate_id != event.aggregate_id || sequence.seq != event.seq {
+            return Err(crate::error::Error::Row(
+                "event sequence and event row disagree".into(),
+            ));
+        }
+        let data = serde_json::to_string(&event.data)?;
+        self.db.transaction(|tx| {
+            let params = [Value::Text(sequence.aggregate_id.clone())];
+            let current = tx.run_get(
+                "SELECT `seq`, `owner_id` FROM `event_sequence` WHERE `aggregate_id` = ?",
+                &params,
+            )?;
+            match current {
+                Some(row) => {
+                    let current_seq = row.get_by_name::<i64>("seq")?;
+                    let current_owner = row.get_by_name::<Option<String>>("owner_id")?;
+                    if current_seq + 1 != sequence.seq {
+                        return Err(crate::error::Error::Row(format!(
+                            "event sequence mismatch for {}: expected {}, got {}",
+                            sequence.aggregate_id,
+                            current_seq + 1,
+                            sequence.seq
+                        )));
+                    }
+                    if current_owner != sequence.owner_id {
+                        return Err(crate::error::Error::Row(format!(
+                            "event owner mismatch for {}",
+                            sequence.aggregate_id
+                        )));
+                    }
+                    tx.run_exec(
+                        "UPDATE `event_sequence` SET `seq` = ? WHERE `aggregate_id` = ?",
+                        &[
+                            Value::Integer(sequence.seq),
+                            Value::Text(sequence.aggregate_id.clone()),
+                        ],
+                    )?;
+                }
+                None => {
+                    if sequence.seq != 0 {
+                        return Err(crate::error::Error::Row(format!(
+                            "event sequence mismatch for {}: expected 0, got {}",
+                            sequence.aggregate_id, sequence.seq
+                        )));
+                    }
+                    tx.run_exec(
+                        "INSERT INTO `event_sequence` (`aggregate_id`, `seq`, `owner_id`) VALUES (?, ?, ?)",
+                        &[
+                            Value::Text(sequence.aggregate_id.clone()),
+                            Value::Integer(sequence.seq),
+                            sequence
+                                .owner_id
+                                .clone()
+                                .map_or(Value::Null, Value::Text),
+                        ],
+                    )?;
+                }
+            }
+            tx.run_exec(
+                "INSERT INTO `event` (`id`, `aggregate_id`, `seq`, `type`, `data`) VALUES (?, ?, ?, ?, ?)",
+                &[
+                    Value::Text(event.id.clone()),
+                    Value::Text(event.aggregate_id.clone()),
+                    Value::Integer(event.seq),
+                    Value::Text(event.r#type.clone()),
+                    Value::Text(data),
+                ],
+            )?;
+            Ok(())
+        })
+    }
+
+    /// Persist the owner claim for an aggregate.
+    pub fn claim_event_owner(&self, aggregate_id: &str, owner_id: &str) -> Result<()> {
+        self.update_by(
+            "event_sequence",
+            "owner_id",
+            &Value::Text(owner_id.to_string()),
+            "aggregate_id",
+            &Value::Text(aggregate_id.to_string()),
+        )?;
+        Ok(())
+    }
+
+    /// Remove an aggregate's cursor; its events cascade through the schema FK.
+    pub fn remove_event_aggregate(&self, aggregate_id: &str) -> Result<()> {
+        self.delete_by(
+            "event_sequence",
+            "aggregate_id",
+            &Value::Text(aggregate_id.to_string()),
+        )?;
+        Ok(())
     }
 
     /// Append an event for an aggregate. Returns the new sequence number.

@@ -4,8 +4,10 @@
 
 mod common;
 
+use std::collections::BTreeMap;
+
 use oc_llm::llm::{request, RequestInput};
-use oc_llm::route::LlmClient;
+use oc_llm::route::{compile, Auth, LlmClient};
 use oc_llm::schema::messages::{Message, ToolCallPart};
 
 fn client() -> LlmClient {
@@ -164,6 +166,36 @@ fn anthropic_messages_body() {
     assert_eq!(
         body,
         r#"{"model":"claude-sonnet-4-5","system":[{"type":"text","text":"You are concise.","cache_control":{"type":"ephemeral"}}],"messages":[{"role":"user","content":[{"type":"text","text":"Say hello.","cache_control":{"type":"ephemeral"}}]}],"stream":true,"max_tokens":512}"#
+    );
+}
+
+/// Anthropic provider defaults match OpenCode's v1.18.13 custom loader.
+#[test]
+fn anthropic_provider_adds_beta_header_and_allows_override() {
+    let provider = oc_llm::providers::anthropic::configure(oc_llm::providers::anthropic::Config {
+        auth: Some(Auth::bearer(Auth::value("test"))),
+        ..Default::default()
+    });
+    let mut input = RequestInput::new(provider.model("claude-sonnet-4-5"));
+    input.prompt = Some("Say hello.".into());
+    let compiled = compile(&request(input)).unwrap();
+    assert_eq!(
+        compiled.prepared.request.headers.get("anthropic-beta"),
+        Some(&"interleaved-thinking-2025-05-14,fine-grained-tool-streaming-2025-05-14".to_string())
+    );
+
+    let mut overrides = BTreeMap::new();
+    overrides.insert("anthropic-beta".to_string(), "custom-beta".to_string());
+    let mut input = RequestInput::new(provider.model("claude-sonnet-4-5"));
+    input.prompt = Some("Say hello.".into());
+    input.http = Some(oc_llm::schema::HttpOptions {
+        headers: Some(overrides),
+        ..Default::default()
+    });
+    let compiled = compile(&request(input)).unwrap();
+    assert_eq!(
+        compiled.prepared.request.headers.get("anthropic-beta"),
+        Some(&"custom-beta".to_string())
     );
 }
 

@@ -93,9 +93,29 @@ pub async fn write(p: &str, content: &[u8], mode: Option<u32>) -> std::io::Resul
 }
 
 pub async fn write_json(p: &str, data: &Value, mode: Option<u32>) -> anyhow::Result<()> {
-    let content = serde_json::to_string_pretty(data)?;
+    // Keep generated configuration files stable even when another workspace
+    // crate enables serde_json's `preserve_order` feature.  The reference
+    // writes deterministic JSON, and stable ordering also prevents needless
+    // churn in config diffs.
+    let sorted = sort_json_keys(data);
+    let content = serde_json::to_string_pretty(&sorted)?;
     write_impl(p, content.as_bytes(), mode).await?;
     Ok(())
+}
+
+fn sort_json_keys(value: &Value) -> Value {
+    match value {
+        Value::Object(object) => {
+            let mut entries = object
+                .iter()
+                .map(|(key, value)| (key.clone(), sort_json_keys(value)))
+                .collect::<Vec<_>>();
+            entries.sort_by(|left, right| left.0.cmp(&right.0));
+            Value::Object(entries.into_iter().collect())
+        }
+        Value::Array(values) => Value::Array(values.iter().map(sort_json_keys).collect()),
+        other => other.clone(),
+    }
 }
 
 pub async fn write_stream(
@@ -357,7 +377,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             read_text(file.to_str().unwrap()).await.unwrap(),
-            "{\n  \"b\": 2,\n  \"a\": 1\n}"
+            "{\n  \"a\": 1,\n  \"b\": 2\n}"
         );
     }
 

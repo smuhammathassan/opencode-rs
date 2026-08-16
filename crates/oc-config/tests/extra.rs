@@ -183,6 +183,20 @@ fn resolve_plugin_spec_preserves_options() {
 }
 
 #[test]
+fn parses_v2_plugin_object_and_preserves_options() {
+    let value = serde_json::json!({
+        "plugins": [{
+            "package": "opencode-example",
+            "options": {"mode": "strict"}
+        }]
+    });
+    let info: oc_config::v1::config::Info = serde_json::from_value(value).unwrap();
+    let plugin = info.plugin.unwrap().pop().unwrap();
+    assert_eq!(plugin.package(), "opencode-example");
+    assert_eq!(plugin.options().unwrap()["mode"], "strict");
+}
+
+#[test]
 fn full_load_serialization_golden() {
     let home = TestHome::new();
     home.write_global("opencode.json", json!({ "model": "global/model" }));

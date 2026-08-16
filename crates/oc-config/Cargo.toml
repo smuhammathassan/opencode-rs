@@ -17,8 +17,11 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+reqwest = { workspace = true }
+url = { workspace = true }
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 
 [dev-dependencies]
 tempfile = "3"
+tokio = { workspace = true }

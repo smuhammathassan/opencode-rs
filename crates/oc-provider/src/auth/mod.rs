@@ -27,6 +27,18 @@ pub struct Oauth {
     pub enterprise_url: Option<String>,
 }
 
+impl Oauth {
+    /// Returns whether the access-token expiry timestamp has passed.
+    ///
+    /// `expires` is stored as an absolute Unix timestamp in milliseconds,
+    /// matching the value consumed by the provider/server boundary. Keeping
+    /// the clock as an argument makes refresh decisions deterministic and
+    /// avoids coupling this crate to a runtime clock.
+    pub fn is_expired_at(&self, now_ms: u64) -> bool {
+        self.expires == 0 || self.expires <= now_ms
+    }
+}
+
 /// `Api` from `auth/index.ts`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]

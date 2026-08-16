@@ -1479,10 +1479,19 @@ fn patch_with_cause(operation: &str, directory: &AbsolutePath, cause: String) ->
 }
 
 fn relative_scope(worktree: &str, path: &str) -> String {
-    let relative = path
-        .strip_prefix(worktree)
-        .unwrap_or(path)
-        .trim_start_matches('/');
+    // `git rev-parse --show-toplevel` returns the canonical worktree on macOS
+    // (`/private/var/...`) while callers may retain the `/var/...` spelling.
+    // Normalize both sides before deriving the pathspec.
+    let canonical_worktree =
+        std::fs::canonicalize(worktree).unwrap_or_else(|_| Path::new(worktree).to_path_buf());
+    let canonical_path =
+        std::fs::canonicalize(path).unwrap_or_else(|_| Path::new(path).to_path_buf());
+    let relative = canonical_path
+        .strip_prefix(&canonical_worktree)
+        .map(|path| path.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| path.to_string())
+        .trim_start_matches('/')
+        .to_string();
     let scope = relative.replace('\\', "/");
     if scope.is_empty() {
         ".".to_string()
