@@ -215,8 +215,6 @@ async fn run_inner<A>(binary: PathBuf, input: RunInput<A>) -> Result<Outcome<A>,
 where
     A: Clone + Send + 'static,
 {
-    #[cfg(unix)]
-    use std::os::unix::process::ExitStatusExt;
     use tokio::process::Command;
 
     struct KillOnDrop(tokio::process::Child);

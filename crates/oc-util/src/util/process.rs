@@ -289,8 +289,6 @@ pub fn spawn(cmd: &[String], opts: &Options) -> std::result::Result<Child, std::
 }
 
 pub async fn wait(child: &mut Child) -> std::io::Result<i32> {
-    #[cfg(unix)]
-    use std::os::unix::process::ExitStatusExt;
     let status = child.wait().await?;
     Ok(status.code().unwrap_or_else(|| {
         // Unix: a signal-terminated child has no exit code; report 1 like the

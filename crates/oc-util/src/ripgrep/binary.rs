@@ -67,12 +67,31 @@ pub async fn filepath() -> Result<PathBuf, Error> {
     Ok(path.clone())
 }
 
+/// Serialize first-time resolution so concurrent `oc-tool` callers do not race
+/// the same download/extract in the shared `Global.Path.bin` directory.
+static SYNC_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+static SYNC_CACHE: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
 /// Synchronous variant for callers that spawn `rg` from non-async tool paths
 /// (e.g. `oc-tool`'s glob/grep). Resolves PATH → cached binary → download,
-/// mirroring `filepath()` but through the blocking reqwest client.
+/// mirroring `filepath()` but through the blocking reqwest client. The
+/// blocking client is created on a dedicated thread so it is never dropped
+/// inside a tokio async context (which panics with "Cannot drop a runtime in
+/// a context where blocking is not allowed").
 pub fn filepath_sync() -> Result<PathBuf, Error> {
+    if let Some(path) = SYNC_CACHE.get() {
+        return Ok(path.clone());
+    }
+    let _guard = SYNC_LOCK
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some(path) = SYNC_CACHE.get() {
+        return Ok(path.clone());
+    }
+
     if let Some(system) = crate::which::which(rg_exe()) {
         if std::path::Path::new(&system).is_file() {
+            let _ = SYNC_CACHE.set(system.clone());
             return Ok(system);
         }
     }
@@ -80,8 +99,26 @@ pub fn filepath_sync() -> Result<PathBuf, Error> {
     let bin_dir = crate::global::path::bin();
     let target = bin_dir.join(rg_exe());
     if target.is_file() {
+        let _ = SYNC_CACHE.set(target.clone());
         return Ok(target);
     }
+
+    let handle = std::thread::spawn(resolve_blocking);
+    let result = handle
+        .join()
+        .unwrap_or_else(|_| Err(Error("ripgrep resolution thread panicked".into())));
+    if let Ok(path) = &result {
+        let _ = SYNC_CACHE.set(path.clone());
+    }
+    result
+}
+
+/// Thread-isolated blocking resolution: re-checks PATH and the cached binary
+/// (cheap), then downloads the pinned release with `reqwest::blocking` and
+/// extracts it into `Global.Path.bin`.
+fn resolve_blocking() -> Result<PathBuf, Error> {
+    let bin_dir = crate::global::path::bin();
+    let target = bin_dir.join(rg_exe());
 
     let Some((platform, extension)) = platform_config() else {
         return Err(Error(format!(

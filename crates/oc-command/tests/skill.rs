@@ -73,7 +73,8 @@ fn discovers_global_and_external_skills() {
     write(&home, ".claude/skills/c/SKILL.md", &skill_md("c", "Claude"));
     write(&home, ".agents/skills/a/SKILL.md", &skill_md("a", "Agents"));
 
-    let s = settings(&home, &tmp.path().join("proj"), &tmp.path().join("proj"));
+    let mut s = settings(&home, &tmp.path().join("proj"), &tmp.path().join("proj"));
+    s.config_dirs = Some(vec![home.join(".config/opencode")]);
     let svc = SkillService::load(&s).unwrap();
     assert_eq!(svc.get("g").unwrap().description.as_deref(), Some("Global"));
     assert_eq!(svc.get("c").unwrap().description.as_deref(), Some("Claude"));
@@ -124,6 +125,7 @@ fn disable_external_skills_skips_claude_and_agents() {
 
     let mut s = settings(&home, &tmp.path().join("proj"), &tmp.path().join("proj"));
     s.disable_external_skills = true;
+    s.config_dirs = Some(vec![home.join(".config/opencode")]);
     let svc = SkillService::load(&s).unwrap();
     assert!(svc.get("c").is_none());
     assert!(svc.get("a").is_none());
