@@ -319,14 +319,45 @@ impl ToolChoice {
     }
 }
 
+/// Pricing metadata attached to a resolved model. Values are USD per million
+/// tokens, matching the models.dev/provider catalog convention.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelCost {
+    pub input: f64,
+    pub output: f64,
+    pub cache_read: f64,
+    pub cache_write: f64,
+}
+
+/// Context-window limits attached to a resolved model.
+///
+/// Values are token counts. Keeping the limits on the runner model lets
+/// compaction use the selected model rather than a provider-independent byte
+/// threshold.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelLimits {
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub context: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub input: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub output: Option<u64>,
+}
+
 /// `LLM.Model` — the minimal subset the runner inspects (id + provider for
-/// provider-metadata reuse and equality checks).
+/// provider-metadata reuse and equality checks), plus optional catalog price.
 /// /// From reference/packages/llm/src/schema/options.ts
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Model {
     pub id: String,
     pub provider: String,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub cost: Option<ModelCost>,
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub limits: Option<ModelLimits>,
 }
 
 impl Model {
@@ -334,7 +365,19 @@ impl Model {
         Self {
             id: id.into(),
             provider: provider.into(),
+            cost: None,
+            limits: None,
         }
+    }
+
+    pub fn with_cost(mut self, cost: ModelCost) -> Self {
+        self.cost = Some(cost);
+        self
+    }
+
+    pub fn with_limits(mut self, limits: ModelLimits) -> Self {
+        self.limits = Some(limits);
+        self
     }
 }
 

@@ -24,3 +24,4 @@ oc-tool = { version = "0.1", path = "../oc-tool" }
 oc-plugin = { version = "0.1", path = "../oc-plugin" }
 oc-provider = { version = "0.1", path = "../oc-provider" }
 oc-mcp = { version = "0.1", path = "../oc-mcp" }
+oc-database = { version = "0.1", path = "../oc-database" }

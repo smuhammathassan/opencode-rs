@@ -78,6 +78,168 @@ port = int(sys.argv[1])
 ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
 "#;
 
+/// Minimal Streamable HTTP MCP server that intentionally supports POST only.
+/// The optional GET event stream is rejected with 405, while JSON responses
+/// continue to be returned from client-originated POST requests.
+const POST_ONLY_HTTP_SERVER: &str = r#"
+import json, sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def do_GET(self):
+        self.send_response(405)
+        self.send_header("Allow", "POST")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        msg = json.loads(self.rfile.read(length))
+        method = msg.get("method")
+        if method == "initialize":
+            result = {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "post-only-server", "version": "1.0.0"},
+            }
+        elif method == "tools/list":
+            result = {"tools": [{"name": "post_only_tool", "inputSchema": {"type": "object"}}]}
+        else:
+            result = {}
+        body = json.dumps({"jsonrpc": "2.0", "id": msg.get("id"), "result": result}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+port = int(sys.argv[1])
+ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+"#;
+
+/// Streamable HTTP server whose tools/list POST emits its JSON-RPC response
+/// on SSE and deliberately keeps that POST connection open afterwards.
+const OPEN_POST_SSE_SERVER: &str = r#"
+import json, time, sys
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _json(self, result):
+        body = json.dumps({"jsonrpc": "2.0", "id": self.msg.get("id"), "result": result}).encode()
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("mcp-session-id", "sess-open-sse")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("mcp-session-id", "sess-open-sse")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def do_POST(self):
+        length = int(self.headers.get("Content-Length", 0))
+        self.msg = json.loads(self.rfile.read(length))
+        method = self.msg.get("method")
+        if method == "initialize":
+            self._json({
+                "protocolVersion": "2025-06-18",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "open-sse-server", "version": "1.0.0"},
+            })
+        elif method == "notifications/initialized":
+            self.send_response(202)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif method == "tools/list":
+            body = json.dumps({"jsonrpc": "2.0", "id": self.msg.get("id"), "result": {
+                "tools": [{"name": "open_sse_tool", "inputSchema": {"type": "object"}}]
+            }}).encode()
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("mcp-session-id", "sess-open-sse")
+            self.end_headers()
+            self.wfile.write(b"data: " + body + b"\n\n")
+            self.wfile.flush()
+            time.sleep(3600)
+        else:
+            self._json({})
+
+port = int(sys.argv[1])
+ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+"#;
+
+/// The first `tools/list` request expires the session. Recovery succeeds only
+/// when the client replays initialize and notifications/initialized before
+/// retrying the original request.
+const SESSION_RECOVERY_SERVER: &str = r#"
+import json, sys, time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+INITIALIZATIONS = 0
+
+class Handler(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def _json(self, code, obj):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("mcp-session-id", "sess-recovered")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header("Content-Type", "text/event-stream")
+        self.send_header("mcp-session-id", "sess-initial")
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def do_POST(self):
+        global INITIALIZATIONS
+        length = int(self.headers.get("Content-Length", 0))
+        msg = json.loads(self.rfile.read(length))
+        method = msg.get("method")
+        if method == "initialize":
+            INITIALIZATIONS += 1
+            self._json(200, {"jsonrpc": "2.0", "id": msg.get("id"), "result": {
+                "protocolVersion": "2025-06-18",
+                "capabilities": {"tools": {}},
+                "serverInfo": {"name": "recovery-server", "version": "1.0.0"},
+            }})
+        elif method == "tools/list" and INITIALIZATIONS == 1:
+            self.send_response(404)
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+        elif method == "tools/list":
+            self._json(200, {"jsonrpc": "2.0", "id": msg.get("id"), "result": {
+                "tools": [{"name": "recovered", "inputSchema": {"type": "object"}}]
+            }})
+        else:
+            self._json(200, {"jsonrpc": "2.0", "id": msg.get("id"), "result": {}})
+
+port = int(sys.argv[1])
+ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
+"#;
+
 fn spawn_python(dir: &PathBuf, script: &str, port: u16) -> tokio::process::Child {
     let path = dir.join("server.py");
     std::fs::write(&path, script).unwrap();
@@ -145,6 +307,107 @@ async fn streamable_http_transport_roundtrip() {
         .unwrap();
     assert_eq!(result.content[0].text.as_deref(), Some("remote-result"));
 
+    client.close().await.unwrap();
+    let _ = child.kill().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test]
+async fn streamable_http_accepts_post_only_server() {
+    let dir = temp_dir();
+    let port = free_port().await;
+    let url = Url::parse(&format!("http://127.0.0.1:{port}/mcp")).unwrap();
+    let mut child = spawn_python(&dir, POST_ONLY_HTTP_SERVER, port);
+    wait_until_ready(&url).await;
+
+    let transport = Arc::new(StreamableHTTPClientTransport::new(url, None, None));
+    let client = oc_mcp::client::Client::connect(
+        transport,
+        Implementation {
+            name: "opencode".into(),
+            version: "0.1.0".into(),
+        },
+        ClientCapabilities {
+            roots: Some(json!({})),
+            sampling: None,
+            experimental: None,
+        },
+        2_000,
+    )
+    .await
+    .unwrap();
+
+    let tools = client.list_tools(None, 2_000).await.unwrap();
+    assert_eq!(tools.tools[0].name, "post_only_tool");
+
+    client.close().await.unwrap();
+    let _ = child.kill().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test]
+async fn streamable_http_post_sse_returns_before_stream_closes() {
+    let dir = temp_dir();
+    let port = free_port().await;
+    let url = Url::parse(&format!("http://127.0.0.1:{port}/mcp")).unwrap();
+    let mut child = spawn_python(&dir, OPEN_POST_SSE_SERVER, port);
+    wait_until_ready(&url).await;
+
+    let transport = Arc::new(StreamableHTTPClientTransport::new(url, None, None));
+    let client = oc_mcp::client::Client::connect(
+        transport,
+        Implementation {
+            name: "opencode".into(),
+            version: "0.1.0".into(),
+        },
+        ClientCapabilities {
+            roots: Some(json!({})),
+            sampling: None,
+            experimental: None,
+        },
+        2_000,
+    )
+    .await
+    .unwrap();
+
+    let tools = tokio::time::timeout(Duration::from_secs(3), client.list_tools(None, 2_000))
+        .await
+        .expect("POST SSE response should not wait for stream EOF")
+        .unwrap();
+    assert_eq!(tools.tools[0].name, "open_sse_tool");
+
+    client.close().await.unwrap();
+    let _ = child.kill().await;
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[tokio::test]
+async fn streamable_http_recovers_expired_session_before_retrying() {
+    let dir = temp_dir();
+    let port = free_port().await;
+    let url = Url::parse(&format!("http://127.0.0.1:{port}/mcp")).unwrap();
+    let mut child = spawn_python(&dir, SESSION_RECOVERY_SERVER, port);
+    wait_until_ready(&url).await;
+
+    let transport = Arc::new(StreamableHTTPClientTransport::new(url, None, None));
+    let client = oc_mcp::client::Client::connect(
+        transport,
+        Implementation {
+            name: "opencode".into(),
+            version: "0.1.0".into(),
+        },
+        ClientCapabilities {
+            roots: Some(json!({})),
+            sampling: None,
+            experimental: None,
+        },
+        10_000,
+    )
+    .await
+    .unwrap();
+
+    let tools = client.list_tools(None, 10_000).await.unwrap();
+    assert_eq!(tools.tools[0].name, "recovered");
     client.close().await.unwrap();
     let _ = child.kill().await;
     let _ = std::fs::remove_dir_all(&dir);

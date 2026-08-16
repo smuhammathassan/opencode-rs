@@ -9,11 +9,13 @@
 //! input remains.
 
 use std::sync::Arc;
+use std::time::Duration;
 
+use futures::StreamExt;
 use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
-use crate::llm::error::{is_context_overflow, is_context_overflow_failure, RunFailure};
+use crate::llm::error::{is_context_overflow, is_context_overflow_failure, LLMError, RunFailure};
 use crate::llm::event::{LLMEvent, ProviderErrorEvent};
 use crate::llm::message::{
     ContentPart, LLMRequest, Message, OpenAIOptions, ProviderOptions, SystemPart, ToolChoice,
@@ -178,6 +180,7 @@ impl SessionRunnerService {
     ) -> Result<TurnOutcome, RunError> {
         let mut promotion = promotion;
         let mut step = step;
+        let mut retry_attempt = 0u32;
         loop {
             match self
                 .run_turn_attempt(session_id, promotion, step, true, token)
@@ -196,6 +199,34 @@ impl SessionRunnerService {
                         .await;
                 }
                 Err(TurnFailure::Interrupted) => return Ok(TurnOutcome::interrupted()),
+                Err(TurnFailure::Error(RunError::Llm(error)))
+                    if error.retryable() && retry_attempt < 3 =>
+                {
+                    let delay_ms = error
+                        .retry_after_ms()
+                        .filter(|value| value.is_finite() && *value >= 0.0)
+                        .map(|value| value.min(2_147_483_647.0) as u64)
+                        .unwrap_or_else(|| {
+                            2_000u64
+                                .saturating_mul(2u64.saturating_pow(retry_attempt))
+                                .min(30_000)
+                        });
+                    self.deps
+                        .events
+                        .publish(SessionEvent::Retried {
+                            timestamp: timestamp_now(),
+                            session_id: session_id.to_string(),
+                            attempt: retry_attempt as f64,
+                            error: retry_error(&error),
+                        })
+                        .await;
+                    retry_attempt += 1;
+                    promotion = None;
+                    tokio::select! {
+                        _ = token.cancelled() => return Ok(TurnOutcome::interrupted()),
+                        _ = tokio::time::sleep(Duration::from_millis(delay_ms)) => {}
+                    }
+                }
                 Err(TurnFailure::Error(error)) => return Err(error),
             }
         }
@@ -450,83 +481,103 @@ impl SessionRunnerService {
                 session_id: session_id.to_string(),
                 agent: agent.id.clone(),
                 model: model::ref_from_model(&resolved_model, &session),
+                cost: resolved_model.cost.clone(),
                 snapshot: start_snapshot.clone(),
             },
         ));
 
         let mut overflow_failure: Option<ProviderErrorEvent> = None;
 
-        // One provider turn. The reference streams events and forks settlements
-        // concurrently; `LlmClient.stream` buffers the events here but the
-        // settlement tasks still run concurrently and are joined together.
+        // One provider turn. Consume the live provider stream incrementally so
+        // text/reasoning/tool deltas are published before the provider closes.
         let mut stream_error: Option<crate::llm::LLMError> = None;
         let mut stream_interrupted = false;
-        let events_result = tokio::select! {
+        let mut stream_completed = false;
+        let stream_result = tokio::select! {
             _ = token.cancelled() => {
                 stream_interrupted = true;
                 None
             }
             result = self.deps.llm.stream(request.clone()) => Some(result),
         };
-        if let Some(Ok(events)) = &events_result {
-            for event in events {
-                if overflow_failure.is_some() || publisher.has_provider_error() {
-                    break;
-                }
-                if let LLMEvent::ProviderError(ref provider_error) = event {
-                    if is_context_overflow(&provider_error.message)
-                        && !publisher.has_assistant_started()
-                    {
-                        overflow_failure = Some(provider_error.clone());
-                        continue;
-                    }
-                }
-                publisher.publish(&event, &[]).await.map_err(turn_error)?;
-
-                if let LLMEvent::ToolCall {
-                    id,
-                    name,
-                    input,
-                    provider_executed,
-                    provider_metadata,
-                } = &event
-                {
-                    if *provider_executed == Some(true) {
-                        continue;
-                    }
-                    match &tool_materialization {
-                        None => {
-                            publisher
-                                .fail_unsettled_tools(
-                                    "Tools are disabled after the maximum agent steps",
-                                    false,
-                                )
-                                .await
-                                .map_err(turn_error)?;
+        if let Some(stream_result) = stream_result {
+            match stream_result {
+                Ok(mut events) => loop {
+                    let next = tokio::select! {
+                        _ = token.cancelled() => {
+                            stream_interrupted = true;
+                            break;
                         }
-                        Some(materialization) => {
-                            needs_continuation = true;
-                            let assistant_message_id = publisher
-                                .assistant_message_id(id)
-                                .await
-                                .map_err(turn_error)?;
-                            let call_id = id.clone();
-                            let name = name.clone();
-                            let input = input.clone();
-                            let provider_metadata = provider_metadata.clone();
-                            let call = ToolCall {
-                                id: call_id.clone(),
-                                name: name.clone(),
-                                input: input.clone(),
-                                provider_executed: false,
-                                provider_metadata: provider_metadata.clone(),
-                            };
-                            let publisher = publisher.clone();
-                            let materialization = materialization.clone();
-                            let session_id = session_id.to_string();
-                            let agent_id = agent.id.clone();
-                            let token = token.clone();
-                            tool_fibers.spawn(async move {
+                        event = events.next() => event,
+                    };
+                    let Some(next) = next else {
+                        stream_completed = true;
+                        break;
+                    };
+                    let event = match next {
+                        Ok(event) => event,
+                        Err(error) => {
+                            stream_error = Some(error);
+                            break;
+                        }
+                    };
+                    if overflow_failure.is_some() || publisher.has_provider_error() {
+                        break;
+                    }
+                    if let LLMEvent::ProviderError(ref provider_error) = event {
+                        if is_context_overflow(&provider_error.message)
+                            && !publisher.has_assistant_started()
+                        {
+                            overflow_failure = Some(provider_error.clone());
+                            continue;
+                        }
+                    }
+                    publisher.publish(&event, &[]).await.map_err(turn_error)?;
+
+                    if let LLMEvent::ToolCall {
+                        id,
+                        name,
+                        input,
+                        provider_executed,
+                        provider_metadata,
+                    } = &event
+                    {
+                        if *provider_executed == Some(true) {
+                            continue;
+                        }
+                        match &tool_materialization {
+                            None => {
+                                publisher
+                                    .fail_unsettled_tools(
+                                        "Tools are disabled after the maximum agent steps",
+                                        false,
+                                    )
+                                    .await
+                                    .map_err(turn_error)?;
+                            }
+                            Some(materialization) => {
+                                needs_continuation = true;
+                                let assistant_message_id = publisher
+                                    .assistant_message_id(id)
+                                    .await
+                                    .map_err(turn_error)?;
+                                let call_id = id.clone();
+                                let name = name.clone();
+                                let input = input.clone();
+                                let provider_metadata = provider_metadata.clone();
+                                let call = ToolCall {
+                                    id: call_id.clone(),
+                                    name: name.clone(),
+                                    input: input.clone(),
+                                    provider_executed: false,
+                                    provider_metadata: provider_metadata.clone(),
+                                };
+                                let publisher = publisher.clone();
+                                let materialization = materialization.clone();
+                                let session_id = session_id.to_string();
+                                let agent_id = agent.id.clone();
+                                let token = token.clone();
+                                tool_fibers.spawn(async move {
                                 match tokio::select! {
                                     _ = token.cancelled() => Err(ToolSettlementError::Interrupted),
                                     result = materialization.settle.settle(ExecuteInput {
@@ -555,12 +606,12 @@ impl SessionRunnerService {
                                     Err(error) => Err(error),
                                 }
                             });
+                            }
                         }
                     }
-                }
+                },
+                Err(error) => stream_error = Some(error),
             }
-        } else if let Some(Err(error)) = &events_result {
-            stream_error = Some(error.clone());
         }
 
         publisher.flush().await.map_err(turn_error)?;
@@ -663,7 +714,7 @@ impl SessionRunnerService {
                         session_id: session_id.to_string(),
                         assistant_message_id,
                         finish: step_settlement.finish,
-                        cost: 0.0,
+                        cost: step_settlement.cost,
                         tokens: step_settlement.tokens,
                         snapshot: end_snapshot,
                         files,
@@ -679,7 +730,7 @@ impl SessionRunnerService {
                 .map_err(turn_error)?;
         }
 
-        let stream_succeeded = events_result.is_some() && stream_error.is_none();
+        let stream_succeeded = stream_completed && stream_error.is_none();
         if stream_succeeded && !publisher.has_provider_error() {
             publisher
                 .fail_unsettled_tools("Provider did not return a tool result", true)
@@ -762,6 +813,36 @@ enum ToolSettlement {
 
 fn turn_error(error: PublishError) -> TurnFailure {
     TurnFailure::Error(RunError::Publish(error.to_string()))
+}
+
+fn retry_error(error: &LLMError) -> crate::session::event::RetryError {
+    let reason = serde_json::to_value(&error.reason).unwrap_or_default();
+    let http = reason.get("http");
+    let response = http.and_then(|value| value.get("response"));
+    crate::session::event::RetryError {
+        message: error.to_string(),
+        status_code: reason
+            .get("status")
+            .and_then(serde_json::Value::as_f64)
+            .or_else(|| {
+                response
+                    .and_then(|value| value.get("status"))
+                    .and_then(serde_json::Value::as_f64)
+            }),
+        is_retryable: true,
+        response_headers: response
+            .and_then(|value| value.get("headers"))
+            .and_then(serde_json::Value::as_object)
+            .cloned(),
+        response_body: http
+            .and_then(|value| value.get("body"))
+            .and_then(serde_json::Value::as_str)
+            .map(str::to_string),
+        metadata: reason
+            .get("providerMetadata")
+            .and_then(serde_json::Value::as_object)
+            .cloned(),
+    }
 }
 
 /// True when a session id is the durable `ses_` + 64-hex shape used for prompt

@@ -32,6 +32,11 @@ pub struct StreamableHTTPClientTransport {
     http: HttpClient,
     session_id: Arc<Mutex<Option<String>>>,
     protocol_version: Arc<Mutex<Option<String>>>,
+    last_event_id: Arc<Mutex<Option<String>>>,
+    initialization_request: Arc<Mutex<Option<Message>>>,
+    initialized_notification: Arc<Mutex<Option<Message>>>,
+    recovery_lock: Arc<Mutex<()>>,
+    recovery_attempted: Arc<AtomicBool>,
     has_completed_auth_flow: Arc<AtomicBool>,
     tx: Mutex<Option<mpsc::UnboundedSender<Message>>>,
     open: OpenFlag,
@@ -51,6 +56,11 @@ impl StreamableHTTPClientTransport {
             http: crate::oauth::http_client(),
             session_id: Arc::new(Mutex::new(None)),
             protocol_version: Arc::new(Mutex::new(None)),
+            last_event_id: Arc::new(Mutex::new(None)),
+            initialization_request: Arc::new(Mutex::new(None)),
+            initialized_notification: Arc::new(Mutex::new(None)),
+            recovery_lock: Arc::new(Mutex::new(())),
+            recovery_attempted: Arc::new(AtomicBool::new(false)),
             has_completed_auth_flow: Arc::new(AtomicBool::new(false)),
             tx: Mutex::new(None),
             open: OpenFlag::new(),
@@ -122,7 +132,7 @@ impl StreamableHTTPClientTransport {
         }
     }
 
-    async fn open_stream(&self) -> Result<reqwest::Response> {
+    async fn open_stream(&self) -> Result<Option<reqwest::Response>> {
         let headers = self.common_headers().await?;
         let response = self
             .http
@@ -136,6 +146,12 @@ impl StreamableHTTPClientTransport {
 
         if !response.status().is_success() {
             let status = response.status();
+            if status.as_u16() == 405 {
+                // Streamable HTTP permits servers that only implement POST.
+                // The request/response path remains usable without the
+                // optional long-lived GET stream.
+                return Ok(None);
+            }
             if status.as_u16() == 401 || status.as_u16() == 403 {
                 let (resource_metadata_url, scope) = challenge_from(&response);
                 self.handle_auth(resource_metadata_url, scope).await?;
@@ -149,7 +165,10 @@ impl StreamableHTTPClientTransport {
                     .await?;
                 if retry.status().is_success() {
                     self.capture_session_id(&retry).await;
-                    return Ok(retry);
+                    return Ok(Some(retry));
+                }
+                if retry.status().as_u16() == 405 {
+                    return Ok(None);
                 }
                 let retry_status = retry.status();
                 let text = retry.text().await.unwrap_or_default();
@@ -162,7 +181,7 @@ impl StreamableHTTPClientTransport {
                 "Error opening MCP stream: {status} {text}"
             )));
         }
-        Ok(response)
+        Ok(Some(response))
     }
 
     async fn capture_session_id(&self, response: &reqwest::Response) {
@@ -174,6 +193,62 @@ impl StreamableHTTPClientTransport {
             *self.session_id.lock().await = Some(session_id.to_string());
         }
     }
+
+    async fn post_message(&self, message: &Message) -> Result<reqwest::Response> {
+        let mut headers = self.common_headers().await?;
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
+        headers.insert(
+            ACCEPT,
+            HeaderValue::from_static("application/json, text/event-stream"),
+        );
+        Ok(self
+            .http
+            .post(self.url.clone())
+            .headers(headers)
+            .body(serde_json::to_string(message)?)
+            .send()
+            .await?)
+    }
+
+    /// Re-run the initialize handshake after a streamable HTTP server expires
+    /// the session. The SDK's `onsessionexpired` hook does this before retrying
+    /// the original request; retaining the two handshake messages lets the
+    /// transport perform the same recovery without coupling it to `Client`.
+    async fn recover_session(&self) -> Result<()> {
+        let _guard = self.recovery_lock.lock().await;
+        let initialize = self.initialization_request.lock().await.clone();
+        let initialized = self.initialized_notification.lock().await.clone();
+        let Some(initialize) = initialize else {
+            return Err(crate::Error::message(
+                "MCP session expired before initialize was recorded",
+            ));
+        };
+
+        *self.session_id.lock().await = None;
+        let response = self.post_message(&initialize).await?;
+        self.capture_session_id(&response).await;
+        if !response.status().is_success() {
+            let status = response.status();
+            let text = response.text().await.unwrap_or_default();
+            return Err(crate::Error::message(format!(
+                "MCP session recovery initialize failed: {status} {text}"
+            )));
+        }
+        let _ = response.bytes().await;
+
+        if let Some(initialized) = initialized {
+            let response = self.post_message(&initialized).await?;
+            if !response.status().is_success() {
+                let status = response.status();
+                let text = response.text().await.unwrap_or_default();
+                return Err(crate::Error::message(format!(
+                    "MCP session recovery notification failed: {status} {text}"
+                )));
+            }
+            let _ = response.bytes().await;
+        }
+        Ok(())
+    }
 }
 
 impl Transport for StreamableHTTPClientTransport {
@@ -183,9 +258,14 @@ impl Transport for StreamableHTTPClientTransport {
             let response = self.open_stream().await?;
             *self.tx.lock().await = Some(tx.clone());
 
+            let Some(response) = response else {
+                return Ok(rx);
+            };
+
             let url = self.url.clone();
             let session_id = self.session_id.clone();
             let protocol_version = self.protocol_version.clone();
+            let last_event_id = self.last_event_id.clone();
             let http = self.http.clone();
             let auth_provider = self.auth_provider.clone();
             let auth_client = self.auth_client.clone();
@@ -207,6 +287,7 @@ impl Transport for StreamableHTTPClientTransport {
                             &auth_client,
                             &session_id,
                             &protocol_version,
+                            &last_event_id,
                         )
                         .await
                         {
@@ -222,7 +303,7 @@ impl Transport for StreamableHTTPClientTransport {
                         }
                         continue;
                     };
-                    let done = consume_stream(current, &tx).await;
+                    let done = consume_stream(current, &tx, &last_event_id).await;
                     if done || open.is_closed() {
                         break;
                     }
@@ -240,21 +321,22 @@ impl Transport for StreamableHTTPClientTransport {
             if self.open.is_closed() {
                 return Err(crate::Error::message("transport closed"));
             }
-            let mut headers = self.common_headers().await?;
-            headers.insert(CONTENT_TYPE, HeaderValue::from_static("application/json"));
-            headers.insert(
-                ACCEPT,
-                HeaderValue::from_static("application/json, text/event-stream"),
+            let is_initialize = matches!(
+                &message,
+                Message::Request(request) if request.method == "initialize"
             );
-            let body = serde_json::to_string(&message)?;
+            let is_initialized = matches!(
+                &message,
+                Message::Notification(notification)
+                    if notification.method == "notifications/initialized"
+            );
+            if is_initialize {
+                *self.initialization_request.lock().await = Some(message.clone());
+            } else if is_initialized {
+                *self.initialized_notification.lock().await = Some(message.clone());
+            }
 
-            let response = self
-                .http
-                .post(self.url.clone())
-                .headers(headers)
-                .body(body)
-                .send()
-                .await?;
+            let response = self.post_message(&message).await?;
 
             self.capture_session_id(&response).await;
 
@@ -270,9 +352,20 @@ impl Transport for StreamableHTTPClientTransport {
                 }
                 let text = response.text().await.unwrap_or_default();
                 if status.as_u16() == 404 && self.session_id.lock().await.is_some() {
-                    // TODO(integration): re-run the initialize handshake like
-                    // the SDK patch's `onsessionexpired`/`_recoverSession` path.
                     *self.session_id.lock().await = None;
+                    if !is_initialize
+                        && !is_initialized
+                        && !self.recovery_attempted.swap(true, Ordering::SeqCst)
+                    {
+                        let recovery = self.recover_session().await;
+                        if recovery.is_ok() {
+                            let result = self.send(message).await;
+                            self.recovery_attempted.store(false, Ordering::SeqCst);
+                            return result;
+                        }
+                        self.recovery_attempted.store(false, Ordering::SeqCst);
+                        recovery?;
+                    }
                 }
                 return Err(crate::Error::message(format!(
                     "MCP server returned {status}: {text}"
@@ -280,7 +373,7 @@ impl Transport for StreamableHTTPClientTransport {
             }
 
             if let Some(tx) = self.tx.lock().await.as_ref() {
-                deliver_response(response, tx).await;
+                deliver_response(response, tx, &self.last_event_id).await;
             }
             Ok(())
         })
@@ -336,13 +429,20 @@ fn www_authenticate_params(response: &reqwest::Response) -> (Option<String>, Opt
     (resource, scope)
 }
 
-async fn consume_stream(response: reqwest::Response, tx: &mpsc::UnboundedSender<Message>) -> bool {
+async fn consume_stream(
+    response: reqwest::Response,
+    tx: &mpsc::UnboundedSender<Message>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
+) -> bool {
     let mut stream = response.bytes_stream();
     let mut parser = SseParser::new();
     loop {
         match tokio::time::timeout(Duration::from_millis(500), stream.next()).await {
             Ok(Some(Ok(chunk))) => {
                 for event in parser.feed(&chunk) {
+                    if let Some(id) = event.id.filter(|id| !id.is_empty()) {
+                        *last_event_id.lock().await = Some(id);
+                    }
                     if let Some(message) = parse_sse_message(event.data.as_str()) {
                         if tx.send(message).is_err() {
                             return true;
@@ -372,6 +472,7 @@ async fn open_stream_again(
     _auth_client: &Arc<crate::oauth::AuthClient>,
     session_id: &Arc<Mutex<Option<String>>>,
     protocol_version: &Arc<Mutex<Option<String>>>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
 ) -> Result<reqwest::Response> {
     let mut header_map = HeaderMap::new();
     if let Some(provider) = auth_provider {
@@ -399,6 +500,11 @@ async fn open_stream_again(
             header_map.insert(key, value);
         }
     }
+    if let Some(last_event_id) = last_event_id.lock().await.as_deref() {
+        if let Ok(value) = HeaderValue::from_str(last_event_id) {
+            header_map.insert("last-event-id", value);
+        }
+    }
     let response = http
         .get(url.clone())
         .headers(header_map)
@@ -424,24 +530,26 @@ async fn open_stream_again(
     Ok(response)
 }
 
-async fn deliver_response(response: reqwest::Response, tx: &mpsc::UnboundedSender<Message>) {
+async fn deliver_response(
+    response: reqwest::Response,
+    tx: &mpsc::UnboundedSender<Message>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
+) {
     let content_type = response
         .headers()
         .get(CONTENT_TYPE)
         .and_then(|value| value.to_str().ok())
         .unwrap_or("");
     if content_type.contains("text/event-stream") {
-        let mut stream = response.bytes_stream();
-        let mut parser = SseParser::new();
-        while let Some(Ok(chunk)) = stream.next().await {
-            for event in parser.feed(&chunk) {
-                if let Some(message) = parse_sse_message(event.data.as_str()) {
-                    if tx.send(message).is_err() {
-                        return;
-                    }
-                }
-            }
-        }
+        // A POST SSE response may remain open after delivering the request's
+        // response. Keep consuming it in the background so `send()` can
+        // return as soon as the response reaches the client read loop, while
+        // retaining event delivery and the shared resumability cursor.
+        let tx = tx.clone();
+        let last_event_id = Arc::clone(last_event_id);
+        tokio::spawn(async move {
+            let _ = consume_stream(response, &tx, &last_event_id).await;
+        });
     } else {
         let body = response.bytes().await.unwrap_or_default();
         if !body.is_empty() {

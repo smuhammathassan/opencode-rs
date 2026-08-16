@@ -95,9 +95,10 @@ pub fn to_request_error(error: &ACPError) -> RequestError {
             Some(&format!("mode not found: {mode}")),
         ),
         ACPError::AuthRequired { provider_id } => {
-            let data = provider_id
-                .as_ref()
-                .map(|provider_id| serde_json::json!({ "providerId": provider_id }));
+            let data = Some(match provider_id {
+                Some(provider_id) => serde_json::json!({ "providerId": provider_id }),
+                None => serde_json::json!({}),
+            });
             RequestError::auth_required(data, Some("provider authentication required"))
         }
         ACPError::UnknownAuthMethod { method_id } => RequestError::invalid_params(
@@ -153,7 +154,15 @@ mod tests {
             error.message,
             "Authentication required: provider authentication required"
         );
-        assert_eq!(error.data, None);
+        assert_eq!(error.data, Some(serde_json::json!({})));
+        assert_eq!(
+            serde_json::to_value(error).unwrap(),
+            serde_json::json!({
+                "code": -32000,
+                "message": "Authentication required: provider authentication required",
+                "data": {}
+            })
+        );
     }
 
     #[test]

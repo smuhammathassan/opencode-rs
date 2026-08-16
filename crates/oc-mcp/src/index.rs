@@ -118,6 +118,7 @@ struct CreateResult {
     instructions: Option<String>,
 }
 
+#[derive(Clone)]
 struct PendingOAuth {
     transport: Arc<dyn Transport>,
     provider: Option<Arc<McpOAuthPendingProvider>>,
@@ -439,11 +440,9 @@ impl Mcp {
                     .and_then(|config| config.callback_port)
                     .map(|port| format!("http://127.0.0.1:{port}{OAUTH_CALLBACK_PATH}"))
             });
-        oauth_callback::ensure_running(effective_redirect_uri.as_deref()).await?;
-
         let oauth_state = random_hex(32);
         self.auth
-            .update_oauth_state(mcp_name, oauth_state.clone())
+            .update_oauth_state_for_url(mcp_name, oauth_state.clone(), Some(&remote.url))
             .await?;
 
         let captured_url = Arc::new(Mutex::new(None::<Url>));
@@ -486,6 +485,13 @@ impl Mcp {
             Err(error) if error.is_unauthorized() => {
                 let captured = captured_url.lock().await.clone();
                 if let Some(authorization_url) = captured {
+                    if let Err(callback_error) =
+                        oauth_callback::ensure_running(effective_redirect_uri.as_deref()).await
+                    {
+                        let _ = self.auth.clear_oauth_state(mcp_name).await;
+                        let _ = self.auth.clear_code_verifier(mcp_name).await;
+                        return Err(callback_error);
+                    }
                     self.pending_oauth.lock().await.insert(
                         mcp_name.to_string(),
                         PendingOAuth {
@@ -499,9 +505,15 @@ impl Mcp {
                         client: None,
                     });
                 }
+                let _ = self.auth.clear_oauth_state(mcp_name).await;
+                let _ = self.auth.clear_code_verifier(mcp_name).await;
                 Err(error)
             }
-            Err(error) => Err(error),
+            Err(error) => {
+                let _ = self.auth.clear_oauth_state(mcp_name).await;
+                let _ = self.auth.clear_code_verifier(mcp_name).await;
+                Err(error)
+            }
         }
     }
 
@@ -562,14 +574,31 @@ impl Mcp {
             warn!(message = format!("failed to open browser: {error}"));
         }
 
-        let code = callback_rx
-            .await
-            .map_err(|_| crate::Error::message("OAuth callback channel closed"))?
-            .map_err(crate::Error::message)?;
+        let code = match callback_rx.await {
+            Ok(Ok(code)) => code,
+            Ok(Err(error)) => {
+                self.clear_pending_auth(mcp_name).await;
+                return Err(crate::Error::message(error));
+            }
+            Err(_) => {
+                self.clear_pending_auth(mcp_name).await;
+                return Err(crate::Error::message("OAuth callback channel closed"));
+            }
+        };
 
-        let stored_state = self.auth.get_oauth_state(mcp_name).await?;
+        let remote_url = match self.require_mcp_config(mcp_name).await? {
+            Info::Remote(remote) => remote.url,
+            _ => {
+                self.clear_pending_auth(mcp_name).await;
+                return Err(crate::Error::message("MCP server is not remote"));
+            }
+        };
+        let stored_state = self
+            .auth
+            .get_oauth_state_for_url(mcp_name, &remote_url)
+            .await?;
         if stored_state.as_deref() != Some(&result.oauth_state) {
-            let _ = self.auth.clear_oauth_state(mcp_name).await;
+            self.clear_pending_auth(mcp_name).await;
             return Err(crate::Error::message(
                 "OAuth state mismatch - potential CSRF attack",
             ));
@@ -585,7 +614,8 @@ impl Mcp {
             .pending_oauth
             .lock()
             .await
-            .shift_remove(mcp_name)
+            .get(mcp_name)
+            .cloned()
             .ok_or_else(|| {
                 crate::Error::message(format!("No pending OAuth flow for MCP server: {mcp_name}"))
             })?;
@@ -598,7 +628,9 @@ impl Mcp {
         if let Some(provider) = &pending.provider {
             provider.commit().await?;
         }
+        self.pending_oauth.lock().await.shift_remove(mcp_name);
         let _ = self.auth.clear_code_verifier(mcp_name).await;
+        let _ = self.auth.clear_oauth_state(mcp_name).await;
 
         let mcp_config = self.require_mcp_config(mcp_name).await?;
         let mut enabled = mcp_config.clone();
@@ -657,7 +689,23 @@ impl Mcp {
         for client in clients {
             let _ = client.close().await;
         }
-        self.pending_oauth.lock().await.clear();
+        let pending: Vec<PendingOAuth> = self
+            .pending_oauth
+            .lock()
+            .await
+            .drain(..)
+            .map(|(_, pending)| pending)
+            .collect();
+        for pending in pending {
+            let _ = pending.transport.close().await;
+        }
+        oauth_callback::stop().await;
+    }
+
+    async fn clear_pending_auth(&self, mcp_name: &str) {
+        self.pending_oauth.lock().await.shift_remove(mcp_name);
+        let _ = self.auth.clear_oauth_state(mcp_name).await;
+        let _ = self.auth.clear_code_verifier(mcp_name).await;
     }
 
     // --- internals ---

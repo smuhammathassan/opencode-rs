@@ -220,6 +220,7 @@ impl AuthClient {
         let response = self
             .http
             .post(registration_endpoint)
+            .header("Accept", "application/json")
             .header("Content-Type", "application/json")
             .json(metadata)
             .send()
@@ -232,6 +233,11 @@ impl AuthClient {
             )));
         }
         let info: OAuthClientInformationFull = response.json().await?;
+        if info.client_id.trim().is_empty() {
+            return Err(crate::Error::OAuth(
+                "Dynamic client registration response missing client_id".into(),
+            ));
+        }
         Ok(info)
     }
 

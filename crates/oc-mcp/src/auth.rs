@@ -184,9 +184,24 @@ impl McpAuth {
         name: &str,
         code_verifier: String,
     ) -> crate::Result<()> {
+        self.update_code_verifier_for_url(name, code_verifier, None)
+            .await
+    }
+
+    pub async fn update_code_verifier_for_url(
+        &self,
+        name: &str,
+        code_verifier: String,
+        server_url: Option<&str>,
+    ) -> crate::Result<()> {
         let name = name.to_string();
+        let server_url = server_url.map(str::to_string);
         self.mutate(move |mut data| {
-            data.entry(name).or_default().code_verifier = Some(code_verifier);
+            let entry = data.entry(name).or_default();
+            entry.code_verifier = Some(code_verifier);
+            if let Some(server_url) = server_url {
+                entry.server_url = Some(server_url);
+            }
             Some(data)
         })
         .await
@@ -203,9 +218,24 @@ impl McpAuth {
     }
 
     pub async fn update_oauth_state(&self, name: &str, oauth_state: String) -> crate::Result<()> {
+        self.update_oauth_state_for_url(name, oauth_state, None)
+            .await
+    }
+
+    pub async fn update_oauth_state_for_url(
+        &self,
+        name: &str,
+        oauth_state: String,
+        server_url: Option<&str>,
+    ) -> crate::Result<()> {
         let name = name.to_string();
+        let server_url = server_url.map(str::to_string);
         self.mutate(move |mut data| {
-            data.entry(name).or_default().oauth_state = Some(oauth_state);
+            let entry = data.entry(name).or_default();
+            entry.oauth_state = Some(oauth_state);
+            if let Some(server_url) = server_url {
+                entry.server_url = Some(server_url);
+            }
             Some(data)
         })
         .await
@@ -213,6 +243,17 @@ impl McpAuth {
 
     pub async fn get_oauth_state(&self, name: &str) -> crate::Result<Option<String>> {
         Ok(self.get(name).await?.and_then(|entry| entry.oauth_state))
+    }
+
+    pub async fn get_oauth_state_for_url(
+        &self,
+        name: &str,
+        server_url: &str,
+    ) -> crate::Result<Option<String>> {
+        Ok(self
+            .get_for_url(name, server_url)
+            .await?
+            .and_then(|entry| entry.oauth_state))
     }
 
     pub async fn clear_oauth_state(&self, name: &str) -> crate::Result<()> {

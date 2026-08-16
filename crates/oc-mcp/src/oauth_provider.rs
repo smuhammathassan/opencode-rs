@@ -260,7 +260,8 @@ impl OAuthClientProvider for McpOAuthProvider {
                 return Ok(None);
             };
             if let Some(expires_at) = client_info.client_secret_expires_at {
-                if expires_at < now_seconds() {
+                // RFC 7591 uses zero to mean that the secret never expires.
+                if expires_at != 0.0 && expires_at <= now_seconds() {
                     return Ok(None);
                 }
             }
@@ -318,12 +319,23 @@ impl OAuthClientProvider for McpOAuthProvider {
         let mcp_name = self.mcp_name.clone();
         let server_url = self.server_url.clone();
         Box::pin(async move {
+            // Refresh responses are allowed to omit refresh_token. Preserve
+            // the existing token so a successful refresh remains refreshable.
+            let refresh_token = match tokens.refresh_token {
+                Some(refresh_token) => Some(refresh_token),
+                None => self
+                    .auth
+                    .get_for_url(&mcp_name, &server_url)
+                    .await?
+                    .and_then(|entry| entry.tokens)
+                    .and_then(|tokens| tokens.refresh_token),
+            };
             self.auth
                 .update_tokens(
                     &mcp_name,
                     crate::auth::Tokens {
                         access_token: tokens.access_token,
-                        refresh_token: tokens.refresh_token,
+                        refresh_token,
                         expires_at: tokens
                             .expires_in
                             .map(|expires_in| now_seconds() + expires_in as f64),
@@ -343,14 +355,20 @@ impl OAuthClientProvider for McpOAuthProvider {
 
     fn save_code_verifier(&self, verifier: &str) -> BoxFuture<'_, Result<()>> {
         let mcp_name = self.mcp_name.clone();
+        let server_url = self.server_url.clone();
         let verifier = verifier.to_string();
-        Box::pin(async move { self.auth.update_code_verifier(&mcp_name, verifier).await })
+        Box::pin(async move {
+            self.auth
+                .update_code_verifier_for_url(&mcp_name, verifier, Some(&server_url))
+                .await
+        })
     }
 
     fn code_verifier(&self) -> BoxFuture<'_, Result<String>> {
         let mcp_name = self.mcp_name.clone();
+        let server_url = self.server_url.clone();
         Box::pin(async move {
-            let entry = self.auth.get(&mcp_name).await?;
+            let entry = self.auth.get_for_url(&mcp_name, &server_url).await?;
             entry.and_then(|entry| entry.code_verifier).ok_or_else(|| {
                 crate::Error::message(format!("No code verifier saved for MCP server: {mcp_name}"))
             })
@@ -359,20 +377,26 @@ impl OAuthClientProvider for McpOAuthProvider {
 
     fn save_state(&self, state: &str) -> BoxFuture<'_, Result<()>> {
         let mcp_name = self.mcp_name.clone();
+        let server_url = self.server_url.clone();
         let state = state.to_string();
-        Box::pin(async move { self.auth.update_oauth_state(&mcp_name, state).await })
+        Box::pin(async move {
+            self.auth
+                .update_oauth_state_for_url(&mcp_name, state, Some(&server_url))
+                .await
+        })
     }
 
     fn state(&self) -> BoxFuture<'_, Result<String>> {
         let mcp_name = self.mcp_name.clone();
+        let server_url = self.server_url.clone();
         Box::pin(async move {
-            let entry = self.auth.get(&mcp_name).await?;
+            let entry = self.auth.get_for_url(&mcp_name, &server_url).await?;
             if let Some(state) = entry.and_then(|entry| entry.oauth_state) {
                 return Ok(state);
             }
             let new_state = random_hex(32);
             self.auth
-                .update_oauth_state(&mcp_name, new_state.clone())
+                .update_oauth_state_for_url(&mcp_name, new_state.clone(), Some(&server_url))
                 .await?;
             Ok(new_state)
         })
@@ -448,17 +472,20 @@ impl McpOAuthPendingProvider {
             }),
             _ => None,
         };
+        // Keep the verifier/state and any other fields written while the
+        // browser was completing the flow. A fresh Entry here would discard
+        // those persisted fields.
+        let mut entry = self
+            .inner
+            .auth
+            .get_for_url(&self.inner.mcp_name, &self.inner.server_url)
+            .await?
+            .unwrap_or_default();
+        entry.tokens = Some(tokens_entry);
+        entry.client_info = client_info_entry;
         self.inner
             .auth
-            .set(
-                &self.inner.mcp_name,
-                crate::auth::Entry {
-                    tokens: Some(tokens_entry),
-                    client_info: client_info_entry,
-                    ..Default::default()
-                },
-                Some(&self.inner.server_url),
-            )
+            .set(&self.inner.mcp_name, entry, Some(&self.inner.server_url))
             .await
     }
 }
@@ -630,5 +657,111 @@ mod tests {
                 "scope": "read"
             })
         );
+    }
+
+    #[tokio::test]
+    async fn zero_client_secret_expiry_is_persisted_as_non_expiring() {
+        let dir = std::env::temp_dir().join(format!("oc-mcp-oauth-test-{}", uuid::Uuid::new_v4()));
+        let auth = Arc::new(McpAuth::new(dir.join("mcp-auth.json")));
+        let server_url = "https://example.com/mcp";
+        auth.set(
+            "server",
+            crate::auth::Entry {
+                client_info: Some(crate::auth::ClientInfo {
+                    client_id: "registered".into(),
+                    client_secret: Some("secret".into()),
+                    client_secret_expires_at: Some(0.0),
+                    ..Default::default()
+                }),
+                ..Default::default()
+            },
+            Some(server_url),
+        )
+        .await
+        .unwrap();
+
+        let provider = McpOAuthProvider::new(
+            "server",
+            server_url,
+            McpOAuthConfig::default(),
+            McpOAuthCallbacks::default(),
+            auth,
+        );
+        assert_eq!(
+            provider
+                .client_information()
+                .await
+                .unwrap()
+                .unwrap()
+                .client_id,
+            "registered"
+        );
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn pending_commit_preserves_callback_state_and_verifier() {
+        let dir = std::env::temp_dir().join(format!("oc-mcp-oauth-test-{}", uuid::Uuid::new_v4()));
+        let auth = Arc::new(McpAuth::new(dir.join("mcp-auth.json")));
+        let server_url = "https://example.com/mcp";
+        auth.update_oauth_state_for_url("server", "state".into(), Some(server_url))
+            .await
+            .unwrap();
+        auth.update_code_verifier_for_url("server", "verifier".into(), Some(server_url))
+            .await
+            .unwrap();
+
+        let provider = McpOAuthPendingProvider::new(
+            "server",
+            server_url,
+            McpOAuthConfig::default(),
+            McpOAuthCallbacks::default(),
+            auth.clone(),
+        );
+        provider
+            .save_client_information(OAuthClientInformationFull {
+                client_id: "registered".into(),
+                client_secret: Some("secret".into()),
+                client_id_issued_at: None,
+                client_secret_expires_at: Some(0),
+            })
+            .await
+            .unwrap();
+        provider
+            .save_tokens(OAuthTokens {
+                access_token: "access".into(),
+                token_type: Some("Bearer".into()),
+                refresh_token: Some("refresh".into()),
+                expires_in: Some(3600),
+                scope: Some("mcp".into()),
+            })
+            .await
+            .unwrap();
+        provider.commit().await.unwrap();
+
+        let entry = auth.get("server").await.unwrap().unwrap();
+        assert_eq!(entry.oauth_state.as_deref(), Some("state"));
+        assert_eq!(entry.code_verifier.as_deref(), Some("verifier"));
+        assert_eq!(entry.client_info.as_ref().unwrap().client_id, "registered");
+        assert_eq!(entry.tokens.as_ref().unwrap().access_token, "access");
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[tokio::test]
+    async fn verifier_is_not_reused_for_a_different_server_url() {
+        let dir = std::env::temp_dir().join(format!("oc-mcp-oauth-test-{}", uuid::Uuid::new_v4()));
+        let auth = Arc::new(McpAuth::new(dir.join("mcp-auth.json")));
+        auth.update_code_verifier_for_url("server", "verifier".into(), Some("https://a.example"))
+            .await
+            .unwrap();
+        let provider = McpOAuthProvider::new(
+            "server",
+            "https://b.example",
+            McpOAuthConfig::default(),
+            McpOAuthCallbacks::default(),
+            auth,
+        );
+        assert!(provider.code_verifier().await.is_err());
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

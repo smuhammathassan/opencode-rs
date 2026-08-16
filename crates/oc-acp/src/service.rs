@@ -176,7 +176,7 @@ impl Service {
         }
 
         let response = InitializeResponse {
-            protocol_version: 1,
+            protocol_version: crate::types::PROTOCOL_VERSION,
             agent_capabilities: AgentCapabilities {
                 load_session: Some(true),
                 mcp_capabilities: Some(McpCapabilities {
@@ -809,20 +809,24 @@ impl Service {
         let Some(command) = command else {
             let response = self
                 .request(
-                    self.sdk.session_prompt(SdkPromptRequest {
-                        session_id: current.id.clone(),
-                        model: crate::sdk::ModelSelection {
-                            provider_id: selected.provider_id.clone(),
-                            model_id: selected.model_id.clone(),
-                        },
-                        variant: variant.clone(),
-                        parts,
-                        agent: mode_id.clone(),
-                        directory: current.cwd.clone(),
-                    }),
+                    self.run_until_idle(
+                        &current.id,
+                        self.sdk.session_prompt(SdkPromptRequest {
+                            session_id: current.id.clone(),
+                            model: crate::sdk::ModelSelection {
+                                provider_id: selected.provider_id.clone(),
+                                model_id: selected.model_id.clone(),
+                            },
+                            variant: variant.clone(),
+                            parts,
+                            agent: mode_id.clone(),
+                            directory: current.cwd.clone(),
+                        }),
+                    ),
                     Some("session"),
                 )
                 .await?;
+            let response = self.refresh_assistant_response(&current, response).await;
             self.send_usage_update(&current.id, &current.cwd).await;
             return prompt_response(Some(&response), params.message_id.as_deref());
         };
@@ -834,30 +838,37 @@ impl Service {
         {
             let response = self
                 .request(
-                    self.sdk.session_command(SdkCommandRequest {
-                        session_id: current.id.clone(),
-                        command: known.name.clone(),
-                        arguments: command.args.clone(),
-                        model: format!("{}/{}", selected.provider_id, selected.model_id),
-                        variant: variant.clone(),
-                        agent: mode_id.clone(),
-                        directory: current.cwd.clone(),
-                    }),
+                    self.run_until_idle(
+                        &current.id,
+                        self.sdk.session_command(SdkCommandRequest {
+                            session_id: current.id.clone(),
+                            command: known.name.clone(),
+                            arguments: command.args.clone(),
+                            model: format!("{}/{}", selected.provider_id, selected.model_id),
+                            variant: variant.clone(),
+                            agent: mode_id.clone(),
+                            directory: current.cwd.clone(),
+                        }),
+                    ),
                     Some("session"),
                 )
                 .await?;
+            let response = self.refresh_assistant_response(&current, response).await;
             self.send_usage_update(&current.id, &current.cwd).await;
             return prompt_response(Some(&response), params.message_id.as_deref());
         }
 
         if command.name == "compact" {
             self.request(
-                self.sdk.session_summarize(SummarizeRequest {
-                    session_id: current.id.clone(),
-                    directory: current.cwd.clone(),
-                    provider_id: selected.provider_id.clone(),
-                    model_id: selected.model_id.clone(),
-                }),
+                self.run_until_idle(
+                    &current.id,
+                    self.sdk.session_summarize(SummarizeRequest {
+                        session_id: current.id.clone(),
+                        directory: current.cwd.clone(),
+                        provider_id: selected.provider_id.clone(),
+                        model_id: selected.model_id.clone(),
+                    }),
+                ),
                 Some("session"),
             )
             .await?;
@@ -877,6 +888,43 @@ impl Service {
             Ok(value) => Ok(value),
             Err(error) => Err(from_unknown_error(&error, service)),
         }
+    }
+
+    async fn run_until_idle<T>(
+        &self,
+        session_id: &str,
+        request: impl Future<Output = Result<T, Value>> + Send,
+    ) -> Result<T, Value> {
+        match &self.events {
+            Some(events) => events.run_until_idle(session_id, request).await,
+            None => request.await,
+        }
+    }
+
+    /// Refresh the assistant record after the runner reaches idle.
+    ///
+    /// The HTTP ACP adapter obtains the assistant response by polling the
+    /// message endpoint. The first record can be visible before the runner
+    /// persists its final `error` field, so the response captured before the
+    /// idle notification is not necessarily the final transcript record.
+    /// Refresh only the matching message and retain the SDK response when the
+    /// compatibility client cannot provide a follow-up lookup.
+    async fn refresh_assistant_response(
+        &self,
+        current: &session::Info,
+        response: AssistantMessage,
+    ) -> AssistantMessage {
+        let message_id = response.id.clone();
+        let refreshed = self
+            .sdk
+            .session_message(&current.cwd, &current.id, &message_id)
+            .await
+            .ok()
+            .and_then(|message| match message.info {
+                Message::Assistant(assistant) if assistant.id == message_id => Some(assistant),
+                _ => None,
+            });
+        refreshed.unwrap_or(response)
     }
 
     /// `profiledRequest` from reference/packages/opencode/src/acp/service.ts.
@@ -1205,6 +1253,12 @@ fn prompt_response(
         user_message_id,
         _meta: Map::new(),
     };
+    if is_auth_required(error) {
+        return Err(ACPError::AuthRequired {
+            provider_id: find_provider_id(error),
+        });
+    }
+
     let name = error.get("name").and_then(Value::as_str);
     match name {
         Some("MessageAbortedError") => Ok(PromptResponse {
@@ -1228,10 +1282,7 @@ fn prompt_response(
             Err(ACPError::AuthRequired { provider_id })
         }
         _ => {
-            let safe_message = error
-                .get("data")
-                .and_then(|data| data.get("message"))
-                .and_then(Value::as_str)
+            let safe_message = error_message(error)
                 .unwrap_or("OpenCode prompt failed")
                 .to_string();
             Err(ACPError::ServiceFailure {
@@ -1241,6 +1292,46 @@ fn prompt_response(
             })
         }
     }
+}
+
+/// ACP prompt errors can be wrapped by the HTTP SDK in `error`/`data` objects.
+/// Keep auth detection aligned with `from_unknown_error` so nested provider
+/// credential failures produce ACP's auth-required response instead of an
+/// opaque internal error.
+fn is_auth_required(value: &Value) -> bool {
+    matches!(
+        value.get("name").and_then(Value::as_str),
+        Some("ProviderAuthError" | "LoadAPIKeyError")
+    ) || matches!(
+        value.get("_tag").and_then(Value::as_str),
+        Some("ProviderAuthError" | "LoadAPIKeyError")
+    ) || value
+        .get("message")
+        .and_then(Value::as_str)
+        .is_some_and(|message| {
+            message.contains("ProviderAuthError") || message.contains("LoadAPIKeyError")
+        })
+        || value.get("error").is_some_and(is_auth_required)
+        || value.get("data").is_some_and(is_auth_required)
+}
+
+fn find_provider_id(value: &Value) -> Option<String> {
+    value
+        .get("providerID")
+        .or_else(|| value.get("providerId"))
+        .and_then(Value::as_str)
+        .map(str::to_string)
+        .or_else(|| value.get("error").and_then(find_provider_id))
+        .or_else(|| value.get("data").and_then(find_provider_id))
+}
+
+fn error_message(value: &Value) -> Option<&str> {
+    value
+        .get("data")
+        .and_then(|data| data.get("message"))
+        .and_then(Value::as_str)
+        .or_else(|| value.get("message").and_then(Value::as_str))
+        .or_else(|| value.get("error").and_then(error_message))
 }
 
 /// `defaultModelFromConfig` from reference/packages/opencode/src/acp/service.ts.
@@ -1480,53 +1571,6 @@ fn acp_error_from_value(value: &Value) -> Option<ACPError> {
         }),
         _ => None,
     }
-}
-
-/// `isAuthRequired` from reference/packages/opencode/src/acp/service.ts.
-fn is_auth_required(value: &Value) -> bool {
-    if let Some(name) = value.get("name").and_then(Value::as_str) {
-        if name == "ProviderAuthError" || name == "LoadAPIKeyError" {
-            return true;
-        }
-    }
-    if let Some(message) = value.get("message").and_then(Value::as_str) {
-        if message.contains("ProviderAuthError") || message.contains("LoadAPIKeyError") {
-            return true;
-        }
-    }
-    if let Some(tag) = value.get("_tag").and_then(Value::as_str) {
-        if tag == "ProviderAuthError" || tag == "LoadAPIKeyError" {
-            return true;
-        }
-    }
-    if let Some(error) = value.get("error") {
-        if is_auth_required(error) {
-            return true;
-        }
-    }
-    if let Some(data) = value.get("data") {
-        if is_auth_required(data) {
-            return true;
-        }
-    }
-    false
-}
-
-/// `findProviderID` from reference/packages/opencode/src/acp/service.ts.
-fn find_provider_id(value: &Value) -> Option<String> {
-    if let Some(id) = value.get("providerID").and_then(Value::as_str) {
-        return Some(id.to_string());
-    }
-    if let Some(id) = value.get("providerId").and_then(Value::as_str) {
-        return Some(id.to_string());
-    }
-    if let Some(data) = value.get("data") {
-        return find_provider_id(data);
-    }
-    if let Some(error) = value.get("error") {
-        return find_provider_id(error);
-    }
-    None
 }
 
 /// `loadDirectorySnapshot` from reference/packages/opencode/src/acp/service.ts.

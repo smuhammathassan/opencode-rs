@@ -32,6 +32,7 @@ pub struct SSEClientTransport {
     auth_client: Arc<crate::oauth::AuthClient>,
     http: HttpClient,
     endpoint: Arc<Mutex<Option<Url>>>,
+    last_event_id: Arc<Mutex<Option<String>>>,
     has_completed_auth_flow: Arc<AtomicBool>,
     tx: Mutex<Option<mpsc::UnboundedSender<Message>>>,
     open: OpenFlag,
@@ -50,6 +51,7 @@ impl SSEClientTransport {
             auth_client: Arc::new(crate::oauth::AuthClient::new()),
             http: crate::oauth::http_client(),
             endpoint: Arc::new(Mutex::new(None)),
+            last_event_id: Arc::new(Mutex::new(None)),
             has_completed_auth_flow: Arc::new(AtomicBool::new(false)),
             tx: Mutex::new(None),
             open: OpenFlag::new(),
@@ -118,6 +120,7 @@ impl Transport for SSEClientTransport {
             let auth_provider = self.auth_provider.clone();
             let auth_client = self.auth_client.clone();
             let endpoint = self.endpoint.clone();
+            let last_event_id = self.last_event_id.clone();
             let open = self.open.clone();
 
             tokio::spawn(async move {
@@ -133,6 +136,7 @@ impl Transport for SSEClientTransport {
                             &http,
                             &auth_provider,
                             &auth_client,
+                            &last_event_id,
                         )
                         .await
                         {
@@ -148,7 +152,7 @@ impl Transport for SSEClientTransport {
                         }
                         continue;
                     };
-                    let done = consume_events(&url, current, &tx, &endpoint).await;
+                    let done = consume_events(&url, current, &tx, &endpoint, &last_event_id).await;
                     if done || open.is_closed() {
                         break;
                     }
@@ -195,7 +199,7 @@ impl Transport for SSEClientTransport {
                 )));
             }
             if let Some(tx) = self.tx.lock().await.as_ref() {
-                deliver_json_or_sse(response, tx).await;
+                deliver_json_or_sse(response, tx, &self.last_event_id).await;
             }
             Ok(())
         })
@@ -273,6 +277,7 @@ async fn consume_events(
     response: reqwest::Response,
     tx: &mpsc::UnboundedSender<Message>,
     endpoint: &Arc<Mutex<Option<Url>>>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
 ) -> bool {
     let mut stream = response.bytes_stream();
     let mut parser = SseParser::new();
@@ -280,6 +285,9 @@ async fn consume_events(
         match tokio::time::timeout(Duration::from_millis(500), stream.next()).await {
             Ok(Some(Ok(chunk))) => {
                 for event in parser.feed(&chunk) {
+                    if let Some(id) = event.id.filter(|id| !id.is_empty()) {
+                        *last_event_id.lock().await = Some(id);
+                    }
                     match event.event.as_deref() {
                         Some("endpoint") => {
                             if let Ok(mut endpoint) = endpoint.try_lock() {
@@ -312,6 +320,7 @@ async fn open_event_stream_again(
     http: &HttpClient,
     auth_provider: &Option<Arc<dyn OAuthClientProvider>>,
     _auth_client: &Arc<crate::oauth::AuthClient>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
 ) -> Result<reqwest::Response> {
     let mut header_map = HeaderMap::new();
     if let Some(provider) = auth_provider {
@@ -327,6 +336,11 @@ async fn open_event_stream_again(
             HeaderValue::from_str(value),
         ) {
             header_map.insert(key, value);
+        }
+    }
+    if let Some(last_event_id) = last_event_id.lock().await.as_deref() {
+        if let Ok(value) = HeaderValue::from_str(last_event_id) {
+            header_map.insert("last-event-id", value);
         }
     }
     let response = http
@@ -347,7 +361,11 @@ async fn open_event_stream_again(
     Ok(response)
 }
 
-async fn deliver_json_or_sse(response: reqwest::Response, tx: &mpsc::UnboundedSender<Message>) {
+async fn deliver_json_or_sse(
+    response: reqwest::Response,
+    tx: &mpsc::UnboundedSender<Message>,
+    last_event_id: &Arc<Mutex<Option<String>>>,
+) {
     let content_type = response
         .headers()
         .get(CONTENT_TYPE)
@@ -358,6 +376,9 @@ async fn deliver_json_or_sse(response: reqwest::Response, tx: &mpsc::UnboundedSe
         let mut parser = SseParser::new();
         while let Some(Ok(chunk)) = stream.next().await {
             for event in parser.feed(&chunk) {
+                if let Some(id) = event.id.filter(|id| !id.is_empty()) {
+                    *last_event_id.lock().await = Some(id);
+                }
                 if let Ok(message) = serde_json::from_str::<Message>(&event.data) {
                     if tx.send(message).is_err() {
                         return;

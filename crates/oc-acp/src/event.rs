@@ -5,13 +5,13 @@
 //! requests to the connected ACP client as `session/update` notifications.
 
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
 use futures::StreamExt;
 use serde_json::Value;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex, Notify};
 
 use crate::connection::AgentSideConnection;
 use crate::content::{self, ReplayPart};
@@ -34,6 +34,10 @@ pub struct Subscription {
     started: AtomicBool,
     shell_snapshots: Mutex<HashMap<String, String>>,
     tool_starts: Mutex<HashSet<String>>,
+    connected: AtomicBool,
+    connection_ready: Notify,
+    idle_sequence: AtomicU64,
+    idle_waiters: Mutex<HashMap<String, HashMap<u64, oneshot::Sender<()>>>>,
 }
 
 /// `start` from reference/packages/opencode/src/acp/event.ts.
@@ -65,6 +69,10 @@ impl Subscription {
             started: AtomicBool::new(false),
             shell_snapshots: Mutex::new(HashMap::new()),
             tool_starts: Mutex::new(HashSet::new()),
+            connected: AtomicBool::new(false),
+            connection_ready: Notify::new(),
+            idle_sequence: AtomicU64::new(1),
+            idle_waiters: Mutex::new(HashMap::new()),
         }
     }
 
@@ -82,6 +90,7 @@ impl Subscription {
     /// `stop` from reference/packages/opencode/src/acp/event.ts.
     pub fn stop(&self) {
         self.abort.store(true, Ordering::SeqCst);
+        self.connection_ready.notify_waiters();
     }
 
     /// `run` from reference/packages/opencode/src/acp/event.ts. Reconnects the
@@ -89,6 +98,8 @@ impl Subscription {
     async fn run(&self) {
         while !self.abort.load(Ordering::SeqCst) {
             let stream = self.sdk.global_event();
+            self.connected.store(true, Ordering::SeqCst);
+            self.connection_ready.notify_waiters();
             futures::pin_mut!(stream);
             while let Some(event) = stream.next().await {
                 if self.abort.load(Ordering::SeqCst) {
@@ -99,6 +110,7 @@ impl Subscription {
                 };
                 let _ = self.handle(&event).await;
             }
+            self.connected.store(false, Ordering::SeqCst);
             if !self.abort.load(Ordering::SeqCst) {
                 tokio::time::sleep(Duration::from_millis(1000)).await;
             }
@@ -108,12 +120,63 @@ impl Subscription {
     /// `handle` from reference/packages/opencode/src/acp/event.ts.
     async fn handle(&self, event: &Event) {
         match event {
+            Event::SessionStatus { properties, .. } if properties.status.kind == "idle" => {
+                self.mark_idle(&properties.session_id).await;
+            }
+            Event::SessionStatus { .. } => {}
             Event::PermissionAsked { properties, .. } => self.permission.handle(properties).await,
             Event::MessagePartUpdated { properties, .. } => {
                 self.handle_part_updated(properties).await
             }
             Event::MessagePartDelta { properties, .. } => self.handle_part_delta(properties).await,
             Event::Other(_) => {}
+        }
+    }
+
+    /// Run a request and wait until the matching session reports `idle`, so a
+    /// prompt response cannot race the final streamed transcript updates.
+    /// A short fallback keeps injected SDKs without a status stream usable in
+    /// focused tests when their event stream is empty or disconnects.
+    pub async fn run_until_idle<T, E, F>(&self, session_id: &str, request: F) -> Result<T, E>
+    where
+        F: std::future::Future<Output = Result<T, E>> + Send,
+    {
+        if !self.connected.load(Ordering::SeqCst) && !self.abort.load(Ordering::SeqCst) {
+            let _ = tokio::time::timeout(Duration::from_secs(5), self.connection_ready.notified())
+                .await;
+        }
+        let (sender, receiver) = oneshot::channel();
+        let waiter_id = self.idle_sequence.fetch_add(1, Ordering::Relaxed);
+        self.idle_waiters
+            .lock()
+            .await
+            .entry(session_id.to_string())
+            .or_default()
+            .insert(waiter_id, sender);
+        let result = request.await;
+        if result.is_ok() {
+            let _ = tokio::time::timeout(Duration::from_secs(5), receiver).await;
+        }
+        self.remove_idle_waiter(session_id, waiter_id).await;
+        result
+    }
+
+    async fn mark_idle(&self, session_id: &str) {
+        let waiters = self.idle_waiters.lock().await.remove(session_id);
+        if let Some(waiters) = waiters {
+            for waiter in waiters.into_values() {
+                let _ = waiter.send(());
+            }
+        }
+    }
+
+    async fn remove_idle_waiter(&self, session_id: &str, waiter_id: u64) {
+        let mut waiters = self.idle_waiters.lock().await;
+        if let Some(session_waiters) = waiters.get_mut(session_id) {
+            session_waiters.remove(&waiter_id);
+            if session_waiters.is_empty() {
+                waiters.remove(session_id);
+            }
         }
     }
 

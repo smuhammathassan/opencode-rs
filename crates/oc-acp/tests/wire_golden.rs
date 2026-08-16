@@ -6,12 +6,15 @@ use std::sync::{Arc, Mutex};
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use oc_acp::connection::AgentSideConnection;
+use oc_acp::event::{self, StartInput};
+use oc_acp::permission::Handler as PermissionHandler;
 use oc_acp::sdk::{
     AgentInfo, CommandInfo, Config, ConfigProviders, Event, ModelInfo, ModelLimit, OpencodeClient,
-    ProviderInfo, SdkError, Session, SessionCreateRequest, SessionMessageResponse, SessionTime,
-    SkillInfo, Tokens,
+    PermissionAskedProperties, PermissionTool, ProviderInfo, SdkError, Session,
+    SessionCreateRequest, SessionMessageResponse, SessionTime, SkillInfo, Tokens,
 };
 use oc_acp::service::{Service, ServiceInput};
+use oc_acp::session::{Service as SessionService, StoreInput};
 use oc_acp::types::{
     CancelNotification, InitializeRequest, NewSessionRequest, PromptRequest, RequestError,
     SessionUpdate, SetSessionConfigOptionRequest,
@@ -25,11 +28,23 @@ struct FakeSdk {
     skills: Vec<SkillInfo>,
     config: Config,
     created: Mutex<Vec<SessionCreateRequest>>,
+    prompts: Mutex<Vec<oc_acp::sdk::PromptRequest>>,
+    prompt_error: Mutex<Option<Value>>,
+    idle_event_stream: Mutex<bool>,
+    prompt_started: Arc<tokio::sync::Notify>,
     messages: Mutex<Vec<SessionMessageResponse>>,
     replies: Mutex<Vec<(String, String, String)>>,
     mcp_adds: Mutex<Vec<(String, String, Value)>>,
     aborted: Mutex<Vec<String>>,
 }
+
+const PROMPT_TRANSCRIPT_FIXTURE: &str = r#"
+[
+  {"type":"text","text":"explain this","annotations":{"audience":["assistant"]}},
+  {"type":"image","mimeType":"image/png","data":"AQI=","uri":"file:///tmp/diagram.png"},
+  {"type":"resource","resource":{"text":"fn main() {}","uri":"file:///tmp/main.rs#L7","mimeType":"text/plain"}}
+]
+"#;
 
 impl Default for FakeSdk {
     fn default() -> Self {
@@ -68,6 +83,10 @@ impl Default for FakeSdk {
                 model: Some("anthropic/claude-sonnet-4".into()),
             },
             created: Mutex::new(Vec::new()),
+            prompts: Mutex::new(Vec::new()),
+            prompt_error: Mutex::new(None),
+            idle_event_stream: Mutex::new(false),
+            prompt_started: Arc::new(tokio::sync::Notify::new()),
             messages: Mutex::new(Vec::new()),
             replies: Mutex::new(Vec::new()),
             mcp_adds: Mutex::new(Vec::new()),
@@ -79,6 +98,22 @@ impl Default for FakeSdk {
 #[async_trait::async_trait]
 impl OpencodeClient for FakeSdk {
     fn global_event(&self) -> BoxStream<'static, Option<Event>> {
+        if *self.idle_event_stream.lock().unwrap() {
+            let prompt_started = self.prompt_started.clone();
+            return futures::stream::once(async move {
+                prompt_started.notified().await;
+                Some(Event::SessionStatus {
+                    id: "status-1".into(),
+                    properties: oc_acp::sdk::SessionStatusProperties {
+                        session_id: "s1".into(),
+                        status: oc_acp::sdk::SessionStatus {
+                            kind: "idle".into(),
+                        },
+                    },
+                })
+            })
+            .boxed();
+        }
         futures::stream::empty().boxed()
     }
 
@@ -120,9 +155,15 @@ impl OpencodeClient for FakeSdk {
         &self,
         _directory: &str,
         _session_id: &str,
-        _message_id: &str,
+        message_id: &str,
     ) -> Result<SessionMessageResponse, SdkError> {
-        Err(Value::Null)
+        self.messages
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|message| message.info.id() == message_id)
+            .cloned()
+            .ok_or(Value::Null)
     }
 
     async fn session_list(&self, _directory: Option<&str>) -> Result<Vec<Session>, SdkError> {
@@ -144,9 +185,13 @@ impl OpencodeClient for FakeSdk {
 
     async fn session_prompt(
         &self,
-        _request: oc_acp::sdk::PromptRequest,
+        request: oc_acp::sdk::PromptRequest,
     ) -> Result<oc_acp::sdk::AssistantMessage, SdkError> {
-        Ok(assistant_message())
+        self.prompts.lock().unwrap().push(request);
+        self.prompt_started.notify_waiters();
+        let mut response = assistant_message();
+        response.error = self.prompt_error.lock().unwrap().clone();
+        Ok(response)
     }
 
     async fn session_command(
@@ -291,12 +336,12 @@ async fn initialize_terminal_auth_golden() {
 #[tokio::test]
 async fn new_session_golden() {
     let sdk = Arc::new(FakeSdk::default());
-    let service = Service::make(ServiceInput::new(sdk));
+    let service = Service::make(ServiceInput::new(sdk.clone()));
     let response = service
         .new_session(&NewSessionRequest {
             cwd: "/tmp".into(),
             mcp_servers: vec![],
-            additional_directories: None,
+            additional_directories: Some(vec!["/workspace/shared".into()]),
             _meta: None,
         })
         .await
@@ -305,6 +350,86 @@ async fn new_session_golden() {
         serde_json::to_string(&response).unwrap(),
         r#"{"sessionId":"s1","configOptions":[{"id":"model","name":"Model","category":"model","type":"select","currentValue":"anthropic/claude-sonnet-4","options":[{"value":"anthropic/claude-sonnet-4","name":"anthropic/Claude Sonnet 4"}]},{"id":"mode","name":"Session Mode","category":"mode","type":"select","currentValue":"build","options":[{"value":"build","name":"build","description":"The default mode"}]}]}"#
     );
+    let created = sdk.created.lock().unwrap();
+    assert_eq!(created.len(), 1);
+    assert_eq!(created[0].agent.as_deref(), Some("build"));
+    assert_eq!(created[0].model.provider_id, "anthropic");
+    assert_eq!(created[0].model.id, "claude-sonnet-4");
+}
+
+#[tokio::test]
+async fn prompt_transcript_preserves_provider_and_filesystem_content() {
+    let sdk = Arc::new(FakeSdk::default());
+    let service = Service::make(ServiceInput::new(sdk.clone()));
+    service
+        .new_session(&NewSessionRequest {
+            cwd: "/tmp".into(),
+            mcp_servers: vec![],
+            additional_directories: Some(vec!["/workspace/shared".into()]),
+            _meta: None,
+        })
+        .await
+        .unwrap();
+
+    let prompt: Vec<oc_acp::types::ContentBlock> =
+        serde_json::from_str(PROMPT_TRANSCRIPT_FIXTURE).unwrap();
+    let response = service
+        .prompt(&PromptRequest {
+            session_id: "s1".into(),
+            prompt,
+            message_id: Some("user-1".into()),
+            _meta: None,
+        })
+        .await
+        .unwrap();
+
+    assert_eq!(response.stop_reason, oc_acp::types::StopReason::EndTurn);
+    let prompts = sdk.prompts.lock().unwrap();
+    assert_eq!(prompts.len(), 1);
+    assert_eq!(prompts[0].model.provider_id, "anthropic");
+    assert_eq!(prompts[0].model.model_id, "claude-sonnet-4");
+    let created = sdk.created.lock().unwrap();
+    assert_eq!(created[0].directory, "/tmp");
+    assert_eq!(
+        serde_json::to_value(&prompts[0].parts).unwrap(),
+        serde_json::json!([
+            {"type":"text","text":"explain this","synthetic":true},
+            {"type":"file","url":"data:image/png;base64,AQI=","filename":"diagram.png","mime":"image/png"},
+            {"type":"text","text":"[/tmp/main.rs:7]\nfn main() {}"}
+        ])
+    );
+}
+
+#[tokio::test]
+async fn prompt_waits_for_session_idle_status() {
+    let sdk = Arc::new(FakeSdk::default());
+    *sdk.idle_event_stream.lock().unwrap() = true;
+    let connection = Arc::new(RecordingConnection::default());
+    let service = Service::make(ServiceInput::new(sdk.clone()).connection(connection));
+    service
+        .new_session(&NewSessionRequest {
+            cwd: "/tmp".into(),
+            mcp_servers: vec![],
+            additional_directories: None,
+            _meta: None,
+        })
+        .await
+        .unwrap();
+    let response = service
+        .prompt(&PromptRequest {
+            session_id: "s1".into(),
+            prompt: vec![oc_acp::types::ContentBlock::Text(
+                oc_acp::types::TextContent {
+                    text: "wait for transcript".into(),
+                    annotations: None,
+                },
+            )],
+            message_id: Some("user-2".into()),
+            _meta: None,
+        })
+        .await
+        .unwrap();
+    assert_eq!(response.stop_reason, oc_acp::types::StopReason::EndTurn);
 }
 
 #[tokio::test]
@@ -346,6 +471,98 @@ async fn prompt_golden_with_usage() {
         serde_json::to_string(&response).unwrap(),
         r#"{"stopReason":"end_turn","usage":{"inputTokens":100,"outputTokens":50,"totalTokens":150},"userMessageId":"msg-1","_meta":{}}"#
     );
+}
+
+#[tokio::test]
+async fn prompt_maps_nested_provider_auth_error() {
+    let sdk = Arc::new(FakeSdk::default());
+    *sdk.prompt_error.lock().unwrap() = Some(serde_json::json!({
+        "name": "HttpError",
+        "data": {
+            "error": {
+                "name": "LoadAPIKeyError",
+                "data": { "providerID": "anthropic" }
+            }
+        }
+    }));
+    let service = Service::make(ServiceInput::new(sdk));
+    service
+        .new_session(&NewSessionRequest {
+            cwd: "/tmp".into(),
+            mcp_servers: vec![],
+            additional_directories: None,
+            _meta: None,
+        })
+        .await
+        .unwrap();
+    let error = service
+        .prompt(&PromptRequest {
+            session_id: "s1".into(),
+            prompt: vec![oc_acp::types::ContentBlock::Text(
+                oc_acp::types::TextContent {
+                    text: "provider auth".into(),
+                    annotations: None,
+                },
+            )],
+            message_id: Some("user-auth".into()),
+            _meta: None,
+        })
+        .await
+        .unwrap_err();
+    assert!(matches!(
+        error,
+        oc_acp::error::ACPError::AuthRequired {
+            provider_id: Some(provider_id)
+        } if provider_id == "anthropic"
+    ));
+}
+
+#[tokio::test]
+async fn prompt_refreshes_provider_error_persisted_before_idle() {
+    let sdk = Arc::new(FakeSdk::default());
+    *sdk.idle_event_stream.lock().unwrap() = true;
+    let mut final_message = assistant_message();
+    final_message.error = Some(serde_json::json!({
+        "name": "ProviderAuthError",
+        "data": { "providerID": "anthropic" }
+    }));
+    *sdk.messages.lock().unwrap() = vec![SessionMessageResponse {
+        info: oc_acp::sdk::Message::Assistant(final_message),
+        parts: vec![],
+    }];
+    let connection = Arc::new(RecordingConnection::default());
+    let service = Service::make(ServiceInput::new(sdk.clone()).connection(connection));
+    service
+        .new_session(&NewSessionRequest {
+            cwd: "/tmp".into(),
+            mcp_servers: vec![],
+            additional_directories: None,
+            _meta: None,
+        })
+        .await
+        .unwrap();
+
+    let error = service
+        .prompt(&PromptRequest {
+            session_id: "s1".into(),
+            prompt: vec![oc_acp::types::ContentBlock::Text(
+                oc_acp::types::TextContent {
+                    text: "provider auth after idle".into(),
+                    annotations: None,
+                },
+            )],
+            message_id: Some("user-auth-after-idle".into()),
+            _meta: None,
+        })
+        .await
+        .unwrap_err();
+
+    assert!(matches!(
+        error,
+        oc_acp::error::ACPError::AuthRequired {
+            provider_id: Some(provider_id)
+        } if provider_id == "anthropic"
+    ));
 }
 
 #[tokio::test]
@@ -399,6 +616,64 @@ async fn cancel_aborts_backing_session() {
     assert_eq!(*sdk.aborted.lock().unwrap(), vec!["s1"]);
 }
 
+#[tokio::test]
+async fn permission_transcript_writes_file_metadata_patch() {
+    let sdk = Arc::new(FakeSdk::default());
+    let session = Arc::new(oc_acp::session::Service::new());
+    let connection = Arc::new(RecordingConnection::default());
+    let service = Service::make(ServiceInput {
+        sdk: sdk.clone(),
+        connection: Some(connection.clone()),
+        session: Some(session.clone()),
+        ..ServiceInput::new(sdk.clone())
+    });
+    service
+        .new_session(&NewSessionRequest {
+            cwd: "/tmp".into(),
+            mcp_servers: vec![],
+            additional_directories: None,
+            _meta: None,
+        })
+        .await
+        .unwrap();
+
+    let path = std::env::temp_dir().join("opencode-acp-transcript-fixture.txt");
+    std::fs::write(&path, "before\n").unwrap();
+    let mut metadata = Map::new();
+    metadata.insert(
+        "files".into(),
+        serde_json::json!([{
+            "filePath": path.to_string_lossy(),
+            "relativePath": "transcript-fixture.txt",
+            "patch": "@@ -1,1 +1,1 @@\n-before\n+after\n"
+        }]),
+    );
+
+    let handler = PermissionHandler::new(sdk.clone(), Some(connection.clone()), session);
+    handler
+        .handle(&PermissionAskedProperties {
+            id: "permission-1".into(),
+            session_id: "s1".into(),
+            permission: "edit".into(),
+            patterns: vec![],
+            metadata,
+            always: vec![],
+            tool: Some(PermissionTool {
+                message_id: "message-1".into(),
+                call_id: "call-1".into(),
+            }),
+        })
+        .await;
+
+    let writes = connection.write_calls.lock().unwrap();
+    assert_eq!(writes.len(), 1);
+    assert_eq!(writes[0].0, "s1");
+    assert_eq!(writes[0].1, path.to_string_lossy());
+    assert_eq!(writes[0].2, "after\n");
+    assert_eq!(sdk.replies.lock().unwrap()[0].1, "once");
+    let _ = std::fs::remove_file(path);
+}
+
 /// A recording connection capturing `session/update` notifications.
 struct RecordingConnection {
     updates: Mutex<Vec<(String, SessionUpdate)>>,
@@ -447,6 +722,192 @@ impl AgentSideConnection for RecordingConnection {
             .push((request.session_id, request.path, request.content));
         Ok(())
     }
+}
+
+#[tokio::test]
+async fn permission_transcript_mediates_multi_file_write() {
+    let sdk = Arc::new(FakeSdk::default());
+    let connection = Arc::new(RecordingConnection::default());
+    let sessions = Arc::new(SessionService::new());
+    sessions
+        .create(StoreInput {
+            id: "s1".into(),
+            cwd: "/tmp".into(),
+            mcp_servers: None,
+            created_at: Some(1),
+            model: None,
+            variant: None,
+            mode_id: None,
+        })
+        .await;
+    let handler = PermissionHandler::new(sdk.clone(), Some(connection.clone()), sessions);
+    let mut metadata = Map::new();
+    metadata.insert(
+        "files".into(),
+        serde_json::json!([{
+            "filePath": "/__acp_fixture__/new.txt",
+            "patch": "@@ -0,0 +1,2 @@\n+alpha\n+beta\n"
+        }]),
+    );
+    handler
+        .handle(&PermissionAskedProperties {
+            id: "permission-1".into(),
+            session_id: "s1".into(),
+            permission: "edit".into(),
+            patterns: vec![],
+            metadata,
+            always: vec![],
+            tool: Some(PermissionTool {
+                message_id: "m1".into(),
+                call_id: "call-1".into(),
+            }),
+        })
+        .await;
+
+    assert_eq!(
+        *connection.write_calls.lock().unwrap(),
+        vec![(
+            "s1".into(),
+            "/__acp_fixture__/new.txt".into(),
+            "alpha\nbeta".into()
+        )]
+    );
+    assert_eq!(
+        *sdk.replies.lock().unwrap(),
+        vec![("permission-1".into(), "once".into(), "/tmp".into())]
+    );
+}
+
+#[tokio::test]
+async fn replay_transcript_emits_deterministic_filesystem_and_tool_updates() {
+    let sdk = Arc::new(FakeSdk::default());
+    let connection = Arc::new(RecordingConnection::default());
+    let sessions = Arc::new(SessionService::new());
+    sessions
+        .create(StoreInput {
+            id: "s1".into(),
+            cwd: "/tmp".into(),
+            mcp_servers: None,
+            created_at: Some(1),
+            model: None,
+            variant: None,
+            mode_id: None,
+        })
+        .await;
+    let subscription = event::start(StartInput {
+        sdk,
+        connection: Some(connection.clone()),
+        session: sessions,
+    });
+
+    subscription
+        .replay_message(&SessionMessageResponse {
+            info: oc_acp::sdk::Message::User(oc_acp::sdk::UserMessage {
+                id: "user-1".into(),
+                session_id: "s1".into(),
+                role: "user".into(),
+                model: None,
+                agent: Some("build".into()),
+            }),
+            parts: vec![oc_acp::sdk::Part::Text(oc_acp::sdk::TextPart {
+                id: "user-part".into(),
+                session_id: "s1".into(),
+                message_id: "user-1".into(),
+                text: "hello".into(),
+                synthetic: None,
+                ignored: None,
+                metadata: None,
+            })],
+        })
+        .await;
+    subscription
+        .replay_message(&SessionMessageResponse {
+            info: oc_acp::sdk::Message::Assistant(assistant_message()),
+            parts: vec![
+                oc_acp::sdk::Part::Reasoning(oc_acp::sdk::ReasoningPart {
+                    id: "reasoning-1".into(),
+                    session_id: "s1".into(),
+                    message_id: "m1".into(),
+                    text: "thinking".into(),
+                    metadata: None,
+                }),
+                oc_acp::sdk::Part::Text(oc_acp::sdk::TextPart {
+                    id: "text-1".into(),
+                    session_id: "s1".into(),
+                    message_id: "m1".into(),
+                    text: "done".into(),
+                    synthetic: None,
+                    ignored: None,
+                    metadata: None,
+                }),
+                oc_acp::sdk::Part::File(oc_acp::sdk::FilePart {
+                    id: "file-1".into(),
+                    session_id: "s1".into(),
+                    message_id: "m1".into(),
+                    mime: "text/plain".into(),
+                    filename: Some("notes.txt".into()),
+                    url: "file:///tmp/notes.txt".into(),
+                }),
+                oc_acp::sdk::Part::Tool(oc_acp::sdk::ToolPart {
+                    id: "tool-part".into(),
+                    session_id: "s1".into(),
+                    message_id: "m1".into(),
+                    call_id: "call-1".into(),
+                    tool: "read".into(),
+                    state: oc_acp::sdk::ToolState::Completed(oc_acp::sdk::ToolStateCompleted {
+                        input: Map::from_iter([(
+                            "filePath".into(),
+                            Value::String("/tmp/notes.txt".into()),
+                        )]),
+                        output: "read ok".into(),
+                        title: "Read notes".into(),
+                        metadata: Map::new(),
+                        attachments: None,
+                    }),
+                    metadata: None,
+                }),
+            ],
+        })
+        .await;
+    subscription.stop();
+
+    let updates = connection.updates.lock().unwrap();
+    let kinds: Vec<&str> = updates
+        .iter()
+        .map(|(_, update)| match update {
+            SessionUpdate::UserMessageChunk(_) => "user_message_chunk",
+            SessionUpdate::AgentThoughtChunk(_) => "agent_thought_chunk",
+            SessionUpdate::AgentMessageChunk(_) => "agent_message_chunk",
+            SessionUpdate::ToolCall(_) => "tool_call",
+            SessionUpdate::ToolCallUpdate(_) => "tool_call_update",
+            SessionUpdate::AvailableCommandsUpdate(_) => "available_commands_update",
+            SessionUpdate::UsageUpdate(_) => "usage_update",
+        })
+        .collect();
+    assert_eq!(
+        kinds,
+        vec![
+            "user_message_chunk",
+            "agent_thought_chunk",
+            "agent_message_chunk",
+            "agent_message_chunk",
+            "tool_call",
+            "tool_call_update"
+        ]
+    );
+    assert_eq!(
+        serde_json::to_value(&updates[3].1).unwrap()["content"],
+        serde_json::json!({
+            "type": "resource_link",
+            "uri": "file:///tmp/notes.txt",
+            "name": "notes.txt",
+            "mimeType": "text/plain"
+        })
+    );
+    assert_eq!(
+        serde_json::to_value(&updates[5].1).unwrap()["content"][0]["content"]["text"],
+        "read ok"
+    );
 }
 
 #[tokio::test]

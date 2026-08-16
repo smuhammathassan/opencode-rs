@@ -66,6 +66,7 @@ impl OpenFlag {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SseEvent {
     pub event: Option<String>,
+    pub id: Option<String>,
     pub data: String,
 }
 
@@ -89,13 +90,15 @@ impl SseParser {
 
         let mut events = Vec::new();
         loop {
-            let boundary = self
-                .buffer
-                .find("\n\n")
-                .or_else(|| self.buffer.find("\r\n\r\n"));
-            let Some(end) = boundary else { break };
+            let (end, delimiter_len) = if let Some(end) = self.buffer.find("\n\n") {
+                (end, 2)
+            } else if let Some(end) = self.buffer.find("\r\n\r\n") {
+                (end, 4)
+            } else {
+                break;
+            };
             let raw = self.buffer[..end].to_string();
-            self.buffer = self.buffer[end + 2..].to_string();
+            self.buffer = self.buffer[end + delimiter_len..].to_string();
             if let Some(event) = parse_sse_event(&raw) {
                 events.push(event);
             }
@@ -106,6 +109,7 @@ impl SseParser {
 
 fn parse_sse_event(raw: &str) -> Option<SseEvent> {
     let mut event: Option<String> = None;
+    let mut id: Option<String> = None;
     let mut data_lines: Vec<String> = Vec::new();
     for line in raw.lines() {
         let (field, value) = match line.split_once(':') {
@@ -117,15 +121,17 @@ fn parse_sse_event(raw: &str) -> Option<SseEvent> {
         };
         match field {
             "event" => event = Some(value),
+            "id" => id = Some(value),
             "data" => data_lines.push(value),
             _ => {}
         }
     }
-    if data_lines.is_empty() {
+    if data_lines.is_empty() && id.is_none() {
         return None;
     }
     Some(SseEvent {
         event,
+        id,
         data: data_lines.join("\n"),
     })
 }
@@ -142,8 +148,10 @@ mod tests {
         );
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].event.as_deref(), Some("message"));
+        assert_eq!(events[0].id, None);
         assert_eq!(events[0].data, r#"{"jsonrpc":"2.0","id":1,"result":{}}"#);
         assert_eq!(events[1].event.as_deref(), Some("endpoint"));
+        assert_eq!(events[1].id, None);
         assert_eq!(events[1].data, "/messages");
     }
 
@@ -164,5 +172,28 @@ mod tests {
         let events = parser.feed(b": keepalive\n\ndata: x\n\n");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].data, "x");
+    }
+
+    #[test]
+    fn sse_parser_preserves_event_ids_and_id_only_events() {
+        let mut parser = SseParser::new();
+        let events = parser.feed(b"id: 42\n\ndata: {\"ok\":true}\n\nid: 43\n\n");
+        assert_eq!(events.len(), 3);
+        assert_eq!(events[0].id.as_deref(), Some("42"));
+        assert!(events[0].data.is_empty());
+        assert_eq!(events[1].id, None);
+        assert_eq!(events[1].data, r#"{"ok":true}"#);
+        assert_eq!(events[2].id.as_deref(), Some("43"));
+        assert!(events[2].data.is_empty());
+    }
+
+    #[test]
+    fn sse_parser_consumes_crlf_boundaries_without_stalling() {
+        let mut parser = SseParser::new();
+        let events = parser
+            .feed(b"event: message\r\ndata: first\r\n\r\nevent: message\r\ndata: second\r\n\r\n");
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].data, "first");
+        assert_eq!(events[1].data, "second");
     }
 }

@@ -240,15 +240,28 @@ pub fn get_usage(input: &GetUsageInput) -> UsageResult {
     let reasoning_tokens = safe(input.usage.reasoning_tokens.unwrap_or(0.0));
 
     let cache_read_input_tokens = safe(input.usage.cache_read_input_tokens.unwrap_or(0.0));
-    let cache_write_input_tokens = safe(nested_number(
-        input.metadata,
-        cache_write_candidates(input.usage),
-    ));
+    let cache_write_input_tokens = safe(
+        input
+            .usage
+            .cache_write_input_tokens
+            .or_else(|| {
+                input
+                    .usage
+                    .provider_metadata
+                    .as_ref()
+                    .and_then(find_cache_write_in_map)
+            })
+            .unwrap_or_else(|| nested_number(input.metadata)),
+    );
 
     // AI SDK v6 normalized inputTokens to include cached tokens across all
     // providers. Always subtract cache tokens for the non-cached input count.
-    let adjusted_input_tokens =
-        safe(input_tokens - cache_read_input_tokens - cache_write_input_tokens);
+    let adjusted_input_tokens = safe(
+        input
+            .usage
+            .non_cached_input_tokens
+            .unwrap_or(input_tokens - cache_read_input_tokens - cache_write_input_tokens),
+    );
 
     let total = input.usage.total_tokens;
 
@@ -352,45 +365,33 @@ pub struct UsageResult {
     pub tokens: Tokens,
 }
 
-fn cache_write_candidates(usage: &Usage) -> Vec<(Option<f64>, Option<&str>)> {
-    // Resolution order mirrors the reference: usage field, then anthropic/
-    // vertex/bedrock/venice metadata fallbacks.
-    vec![(usage.cache_write_input_tokens, None)]
+fn nested_number(metadata: &JsonMap) -> f64 {
+    find_cache_write_in_map(metadata).unwrap_or(0.0)
 }
 
-fn nested_number(metadata: &JsonMap, candidates: Vec<(Option<f64>, Option<&str>)>) -> f64 {
-    for (value, key) in candidates {
-        if let Some(v) = value {
-            return v;
-        }
-        if let Some(key) = key {
-            for (provider_key, provider_value) in metadata {
-                if provider_key != key {
-                    continue;
+fn find_cache_write_in_map(metadata: &JsonMap) -> Option<f64> {
+    metadata.values().find_map(find_cache_write_tokens)
+}
+
+fn find_cache_write_tokens(value: &serde_json::Value) -> Option<f64> {
+    match value {
+        serde_json::Value::Object(map) => {
+            for (key, value) in map {
+                if (key.contains("cacheCreationInputTokens")
+                    || key.contains("cacheWriteInputTokens"))
+                    && value.as_f64().is_some()
+                {
+                    return value.as_f64();
                 }
-                if let Some(map) = provider_value.as_object() {
-                    for (field, candidate) in map {
-                        if field.contains("cacheCreationInputTokens")
-                            || field.contains("cacheWriteInputTokens")
-                        {
-                            if let Some(n) = candidate.as_f64() {
-                                return n;
-                            }
-                        }
-                        if field == "usage" {
-                            if let Some(usage) = candidate
-                                .get("cacheWriteInputTokens")
-                                .and_then(|v| v.as_f64())
-                            {
-                                return usage;
-                            }
-                        }
-                    }
+                if let Some(found) = find_cache_write_tokens(value) {
+                    return Some(found);
                 }
             }
+            None
         }
+        serde_json::Value::Array(items) => items.iter().find_map(find_cache_write_tokens),
+        _ => None,
     }
-    0.0
 }
 
 /// From reference `session.ts:BusyError`.
@@ -590,5 +591,52 @@ mod tests {
         assert_eq!(result.tokens.output, 15.0);
         assert_eq!(result.tokens.reasoning, 5.0);
         assert_eq!(result.tokens.cache.read, 30.0);
+    }
+
+    #[test]
+    fn usage_prefers_non_cached_input_and_provider_cache_metadata() {
+        let model = ProviderModel::empty("gpt-4o", "openai");
+        let mut provider_metadata = JsonMap::new();
+        provider_metadata.insert(
+            "anthropic".into(),
+            serde_json::json!({ "cacheCreationInputTokens": 12 }),
+        );
+        let usage = Usage {
+            input_tokens: Some(100.0),
+            non_cached_input_tokens: Some(80.0),
+            cache_read_input_tokens: Some(8.0),
+            provider_metadata: Some(provider_metadata),
+            output_tokens: Some(20.0),
+            ..Usage::default()
+        };
+        let result = get_usage(&GetUsageInput {
+            model: &model,
+            usage: &usage,
+            metadata: &JsonMap::new(),
+        });
+        assert_eq!(result.tokens.input, 80.0);
+        assert_eq!(result.tokens.cache.read, 8.0);
+        assert_eq!(result.tokens.cache.write, 12.0);
+    }
+
+    #[test]
+    fn usage_falls_back_to_nested_metadata_cache_fields() {
+        let model = ProviderModel::empty("gpt-4o", "openai");
+        let mut metadata = JsonMap::new();
+        metadata.insert(
+            "bedrock".into(),
+            serde_json::json!({ "usage": { "cacheWriteInputTokens": 7 } }),
+        );
+        let usage = Usage {
+            input_tokens: Some(20.0),
+            ..Usage::default()
+        };
+        let result = get_usage(&GetUsageInput {
+            model: &model,
+            usage: &usage,
+            metadata: &metadata,
+        });
+        assert_eq!(result.tokens.input, 13.0);
+        assert_eq!(result.tokens.cache.write, 7.0);
     }
 }

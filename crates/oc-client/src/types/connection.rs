@@ -1,13 +1,7 @@
 //! Connection types.
 //! From reference/packages/schema/src/connection.ts.
+//!
+//! Canonical home: `oc_schema::connection`.
 
-// TODO(integration): promote to oc-schema.
-/// `Connection.Info` — tagged on `type`.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum ConnectionInfo {
-    #[serde(rename = "credential")]
-    Credential { id: String, label: String },
-    #[serde(rename = "env")]
-    Env { name: String },
-}
+// Re-export shim: `oc_schema::connection` is the single canonical definition.
+pub use oc_schema::connection::Info as ConnectionInfo;

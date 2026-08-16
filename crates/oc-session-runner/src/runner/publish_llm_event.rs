@@ -4,6 +4,7 @@ use std::sync::Arc;
 use serde_json::{Map, Value};
 
 use crate::llm::event::{LLMEvent, ToolOutput, ToolResultValue, Usage};
+use crate::llm::message::ModelCost;
 use crate::llm::{ProviderMetadata, ToolContent};
 use crate::session::event::{CacheTokens, Provider, SessionEvent, Tokens};
 use crate::session::message::UnknownError;
@@ -18,6 +19,7 @@ pub struct PublisherInput {
     pub session_id: SessionID,
     pub agent: String,
     pub model: ModelRef,
+    pub cost: Option<ModelCost>,
     pub snapshot: Option<String>,
 }
 
@@ -50,6 +52,7 @@ pub enum PublishError {
 pub struct StepSettlement {
     pub finish: String,
     pub tokens: Tokens,
+    pub cost: f64,
 }
 
 #[derive(Clone)]
@@ -163,6 +166,20 @@ fn tokens(usage: Option<&Usage>) -> Tokens {
             read: safe(usage.and_then(|usage| usage.cache_read_input_tokens)),
             write: safe(usage.and_then(|usage| usage.cache_write_input_tokens)),
         },
+    }
+}
+
+fn cost(usage: Option<&Usage>, pricing: Option<&ModelCost>) -> f64 {
+    let Some(pricing) = pricing else { return 0.0 };
+    let Some(usage) = usage else { return 0.0 };
+    let value = usage.non_cached_input_tokens.unwrap_or(0.0) * pricing.input
+        + usage.visible_output_tokens() * pricing.output
+        + usage.cache_read_input_tokens.unwrap_or(0.0) * pricing.cache_read
+        + usage.cache_write_input_tokens.unwrap_or(0.0) * pricing.cache_write;
+    if value.is_finite() && value > 0.0 {
+        value / 1_000_000.0
+    } else {
+        0.0
     }
 }
 
@@ -783,6 +800,7 @@ fn handle(
             state.step_settlement = Some(StepSettlement {
                 finish: reason.clone(),
                 tokens: tokens(usage.as_ref()),
+                cost: cost(usage.as_ref(), input.cost.as_ref()),
             });
         }
         LLMEvent::Finish { .. } => {}
@@ -829,6 +847,7 @@ mod tests {
                     provider_id: "openai".into(),
                     variant: None,
                 },
+                cost: None,
                 snapshot: Some("snap".into()),
             },
         ));
@@ -1033,6 +1052,50 @@ mod tests {
         assert_eq!(settlement.tokens.input, 10.0);
         assert_eq!(settlement.tokens.output, 3.0);
         assert_eq!(settlement.tokens.reasoning, 2.0);
+    }
+
+    #[tokio::test]
+    async fn step_finish_calculates_catalog_cost() {
+        let sink = Arc::new(Sink::default());
+        let publisher = LLMEventPublisher::new(
+            sink,
+            PublisherInput {
+                session_id: "ses_priced".into(),
+                agent: "build".into(),
+                model: ModelRef {
+                    id: "priced".into(),
+                    provider_id: "test".into(),
+                    variant: None,
+                },
+                cost: Some(ModelCost {
+                    input: 2.0,
+                    output: 4.0,
+                    cache_read: 0.5,
+                    cache_write: 1.0,
+                }),
+                snapshot: None,
+            },
+        );
+        publisher
+            .publish(
+                &LLMEvent::StepFinish {
+                    index: 0.0,
+                    reason: "stop".into(),
+                    usage: Some(Usage {
+                        non_cached_input_tokens: Some(100.0),
+                        output_tokens: Some(8.0),
+                        reasoning_tokens: Some(2.0),
+                        cache_read_input_tokens: Some(10.0),
+                        ..Default::default()
+                    }),
+                    provider_metadata: None,
+                },
+                &[],
+            )
+            .await
+            .unwrap();
+        let settlement = publisher.step_settlement().unwrap();
+        assert!((settlement.cost - 0.000229).abs() < f64::EPSILON);
     }
 
     #[tokio::test]

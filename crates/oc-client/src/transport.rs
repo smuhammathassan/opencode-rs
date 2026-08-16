@@ -5,10 +5,51 @@
 use crate::error::{decode_api_error, ClientError, Error};
 use crate::sse::SseDecoder;
 use reqwest::header::{HeaderMap, CONTENT_TYPE};
+use reqwest::Method;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 use std::time::Duration;
 use url::Url;
+
+/// A generic JSON HTTP request for plugin and forward-compatible server APIs.
+///
+/// The generated client covers the stable OpenCode groups. This request type
+/// is the equivalent of the official SDK's low-level `client.request` input:
+/// it lets a plugin call a newer or experimental endpoint without waiting for
+/// the Rust endpoint surface to be regenerated.
+#[derive(Debug, Clone)]
+pub struct RawRequest {
+    pub method: Method,
+    pub path: String,
+    pub query: Vec<(String, Value)>,
+    pub body: Option<Value>,
+}
+
+impl RawRequest {
+    /// Create a request using an absolute URL or a path relative to the
+    /// client's base URL.
+    pub fn new(method: Method, path: impl Into<String>) -> Self {
+        Self {
+            method,
+            path: path.into(),
+            query: Vec::new(),
+            body: None,
+        }
+    }
+
+    /// Add one query value. Arrays and objects use the same recursive query
+    /// encoding as generated OpenCode endpoints.
+    pub fn with_query(mut self, key: impl Into<String>, value: Value) -> Self {
+        self.query.push((key.into(), value));
+        self
+    }
+
+    /// Set the JSON request body.
+    pub fn with_body(mut self, body: Value) -> Self {
+        self.body = Some(body);
+        self
+    }
+}
 
 /// Client construction options. Mirrors `ClientOptions` in
 /// `reference/packages/client/src/generated/client.ts` (`fetch` maps to a custom
@@ -112,6 +153,38 @@ impl Transport {
         self.with_retry(options, attempt).await
     }
 
+    pub(crate) async fn execute_raw<T: DeserializeOwned>(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<T, Error> {
+        let attempt = || {
+            let request = request.clone();
+            let options = options.cloned();
+            let this = self.clone();
+            let future: futures::future::BoxFuture<'static, Result<T, Error>> =
+                Box::pin(async move { this.execute_raw_inner(&request, options.as_ref()).await });
+            future
+        };
+        self.with_retry(options, attempt).await
+    }
+
+    pub(crate) async fn start_raw_sse(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<SseDecoder, Error> {
+        let attempt = || {
+            let request = request.clone();
+            let options = options.cloned();
+            let this = self.clone();
+            let future: futures::future::BoxFuture<'static, Result<SseDecoder, Error>> =
+                Box::pin(async move { this.start_raw_sse_inner(&request, options.as_ref()).await });
+            future
+        };
+        self.with_retry(options, attempt).await
+    }
+
     async fn with_retry<T>(
         &self,
         options: Option<&RequestOptions>,
@@ -187,6 +260,58 @@ impl Transport {
         Ok(SseDecoder::new(response))
     }
 
+    async fn execute_raw_inner<T: DeserializeOwned>(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<T, Error> {
+        let request = self.build_raw_request(request, options)?;
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .map_err(ClientError::Transport)?;
+        if !response.status().is_success() {
+            return Err(self.raw_response_error(response).await);
+        }
+        if response.status().as_u16() == 204 {
+            return serde_json::from_value(Value::Null)
+                .map_err(|err| ClientError::MalformedResponse(Some(err)).into());
+        }
+        if !is_json(&response) {
+            return Err(ClientError::UnsupportedContentType.into());
+        }
+        let text = response
+            .text()
+            .await
+            .map_err(|err| ClientError::Transport(err))?;
+        if text.is_empty() {
+            return serde_json::from_value(Value::Null)
+                .map_err(|err| ClientError::MalformedResponse(Some(err)).into());
+        }
+        serde_json::from_str(&text).map_err(|err| ClientError::MalformedResponse(Some(err)).into())
+    }
+
+    async fn start_raw_sse_inner(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<SseDecoder, Error> {
+        let request = self.build_raw_request(request, options)?;
+        let response = self
+            .http
+            .execute(request)
+            .await
+            .map_err(ClientError::Transport)?;
+        if !response.status().is_success() {
+            return Err(self.raw_response_error(response).await);
+        }
+        if !is_event_stream(&response) {
+            return Err(ClientError::UnsupportedContentType.into());
+        }
+        Ok(SseDecoder::new(response))
+    }
+
     fn build_request(
         &self,
         desc: &RequestDescriptor,
@@ -209,14 +334,40 @@ impl Transport {
         builder.build().map_err(|err| ClientError::Transport(err))
     }
 
+    fn build_raw_request(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<reqwest::Request, ClientError> {
+        let url = self.build_url_parts(&request.path, &request.query);
+        let mut builder = self.http.request(request.method.clone(), url);
+        builder = builder.headers(self.headers.clone());
+        if let Some(options) = options {
+            if !options.headers.is_empty() {
+                builder = builder.headers(options.headers.clone());
+            }
+            if let Some(timeout) = options.timeout {
+                builder = builder.timeout(timeout);
+            }
+        }
+        if let Some(body) = &request.body {
+            builder = builder.json(body);
+        }
+        builder.build().map_err(|err| ClientError::Transport(err))
+    }
+
     fn build_url(&self, desc: &RequestDescriptor) -> Url {
+        self.build_url_parts(&desc.path, &desc.query)
+    }
+
+    fn build_url_parts(&self, path: &str, query: &[(String, Value)]) -> Url {
         let mut url = self
             .base_url
-            .join(&desc.path)
+            .join(path)
             .unwrap_or_else(|_| Url::parse("http://invalid").expect("static fallback"));
-        if !desc.query.is_empty() {
+        if !query.is_empty() {
             let mut pairs = std::vec::Vec::new();
-            for (key, value) in &desc.query {
+            for (key, value) in query {
                 append_query(&mut pairs, key, value);
             }
             url.query_pairs_mut()
@@ -237,6 +388,20 @@ impl Transport {
             }
         } else {
             Error::Client(ClientError::UnexpectedStatus(status))
+        }
+    }
+
+    async fn raw_response_error(&self, response: reqwest::Response) -> Error {
+        let status = response.status().as_u16();
+        if !is_json(&response) {
+            return Error::Client(ClientError::UnexpectedStatus(status));
+        }
+        match response.text().await {
+            Ok(text) => match serde_json::from_str::<Value>(&text) {
+                Ok(value) => Error::Api(decode_api_error(value)),
+                Err(err) => Error::Client(ClientError::MalformedResponse(Some(err))),
+            },
+            Err(err) => Error::Client(ClientError::Transport(err)),
         }
     }
 

@@ -5,5 +5,5 @@
 
 pub use crate::client::*;
 pub use crate::error::{ApiError, ClientError, Error, ProjectCopyError, ProtocolError};
-pub use crate::transport::{ClientOptions, RequestOptions, RetryPolicy};
+pub use crate::transport::{ClientOptions, RawRequest, RequestOptions, RetryPolicy};
 pub use crate::types::*;

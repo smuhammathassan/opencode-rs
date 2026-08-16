@@ -16,6 +16,10 @@ use crate::llm::event::{LLMEvent, ToolOutput, ToolResultValue};
 use crate::llm::message::{LLMRequest, Model, ToolDefinition};
 use serde_json::Value;
 
+/// A live provider event stream. Keeping this as a boxed stream lets the
+/// runner publish text/tool/reasoning deltas before the provider finishes.
+pub type LlmEventStream = Pin<Box<dyn futures::Stream<Item = Result<LLMEvent, LLMError>> + Send>>;
+
 /// Event sink for durable/live `session.next.*` events.
 /// /// From reference/packages/core/src/session/event.ts
 pub trait EventBus: Send + Sync {
@@ -312,5 +316,5 @@ pub trait LlmClient: Send + Sync {
     fn stream(
         &self,
         request: LLMRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<LLMEvent>, LLMError>> + Send + '_>>;
+    ) -> Pin<Box<dyn Future<Output = Result<LlmEventStream, LLMError>> + Send + '_>>;
 }

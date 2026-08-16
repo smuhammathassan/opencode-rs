@@ -882,6 +882,15 @@ impl RequestError {
         )
     }
 
+    /// `RequestError.parseError(...)` from the ACP JSON-RPC transport.
+    pub fn parse_error(data: Option<Value>, additional_message: Option<&str>) -> Self {
+        Self::new(
+            Self::PARSE_ERROR,
+            with_suffix("Parse error", additional_message),
+            data,
+        )
+    }
+
     /// `RequestError.authRequired(...)` from the ACP SDK.
     pub fn auth_required(data: Option<Value>, additional_message: Option<&str>) -> Self {
         Self::new(

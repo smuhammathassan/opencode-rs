@@ -359,4 +359,40 @@ mod tests {
             "srv%3A1"
         );
     }
+
+    #[tokio::test]
+    async fn prompt_pagination_consumes_each_cursor_once() {
+        let calls = std::sync::Arc::new(std::sync::Mutex::new(Vec::<Option<String>>::new()));
+        let calls_for_list = std::sync::Arc::clone(&calls);
+        let prompts = paginate(
+            move |cursor: Option<String>| {
+                let calls = std::sync::Arc::clone(&calls_for_list);
+                async move {
+                    calls.lock().unwrap().push(cursor.clone());
+                    let prompt = |name: &str| Prompt {
+                        name: name.into(),
+                        description: None,
+                        arguments: None,
+                        extra: Default::default(),
+                    };
+                    Ok(crate::types::ListPromptsResult {
+                        prompts: vec![prompt(if cursor.is_some() { "second" } else { "first" })],
+                        next_cursor: cursor.is_none().then(|| "next".into()),
+                    })
+                }
+            },
+            |result| result.prompts,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(
+            prompts
+                .iter()
+                .map(|prompt| prompt.name.as_str())
+                .collect::<Vec<_>>(),
+            vec!["first", "second"]
+        );
+        assert_eq!(*calls.lock().unwrap(), vec![None, Some("next".into())]);
+    }
 }

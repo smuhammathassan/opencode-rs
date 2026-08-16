@@ -9,8 +9,8 @@
 //! `OpenCode::make` mirrors `OpenCode.make(options)` from the reference.
 
 use crate::error::Error;
-use crate::sse::sse_stream;
-use crate::transport::{ClientOptions, RequestDescriptor, RequestOptions, Transport};
+use crate::sse::{sse_stream, sse_stream_raw};
+use crate::transport::{ClientOptions, RawRequest, RequestDescriptor, RequestOptions, Transport};
 use crate::types::agent::AgentInfo;
 use crate::types::command::CommandInfo;
 use crate::types::event::SessionDurableEvent;
@@ -214,6 +214,33 @@ impl OpenCode {
     /// The base URL this client targets.
     pub fn base_url(&self) -> &Url {
         &self.transport.base_url
+    }
+
+    /// Execute a generic JSON request against the OpenCode server.
+    ///
+    /// This is the plugin/forward-compatibility escape hatch corresponding to
+    /// the official SDK's low-level `client.request`. Generated groups should
+    /// remain preferred for stable endpoints, but plugins can use this method
+    /// for experimental or newer routes without depending on another crate.
+    pub async fn request<T: DeserializeOwned>(
+        &self,
+        request: &RawRequest,
+        options: Option<&RequestOptions>,
+    ) -> Result<T, Error> {
+        self.transport.execute_raw(request, options).await
+    }
+
+    /// Open a lazy generic SSE stream against the OpenCode server.
+    ///
+    /// The request is not sent until the returned stream is polled, matching
+    /// the generated event methods and the official SDK's `client.sse.*`
+    /// surface.
+    pub fn sse<T: DeserializeOwned + 'static>(
+        &self,
+        request: RawRequest,
+        options: Option<RequestOptions>,
+    ) -> std::pin::Pin<Box<dyn Stream<Item = Result<T, Error>> + Send + 'static>> {
+        sse_stream_raw(self.transport.clone(), request, options)
     }
 }
 

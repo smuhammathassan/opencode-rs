@@ -4,6 +4,7 @@
 //! and `Protocol` classes) as used by `reference/packages/opencode/src/mcp/index.ts`.
 
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,14 +15,17 @@ use tokio::sync::{oneshot, watch, Mutex};
 use crate::jsonrpc::{JsonRpcError, Message, Request, RequestId, INTERNAL_ERROR, METHOD_NOT_FOUND};
 use crate::transport::{MessageReceiver, Transport};
 use crate::types::{
-    CallToolRequestParams, CallToolResult, ClientCapabilities, GetPromptRequestParams,
-    GetPromptResult, Implementation, InitializeResult, ListPromptsResult,
+    CallToolRequestParams, CallToolResult, CancelledNotificationParams, ClientCapabilities,
+    GetPromptRequestParams, GetPromptResult, Implementation, InitializeResult, ListPromptsResult,
     ListResourceTemplatesResult, ListResourcesResult, ListRootsRequestParams, ListToolsResult,
     ProgressNotificationParams, ReadResourceRequestParams, ReadResourceResult, RequestMeta,
     ServerCapabilities, SUPPORTED_PROTOCOL_VERSIONS,
 };
 
 type Result<T> = crate::Result<T>;
+
+const CANCELLED_NOTIFICATION: &str = "notifications/cancelled";
+const REQUEST_TIMED_OUT_REASON: &str = "Request timed out";
 
 /// A handler for a server→client request (e.g. `roots/list`).
 pub type RequestHandler =
@@ -105,12 +109,16 @@ impl Client {
             "capabilities": self.capabilities,
             "clientInfo": self.client_info,
         });
-        let result = crate::util::with_timeout(
-            self.request("initialize", Some(params), timeout_ms),
-            timeout_ms,
-            "initialize",
-        )
-        .await?;
+        let result = self
+            .request_inner(
+                "initialize",
+                Some(params),
+                timeout_ms,
+                None,
+                false,
+                REQUEST_TIMED_OUT_REASON,
+            )
+            .await?;
         let initialize_result: InitializeResult = serde_json::from_value(result)?;
 
         if !SUPPORTED_PROTOCOL_VERSIONS.contains(&initialize_result.protocol_version.as_str()) {
@@ -186,6 +194,54 @@ impl Client {
         params: Option<serde_json::Value>,
         timeout_ms: u64,
     ) -> Result<serde_json::Value> {
+        self.request_inner(
+            method,
+            params,
+            timeout_ms,
+            None,
+            true,
+            REQUEST_TIMED_OUT_REASON,
+        )
+        .await
+    }
+
+    /// Send a request that can be cancelled by an arbitrary caller-owned
+    /// future. Once cancellation wins, the pending waiter is removed and MCP
+    /// `notifications/cancelled` is sent with the request id and reason.
+    ///
+    /// `initialize` is never cancelled on the wire, as required by MCP.
+    pub async fn request_cancellable<C>(
+        &self,
+        method: &str,
+        params: Option<serde_json::Value>,
+        timeout_ms: u64,
+        cancellation: C,
+        reason: impl Into<String>,
+    ) -> Result<serde_json::Value>
+    where
+        C: Future<Output = ()> + Send,
+    {
+        let reason = reason.into();
+        self.request_inner(
+            method,
+            params,
+            timeout_ms,
+            Some(Box::pin(cancellation)),
+            true,
+            &reason,
+        )
+        .await
+    }
+
+    async fn request_inner(
+        &self,
+        method: &str,
+        params: Option<serde_json::Value>,
+        timeout_ms: u64,
+        cancellation: Option<crate::util::BoxFuture<'_, ()>>,
+        cancel_on_timeout: bool,
+        cancellation_reason: &str,
+    ) -> Result<serde_json::Value> {
         let id = RequestId::Number(self.next_id.fetch_add(1, Ordering::SeqCst));
         let (tx, rx) = oneshot::channel();
         let message = Message::request(id.clone(), method, params);
@@ -194,20 +250,67 @@ impl Client {
             self.pending.lock().await.remove(&id);
             return Err(error);
         }
-        match tokio::time::timeout(Duration::from_millis(timeout_ms), rx).await {
-            Err(_) => {
-                self.pending.lock().await.remove(&id);
-                Err(crate::Error::Timeout {
-                    ms: timeout_ms,
-                    label: method.to_string(),
-                })
+
+        if let Some(mut cancellation) = cancellation {
+            tokio::select! {
+                result = rx => result.unwrap_or_else(|_| Err(crate::Error::message("request cancelled"))),
+                _ = tokio::time::sleep(Duration::from_millis(timeout_ms)) => {
+                    self.cancel_pending_request(
+                        &id,
+                        cancellation_reason,
+                        cancel_on_timeout && method != "initialize",
+                    ).await;
+                    Err(crate::Error::Timeout {
+                        ms: timeout_ms,
+                        label: method.to_string(),
+                    })
+                }
+                _ = &mut cancellation => {
+                    self.cancel_pending_request(
+                        &id,
+                        cancellation_reason,
+                        cancel_on_timeout && method != "initialize",
+                    ).await;
+                    Err(crate::Error::message("request cancelled"))
+                }
             }
-            Ok(Ok(result)) => result,
-            Ok(Err(_)) => {
-                self.pending.lock().await.remove(&id);
-                Err(crate::Error::message("request cancelled"))
+        } else {
+            match tokio::time::timeout(Duration::from_millis(timeout_ms), rx).await {
+                Err(_) => {
+                    self.cancel_pending_request(
+                        &id,
+                        cancellation_reason,
+                        cancel_on_timeout && method != "initialize",
+                    )
+                    .await;
+                    Err(crate::Error::Timeout {
+                        ms: timeout_ms,
+                        label: method.to_string(),
+                    })
+                }
+                Ok(Ok(result)) => result,
+                Ok(Err(_)) => Err(crate::Error::message("request cancelled")),
             }
         }
+    }
+
+    async fn cancel_pending_request(&self, id: &RequestId, reason: &str, notify: bool) -> bool {
+        let removed = self.pending.lock().await.remove(id).is_some();
+        if removed && notify {
+            let params = CancelledNotificationParams {
+                request_id: id.clone(),
+                reason: Some(reason.to_string()),
+            };
+            // Cancellation is best-effort. The transport's normal send path
+            // remains responsible for HTTP auth/session recovery.
+            let _ = self
+                .notification(
+                    CANCELLED_NOTIFICATION,
+                    Some(serde_json::to_value(params).expect("cancellation params serialize")),
+                )
+                .await;
+        }
+        removed
     }
 
     /// Fire-and-forget notification. From the SDK `Protocol.notification`.
@@ -353,6 +456,42 @@ impl Client {
         arguments: serde_json::Value,
         timeout_ms: u64,
     ) -> Result<CallToolResult> {
+        self.call_tool_inner(name, arguments, timeout_ms, None, REQUEST_TIMED_OUT_REASON)
+            .await
+    }
+
+    /// `tools/call` with caller-driven cancellation in addition to its
+    /// timeout and progress-reset behavior.
+    pub async fn call_tool_cancellable<C>(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+        timeout_ms: u64,
+        cancellation: C,
+        reason: impl Into<String>,
+    ) -> Result<CallToolResult>
+    where
+        C: Future<Output = ()> + Send,
+    {
+        let reason = reason.into();
+        self.call_tool_inner(
+            name,
+            arguments,
+            timeout_ms,
+            Some(Box::pin(cancellation)),
+            &reason,
+        )
+        .await
+    }
+
+    async fn call_tool_inner(
+        &self,
+        name: &str,
+        arguments: serde_json::Value,
+        timeout_ms: u64,
+        mut cancellation: Option<crate::util::BoxFuture<'_, ()>>,
+        cancellation_reason: &str,
+    ) -> Result<CallToolResult> {
         let progress_token =
             RequestId::Number(self.next_progress_token.fetch_add(1, Ordering::SeqCst));
         let (reset_tx, mut reset_rx) = watch::channel(());
@@ -388,23 +527,49 @@ impl Client {
         let outcome = loop {
             let deadline = tokio::time::sleep(Duration::from_millis(timeout_ms));
             tokio::pin!(deadline);
-            tokio::select! {
-                _ = &mut deadline => {
-                    self.pending.lock().await.remove(&id);
-                    self.progress.lock().await.remove(&progress_token);
-                    return Err(crate::Error::Timeout {
-                        ms: timeout_ms,
-                        label: format!("tools/call {name}"),
-                    });
-                }
-                changed = reset_rx.changed() => {
-                    if changed.is_err() {
-                        self.pending.lock().await.remove(&id);
+            if let Some(cancel) = cancellation.as_mut() {
+                tokio::select! {
+                    _ = &mut deadline => {
+                        self.cancel_pending_request(&id, cancellation_reason, true).await;
                         self.progress.lock().await.remove(&progress_token);
-                        return Err(crate::Error::message("progress channel closed"));
+                        return Err(crate::Error::Timeout {
+                            ms: timeout_ms,
+                            label: format!("tools/call {name}"),
+                        });
                     }
+                    changed = reset_rx.changed() => {
+                        if changed.is_err() {
+                            self.pending.lock().await.remove(&id);
+                            self.progress.lock().await.remove(&progress_token);
+                            return Err(crate::Error::message("progress channel closed"));
+                        }
+                    }
+                    _ = cancel => {
+                        self.cancel_pending_request(&id, cancellation_reason, true).await;
+                        self.progress.lock().await.remove(&progress_token);
+                        return Err(crate::Error::message("request cancelled"));
+                    }
+                    result = &mut rx => break result,
                 }
-                result = &mut rx => break result,
+            } else {
+                tokio::select! {
+                    _ = &mut deadline => {
+                        self.cancel_pending_request(&id, cancellation_reason, true).await;
+                        self.progress.lock().await.remove(&progress_token);
+                        return Err(crate::Error::Timeout {
+                            ms: timeout_ms,
+                            label: format!("tools/call {name}"),
+                        });
+                    }
+                    changed = reset_rx.changed() => {
+                        if changed.is_err() {
+                            self.pending.lock().await.remove(&id);
+                            self.progress.lock().await.remove(&progress_token);
+                            return Err(crate::Error::message("progress channel closed"));
+                        }
+                    }
+                    result = &mut rx => break result,
+                }
             }
         };
         self.progress.lock().await.remove(&progress_token);
@@ -412,10 +577,7 @@ impl Client {
         match outcome {
             Ok(Ok(value)) => Ok(serde_json::from_value(value)?),
             Ok(Err(error)) => Err(error),
-            Err(_) => {
-                self.pending.lock().await.remove(&id);
-                Err(crate::Error::message("request cancelled"))
-            }
+            Err(_) => Err(crate::Error::message("request cancelled")),
         }
     }
 

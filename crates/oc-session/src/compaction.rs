@@ -170,6 +170,16 @@ pub struct Selection {
     pub tail_start_id: Option<String>,
 }
 
+/// A completed tool part that the reference compaction pass would mark as
+/// compacted. Keeping the part identity here matters: several tool parts can
+/// belong to one assistant message, while OpenCode updates each part's
+/// `time.compacted` field independently.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PruneCandidate {
+    pub message_index: usize,
+    pub part_id: String,
+}
+
 /// From reference `compaction.ts:select` — choose which recent turns to keep
 /// verbatim after compaction.
 pub fn select(
@@ -235,12 +245,20 @@ pub fn select(
     }
 }
 
-/// From reference `compaction.ts:prune` — mark old completed tool outputs as
-/// compacted to free context.
-pub fn prune(messages: &[WithParts], estimate: &dyn Fn(&str) -> u64) -> Vec<usize> {
+/// From reference `compaction.ts:prune` — find old completed tool parts that
+/// can be marked compacted to free context.
+///
+/// The reference only applies the updates when the selected parts save more
+/// than `PRUNE_MINIMUM` tokens. Returning no candidates below that threshold
+/// prevents callers from partially pruning a session without a meaningful
+/// context reduction.
+pub fn prune_candidates(
+    messages: &[WithParts],
+    estimate: &dyn Fn(&str) -> u64,
+) -> Vec<PruneCandidate> {
     let mut total: u64 = 0;
     let mut pruned: u64 = 0;
-    let mut to_prune: Vec<usize> = Vec::new();
+    let mut to_prune: Vec<PruneCandidate> = Vec::new();
     let mut turn_count = 0usize;
     'outer: for (msg_index, msg) in messages.iter().enumerate().rev() {
         if msg.info.role() == "user" {
@@ -271,11 +289,27 @@ pub fn prune(messages: &[WithParts], estimate: &dyn Fn(&str) -> u64) -> Vec<usiz
                 continue;
             }
             pruned += estimate;
-            to_prune.push(msg_index);
+            to_prune.push(PruneCandidate {
+                message_index: msg_index,
+                part_id: tool.base.id.clone(),
+            });
         }
     }
-    let _ = pruned;
-    to_prune
+    if pruned > PRUNE_MINIMUM {
+        to_prune
+    } else {
+        Vec::new()
+    }
+}
+
+/// Backwards-compatible message-index projection for callers that only need
+/// to know which messages contain prunable parts. New persistence code should
+/// use [`prune_candidates`] so it can update the exact parts.
+pub fn prune(messages: &[WithParts], estimate: &dyn Fn(&str) -> u64) -> Vec<usize> {
+    prune_candidates(messages, estimate)
+        .into_iter()
+        .map(|candidate| candidate.message_index)
+        .collect()
 }
 
 /// From reference `compaction.ts:create` — construct the compaction user
@@ -396,6 +430,33 @@ mod tests {
         }
     }
 
+    fn tool_part(message_id: &str, part_id: &str, tool: &str) -> Part {
+        Part::Tool(crate::v1::ToolPart {
+            base: PartBase {
+                id: part_id.into(),
+                session_id: "s".into(),
+                message_id: message_id.into(),
+            },
+            type_: "tool".into(),
+            call_id: format!("call_{part_id}"),
+            tool: tool.into(),
+            state: crate::v1::ToolState::Completed(crate::v1::ToolStateCompleted {
+                status: "completed".into(),
+                input: crate::JsonMap::new(),
+                output: "output".into(),
+                title: "title".into(),
+                metadata: crate::JsonMap::new(),
+                time: crate::v1::CompletedTime {
+                    start: 0,
+                    end: 1,
+                    compacted: None,
+                },
+                attachments: None,
+            }),
+            metadata: None,
+        })
+    }
+
     #[test]
     fn turns_skip_compaction_messages() {
         let mut compaction_user = user("c");
@@ -487,5 +548,71 @@ mod tests {
         };
         assert!(compaction.auto);
         assert_eq!(compaction.overflow, Some(false));
+    }
+
+    #[test]
+    fn prune_returns_part_candidates_only_after_minimum_savings() {
+        let mut old_assistant = assistant("a1", "u1", None);
+        old_assistant.parts = (0..7)
+            .map(|index| tool_part("a1", &format!("part_{index}"), "read"))
+            .collect();
+        let messages = vec![
+            user("u1"),
+            old_assistant,
+            user("u2"),
+            assistant("a2", "u2", None),
+            user("u3"),
+            assistant("a3", "u3", None),
+        ];
+        let estimate = |_: &str| 10_000;
+
+        // The newest two user turns are protected. Of the seven old outputs,
+        // four fit within PRUNE_PROTECT and three are candidates. Their total
+        // is 30,000, which is strictly greater than PRUNE_MINIMUM.
+        let candidates = prune_candidates(&messages, &estimate);
+        assert_eq!(
+            candidates
+                .iter()
+                .map(|candidate| candidate.part_id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["part_2", "part_1", "part_0"]
+        );
+        assert_eq!(prune(&messages, &estimate), vec![1, 1, 1]);
+
+        // At exactly the minimum saving the reference keeps the parts intact.
+        let mut six = messages[1].clone();
+        six.parts.pop();
+        let below_threshold = vec![
+            messages[0].clone(),
+            six,
+            messages[2].clone(),
+            messages[3].clone(),
+            messages[4].clone(),
+            messages[5].clone(),
+        ];
+        assert!(prune_candidates(&below_threshold, &estimate).is_empty());
+    }
+
+    #[test]
+    fn prune_never_selects_protected_skill_parts() {
+        let mut old_assistant = assistant("a1", "u1", None);
+        old_assistant.parts = (0..8)
+            .map(|index| {
+                let tool = if index == 2 { "skill" } else { "read" };
+                tool_part("a1", &format!("part_{index}"), tool)
+            })
+            .collect();
+        let messages = vec![
+            user("u1"),
+            old_assistant,
+            user("u2"),
+            assistant("a2", "u2", None),
+            user("u3"),
+            assistant("a3", "u3", None),
+        ];
+        let candidates = prune_candidates(&messages, &|_: &str| 10_000);
+        assert!(candidates
+            .iter()
+            .all(|candidate| candidate.part_id != "part_2"));
     }
 }

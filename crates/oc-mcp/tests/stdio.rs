@@ -211,6 +211,12 @@ async fn stdio_client_initialize_list_and_call() {
     // prompts/resources.
     let prompts = client.list_prompts(None, 10_000).await.unwrap();
     assert_eq!(prompts.prompts[0].name, "greet");
+    let prompt = client
+        .get_prompt("greet", Some(json!({ "who": "$1" })), 10_000)
+        .await
+        .unwrap();
+    assert_eq!(prompt.description.as_deref(), Some("greet"));
+    assert_eq!(prompt.messages[0]["content"]["text"], "hi");
     let resources = client.list_resources(None, 10_000).await.unwrap();
     assert_eq!(resources.resources[0].name, "x");
     let read = client.read_resource("file:///tmp/x", 10_000).await.unwrap();

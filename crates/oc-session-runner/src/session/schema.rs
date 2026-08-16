@@ -1,20 +1,9 @@
 use serde::{Deserialize, Serialize};
 
-/// Branded Session ID (`ses_...` in reference, kept untyped here).
-/// /// From reference/packages/schema/src/session-id.ts
-pub type SessionID = String;
-
-/// `Model.Ref`
-/// /// From reference/packages/schema/src/model.ts
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ModelRef {
-    pub id: String,
-    #[serde(rename = "providerID")]
-    pub provider_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub variant: Option<String>,
-}
+// Canonical home: `oc_schema`.
+pub use oc_schema::location::Ref as LocationRef;
+pub use oc_schema::model::Ref as ModelRef;
+pub use oc_schema::session_id::SessionID;
 
 /// The minimal `Session.Info` projection the runner reads. Kept deliberately
 /// narrow; the full contract lives in `oc-session`.
@@ -28,16 +17,6 @@ pub struct SessionInfo {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelRef>,
     pub location: LocationRef,
-}
-
-/// `Location.Ref`
-/// /// From reference/packages/schema/src/location.ts
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LocationRef {
-    pub directory: String,
-    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none")]
-    pub workspace_id: Option<String>,
 }
 
 /// The runtime Location identity the runner compares against.

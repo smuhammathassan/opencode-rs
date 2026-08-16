@@ -160,11 +160,6 @@ impl Handler {
 
     /// `writeProposedEdit` from reference/packages/opencode/src/acp/permission.ts.
     async fn write_proposed_edit(&self, session_id: &str, metadata: &ToolInput) {
-        let filepath = string_value(metadata.get("filepath"));
-        let diff = string_value(metadata.get("diff"));
-        let (Some(filepath), Some(diff)) = (filepath, diff) else {
-            return;
-        };
         let supports_write = self
             .connection
             .as_ref()
@@ -176,6 +171,43 @@ impl Handler {
             return;
         }
 
+        if let Some(files) = metadata.get("files").and_then(Value::as_array) {
+            for file in files {
+                let Some(file) = file.as_object() else {
+                    continue;
+                };
+                let Some(filepath) = string_value(file.get("filePath")) else {
+                    continue;
+                };
+                let diff =
+                    string_value(file.get("patch")).or_else(|| string_value(file.get("diff")));
+                let Some(diff) = diff else {
+                    continue;
+                };
+                let content = if std::path::Path::new(&filepath).exists() {
+                    std::fs::read_to_string(&filepath).unwrap_or_default()
+                } else {
+                    String::new()
+                };
+                let Some(next) = apply_patch(&content, &diff) else {
+                    continue;
+                };
+                let _ = connection
+                    .write_text_file(WriteTextFileRequest {
+                        session_id: session_id.to_string(),
+                        path: filepath,
+                        content: next,
+                    })
+                    .await;
+            }
+            return;
+        }
+
+        let filepath = string_value(metadata.get("filepath"));
+        let diff = string_value(metadata.get("diff"));
+        let (Some(filepath), Some(diff)) = (filepath, diff) else {
+            return;
+        };
         let content = if std::path::Path::new(&filepath).exists() {
             std::fs::read_to_string(&filepath).unwrap_or_default()
         } else {

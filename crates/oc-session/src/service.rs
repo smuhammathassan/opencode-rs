@@ -10,6 +10,21 @@ pub struct SessionService<'a, D: SessionDb> {
     pub db: &'a D,
 }
 
+/// Stateless session mutations shared by callers that already own the
+/// session projection. Keeping these operations in the session service
+/// prevents HTTP/state adapters from reimplementing the session semantics.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SessionMutationService;
+
+impl SessionMutationService {
+    /// `Session.setTitle`.
+    pub fn set_title(&self, info: &Info, title: &str) -> Info {
+        let mut next = info.clone();
+        next.title = title.to_string();
+        next
+    }
+}
+
 /// From reference `session.ts:createNext`.
 pub fn create_next(
     project_id: &str,
@@ -113,9 +128,7 @@ impl<'a, D: SessionDb> SessionService<'a, D> {
 
     /// `Session.setTitle`.
     pub fn set_title(&self, info: &Info, title: &str) -> Info {
-        let mut next = info.clone();
-        next.title = title.to_string();
-        next
+        SessionMutationService.set_title(info, title)
     }
 
     /// `Session.setAgentModel`.
@@ -236,6 +249,18 @@ mod tests {
         let service = SessionService::new(&MemDb);
         assert!(service.get("ses_missing").is_err());
         assert_eq!(service.get("ses_1").unwrap().title, "Existing");
+    }
+
+    #[test]
+    fn title_mutation_changes_only_the_title() {
+        let mut info = SessionInfo::default();
+        info.title = "Before".into();
+        info.time.updated = 42;
+
+        let updated = SessionMutationService.set_title(&info, "After");
+
+        assert_eq!(updated.title, "After");
+        assert_eq!(updated.time.updated, 42);
     }
 
     #[test]

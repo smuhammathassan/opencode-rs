@@ -360,6 +360,18 @@ pub struct ProgressNotificationParams {
     pub total: Option<f64>,
 }
 
+/// `notifications/cancelled` params.
+///
+/// MCP requires the request id for ordinary request cancellation and permits
+/// an optional human-readable reason.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct CancelledNotificationParams {
+    pub request_id: RequestId,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
 /// A workspace root advertised by the client.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "camelCase")]

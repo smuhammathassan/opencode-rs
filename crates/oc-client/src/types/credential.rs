@@ -1,31 +1,12 @@
 //! Credential types.
 //! From reference/packages/schema/src/credential.ts.
+//!
+//! Canonical home: `oc_schema::credential`.
 
-// TODO(integration): promote to oc-schema.
 use crate::types::location::LocationQueryRef;
-use crate::types::schema::JsonValue;
-use std::collections::HashMap;
 
-/// `Credential.Value` — tagged on `type`.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "type")]
-pub enum CredentialValue {
-    #[serde(rename = "oauth")]
-    Oauth {
-        method_id: String,
-        refresh: String,
-        access: String,
-        expires: u64,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        metadata: Option<HashMap<String, JsonValue>>,
-    },
-    #[serde(rename = "key")]
-    Key {
-        key: String,
-        #[serde(default, skip_serializing_if = "Option::is_none")]
-        metadata: Option<HashMap<String, JsonValue>>,
-    },
-}
+// Re-export shim: `oc_schema::credential` is the single canonical definition.
+pub use oc_schema::credential::Value as CredentialValue;
 
 /// `CredentialsUpdateInput`.
 #[derive(Debug, Clone, Default, PartialEq)]

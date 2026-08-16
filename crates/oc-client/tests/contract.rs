@@ -154,3 +154,20 @@ fn unknown_event_type_falls_back_to_raw() {
         _ => panic!("expected raw event"),
     }
 }
+
+#[test]
+fn session_compacted_event_is_typed() {
+    let event: OpenCodeEvent = serde_json::from_value(serde_json::json!({
+        "id": "evt_compacted",
+        "type": "session.compacted",
+        "data": { "sessionID": "ses_compacted" },
+    }))
+    .unwrap();
+    assert_eq!(event.event_type(), "session.compacted");
+    match event {
+        OpenCodeEvent::SessionCompacted { data, .. } => {
+            assert_eq!(data.session_id, "ses_compacted");
+        }
+        _ => panic!("expected typed compacted event"),
+    }
+}

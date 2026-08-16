@@ -165,7 +165,9 @@ impl Message {
 #[serde(rename_all = "camelCase")]
 pub struct TextPart {
     pub id: String,
+    #[serde(alias = "sessionID")]
     pub session_id: String,
+    #[serde(alias = "messageID")]
     pub message_id: String,
     pub text: String,
     #[serde(default)]
@@ -181,7 +183,9 @@ pub struct TextPart {
 #[serde(rename_all = "camelCase")]
 pub struct FilePart {
     pub id: String,
+    #[serde(alias = "sessionID")]
     pub session_id: String,
+    #[serde(alias = "messageID")]
     pub message_id: String,
     pub mime: String,
     #[serde(default)]
@@ -194,7 +198,9 @@ pub struct FilePart {
 #[serde(rename_all = "camelCase")]
 pub struct ReasoningPart {
     pub id: String,
+    #[serde(alias = "sessionID")]
     pub session_id: String,
+    #[serde(alias = "messageID")]
     pub message_id: String,
     pub text: String,
     #[serde(default)]
@@ -257,8 +263,11 @@ pub enum ToolState {
 #[serde(rename_all = "camelCase")]
 pub struct ToolPart {
     pub id: String,
+    #[serde(alias = "sessionID")]
     pub session_id: String,
+    #[serde(alias = "messageID")]
     pub message_id: String,
+    #[serde(alias = "callID")]
     pub call_id: String,
     pub tool: String,
     pub state: ToolState,
@@ -356,6 +365,7 @@ pub struct SessionMessageResponse {
 #[serde(rename_all = "camelCase")]
 pub struct PermissionAskedProperties {
     pub id: String,
+    #[serde(alias = "sessionID")]
     pub session_id: String,
     pub permission: String,
     pub patterns: Vec<String>,
@@ -369,7 +379,9 @@ pub struct PermissionAskedProperties {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PermissionTool {
+    #[serde(alias = "messageID")]
     pub message_id: String,
+    #[serde(alias = "callID")]
     pub call_id: String,
 }
 
@@ -377,6 +389,7 @@ pub struct PermissionTool {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessagePartUpdatedProperties {
+    #[serde(alias = "sessionID")]
     pub session_id: String,
     pub part: Part,
 }
@@ -385,11 +398,31 @@ pub struct MessagePartUpdatedProperties {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessagePartDeltaProperties {
+    #[serde(alias = "sessionID")]
     pub session_id: String,
+    #[serde(alias = "messageID")]
     pub message_id: String,
+    #[serde(alias = "partID")]
     pub part_id: String,
     pub field: String,
     pub delta: String,
+}
+
+/// `session.status` event properties used to order a prompt response after the
+/// runner has emitted its final transcript updates.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionStatusProperties {
+    #[serde(alias = "sessionID")]
+    pub session_id: String,
+    pub status: SessionStatus,
+}
+
+/// The status payload carried by a `session.status` event.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct SessionStatus {
+    #[serde(rename = "type")]
+    pub kind: String,
 }
 
 /// Events consumed by the ACP subscription.
@@ -398,6 +431,11 @@ pub struct MessagePartDeltaProperties {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Event {
+    #[serde(rename = "session.status")]
+    SessionStatus {
+        id: String,
+        properties: SessionStatusProperties,
+    },
     #[serde(rename = "permission.asked")]
     PermissionAsked {
         id: String,

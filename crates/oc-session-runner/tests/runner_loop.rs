@@ -309,20 +309,24 @@ impl LlmClient for MockLlm {
     fn stream(
         &self,
         _request: oc_session_runner::llm::message::LLMRequest,
-    ) -> Pin<Box<dyn Future<Output = Result<Vec<LLMEvent>, LLMError>> + Send + '_>> {
+    ) -> Pin<Box<dyn Future<Output = Result<LlmEventStream, LLMError>> + Send + '_>> {
         let response = self.responses.lock().unwrap().pop_front();
         Box::pin(async move {
-            response.ok_or_else(|| LLMError {
-                module: "test".into(),
-                method: "stream".into(),
-                reason: oc_session_runner::llm::LLMErrorReason::NoRoute(
-                    oc_session_runner::llm::error::ReasonMessage {
-                        message: "no more responses".into(),
-                        provider_metadata: None,
-                        http: None,
-                    },
-                ),
-            })
+            response
+                .map(|events| {
+                    Box::pin(futures::stream::iter(events.into_iter().map(Ok))) as LlmEventStream
+                })
+                .ok_or_else(|| LLMError {
+                    module: "test".into(),
+                    method: "stream".into(),
+                    reason: oc_session_runner::llm::LLMErrorReason::NoRoute(
+                        oc_session_runner::llm::error::ReasonMessage {
+                            message: "no more responses".into(),
+                            provider_metadata: None,
+                            http: None,
+                        },
+                    ),
+                })
         })
     }
 }

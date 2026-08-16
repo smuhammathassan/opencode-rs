@@ -483,6 +483,14 @@ pub struct RevertCommittedData {
     pub message_id: String,
 }
 
+/// `session.compacted` event data.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CompactedData {
+    #[serde(rename = "sessionID")]
+    pub session_id: String,
+}
+
 /// `SessionEvent.Durable` — the durable session events streamed by
 /// `GET /api/session/:sessionID/event` and returned by `session.history`.
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
@@ -967,6 +975,13 @@ pub enum OpenCodeEvent {
         location: Option<LocationRef>,
         data: CompactionDeltaData,
     },
+    SessionCompacted {
+        id: String,
+        metadata: Option<HashMap<String, JsonValue>>,
+        durable: Option<DurableInfo>,
+        location: Option<LocationRef>,
+        data: CompactedData,
+    },
     ServerConnected {
         id: String,
         metadata: Option<HashMap<String, JsonValue>>,
@@ -1181,6 +1196,7 @@ impl OpenCodeEvent {
             OpenCodeEvent::ReasoningDelta { .. } => "session.next.reasoning.delta",
             OpenCodeEvent::ToolInputDelta { .. } => "session.next.tool.input.delta",
             OpenCodeEvent::CompactionDelta { .. } => "session.next.compaction.delta",
+            OpenCodeEvent::SessionCompacted { .. } => "session.compacted",
             OpenCodeEvent::ServerConnected { .. } => "server.connected",
             OpenCodeEvent::SessionCreated { .. } => "session.created",
             OpenCodeEvent::SessionUpdated { .. } => "session.updated",
@@ -1237,6 +1253,7 @@ impl<'de> serde::Deserialize<'de> for OpenCodeEvent {
             opt_field::<LocationRef>(value, "location").map_err(D::Error::custom)
         };
         match event_type.as_str() {
+            "session.compacted" => decode_payload!(value, SessionCompacted, CompactedData),
             "server.connected" => Ok(OpenCodeEvent::ServerConnected {
                 id: req_str(&value, "id"),
                 metadata: metadata(&value)?,
