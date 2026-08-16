@@ -17,7 +17,11 @@ The port now has a real local server → session runner → provider/core-tool �
 
 The individual crates are, in the main, faithful, well-tested ports of their reference subsystems (the prior 1519-test baseline remains green, with new focused regressions added for provider/MCP auth, GitHub workflows, completion, and shutdown). The product is not assembled; the latest connected slices add production config resolution, configured-agent catalogs, export/sanitize, an interactive database shell, and a shell-backed PTY, but neither is native-terminal or full-OpenCode parity.
 
-### Latest revalidation (2026-08-16)
+#- **Version surfaces (F073):** `/global/health` and the OpenAPI doc now report the reference version `1.18.13` (via `oc_util::version::REFERENCE_VERSION`), mirroring `InstallationVersion`, instead of the crate package version `0.1.0`.
+- **API prompt→SSE flow (F072/F076/F077/F087/F088):** verified end-to-end over HTTP — `POST /session` creates a session, `POST /session/:id/message` admits a prompt, the production runner streams it through a live provider (`opencode-go/kimi-k3`), and the session returns durable user + assistant messages with `modelID`/`providerID`/`agent`/reasoning.
+- **Error formatting (F148):** `session delete <missing>` exits 1 and prints `Unexpected error` + the cause chain — byte-consistent with the reference `index.ts` catch path (`FormatError === undefined` → `UI.error("Unexpected error")` + `errorMessage(e)`).
+
+## Latest revalidation (2026-08-16)
 
 - **Provider wiring (F101/F079):** the native text runner now wires the `opencode` (OpenCode Zen, `https://opencode.ai/zen/v1`) and `opencode-go` (OpenCode Go, `https://opencode.ai/zen/go/v1`) catalog providers through the OpenAI-compatible route, with `OPENCODE_API_KEY`/saved-credential auth and the reference's `apiKey: "public"` fallback for the `opencode` provider. `./opencode run --model opencode-go/kimi-k3 "Reply with exactly: PARITY-OK"` completes a live end-to-end run against the OpenCode Go endpoint and returns `PARITY-OK`; Zen correctly returns `401 Model not supported` for free-tier models not available to the public key.
 - **Transport parity (F101):** `jsonRequestParts` now forces `content-type: application/json` after caller headers, mirroring `ProviderShared.jsonPost`; without it every OpenAI-compatible endpoint rejected the JSON body as `text/plain` (`HTTP 415`). Regression test `json_transport_forces_application_json_content_type` passes; `oc-llm` suite **35/35** green.
