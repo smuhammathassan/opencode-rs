@@ -214,15 +214,23 @@ impl FSUtilService {
     }
 
     pub async fn chmod(&self, path: &str, mode: u32) -> Result<(), FsError> {
-        use std::os::unix::fs::PermissionsExt;
-        let mut permissions = tokio::fs::metadata(path)
-            .await
-            .map_err(|e| FsError::from_io("chmod", path, e))?
-            .permissions();
-        permissions.set_mode(mode);
-        tokio::fs::set_permissions(path, permissions)
-            .await
-            .map_err(|e| FsError::from_io("chmod", path, e))
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mut permissions = tokio::fs::metadata(path)
+                .await
+                .map_err(|e| FsError::from_io("chmod", path, e))?
+                .permissions();
+            permissions.set_mode(mode);
+            tokio::fs::set_permissions(path, permissions)
+                .await
+                .map_err(|e| FsError::from_io("chmod", path, e))
+        }
+        #[cfg(not(unix))]
+        {
+            // No-op on Windows: `PermissionsExt::set_mode` is Unix-only.
+            Ok(())
+        }
     }
 
     pub async fn ensure_dir(&self, path: &str) -> Result<(), FsError> {
