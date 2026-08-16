@@ -1124,6 +1124,42 @@ pub(crate) fn configured_model_with_auth(
             };
             Ok(oc_llm::providers::openai_compatible::configure(config).model(model_id))
         }
+        "opencode" | "opencode-go" => {
+            // OpenCode Zen / OpenCode Go are OpenAI-compatible endpoints from
+            // the models.dev catalog (`api` field). The reference reaches them
+            // through its built-in `opencode` default plugin; the native runner
+            // mirrors the same wire shape so catalog models are executable.
+            let base_url = std::env::var("OPENCODE_OPENCODE_BASE_URL")
+                .ok()
+                .unwrap_or_else(|| {
+                    if provider == "opencode-go" {
+                        "https://opencode.ai/zen/go/v1".to_string()
+                    } else {
+                        "https://opencode.ai/zen/v1".to_string()
+                    }
+                });
+            let api_key = std::env::var("OPENCODE_API_KEY")
+                .ok()
+                .filter(|value| !value.is_empty())
+                .or_else(|| {
+                    // The reference `opencode` default plugin sends `apiKey:
+                    // "public"` when no credential is configured so free-tier
+                    // catalog models remain reachable; paid models are disabled
+                    // at catalog load time in the reference.
+                    if provider == "opencode" {
+                        Some("public".to_string())
+                    } else {
+                        None
+                    }
+                });
+            let config = oc_llm::providers::openai_compatible::GenericModelOptions {
+                base_url,
+                api_key,
+                auth,
+                ..Default::default()
+            };
+            Ok(oc_llm::providers::openai_compatible::configure(config).model(model_id))
+        }
         other => {
             return Err(format!(
                 "provider `{other}` is not wired for the local text runner"
