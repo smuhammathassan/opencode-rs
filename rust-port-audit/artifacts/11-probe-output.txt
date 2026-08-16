@@ -1,5 +1,0 @@
-fs_contains(ws, ws/link/evil.txt) = true
-symlink_metadata(ws/link/evil.txt): (true, false)
-outside file content after write-through-symlink: "ESCAPED\n"
-symlink_metadata(/dev/zero).is_file=false is_dir=false type=FileType { is_file: false, is_dir: false, is_symlink: false, .. }
-symlink_metadata(/tmp/opencode/a11/ws/fifo).is_file=false is_dir=false type=FileType { is_file: false, is_dir: false, is_symlink: false, .. }

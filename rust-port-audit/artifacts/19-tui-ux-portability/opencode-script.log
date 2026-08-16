@@ -1,4 +1,0 @@
-Script started on 2026-08-05 08:54:50+00:00 [COMMAND="./target/release/opencode </dev/null" <not executed on terminal>]
-[91m[1mError:  [0mthe TUI is not yet wired in this build (TODO(integration): oc-tui)
-
-Script done on 2026-08-05 08:54:50+00:00 [COMMAND_EXIT_CODE="1"]
