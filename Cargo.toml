@@ -40,7 +40,7 @@ tokio = { version = "1", features = ["full"] }
 futures = "0.3"
 regex = "1"
 rustls = { version = "0.23", default-features = false }
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream", "multipart"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls", "stream", "multipart"] }
 url = "2"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -49,3 +49,13 @@ indexmap = { version = "2", features = ["serde"] }
 toml = "0.8"
 json5 = "0.4"
 quick-js = "0.1"
+
+# Release hardening (SUPPLY-004 / RELEASE-010). `panic` stays the default
+# "unwind": `panic = "abort"` is deferred until the FFI catch_unwind / panic
+# paths are proven panic-free (see plan-19 §3.3). opt-level is left at the
+# release default (3).
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = "symbols"
+debug = "line-tables-only"

@@ -1,0 +1,6 @@
+# Pin the Rust toolchain for all contributors and CI (SUPPLY-002 / MSRV).
+# Matches the toolchain the workspace was audited against (rustc 1.97.1).
+[toolchain]
+channel = "1.97.1"
+components = ["rustfmt", "clippy"]
+profile = "minimal"
