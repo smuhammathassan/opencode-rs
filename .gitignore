@@ -4,3 +4,4 @@
 # local worktrees
 .worktrees/
 *.local
+reference/
