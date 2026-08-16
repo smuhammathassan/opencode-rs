@@ -285,3 +285,48 @@ fn load_errors_on_invalid_json() {
         "{error:?}"
     );
 }
+
+#[test]
+fn plugins_alias_merges_into_plugin_list() {
+    let home = TestHome::new();
+    std::fs::write(
+        home.project.join("opencode.json"),
+        r#"{
+          "plugin": ["alpha"],
+          "plugins": ["beta", "gamma"]
+        }"#,
+    )
+    .expect("write");
+    let state = load_instance_state(&LoadOptions {
+        directory: home.project.to_string_lossy().into_owned(),
+        worktree: Some(home.home.to_string_lossy().into_owned()),
+        env: Default::default(),
+        username: Some("u".to_string()),
+    })
+    .expect("load");
+    let plugin = state.config.plugin.expect("plugin list");
+    let names: Vec<String> = plugin
+        .iter()
+        .map(|spec| spec.package().to_string())
+        .collect();
+    assert_eq!(names, vec!["alpha", "beta", "gamma"]);
+}
+
+#[test]
+fn plugins_alias_alone_is_accepted() {
+    let home = TestHome::new();
+    std::fs::write(
+        home.project.join("opencode.json"),
+        r#"{ "plugins": ["delta"] }"#,
+    )
+    .expect("write");
+    let state = load_instance_state(&LoadOptions {
+        directory: home.project.to_string_lossy().into_owned(),
+        worktree: Some(home.home.to_string_lossy().into_owned()),
+        env: Default::default(),
+        username: Some("u".to_string()),
+    })
+    .expect("load");
+    let plugin = state.config.plugin.expect("plugin list");
+    assert_eq!(plugin[0].package(), "delta");
+}

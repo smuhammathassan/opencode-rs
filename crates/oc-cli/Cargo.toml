@@ -23,6 +23,7 @@ oc-config = { version = "0.1", path = "../oc-config" }
 oc-database = { version = "0.1", path = "../oc-database" }
 oc-core = { version = "0.1", path = "../oc-core" }
 oc-provider = { version = "0.1", path = "../oc-provider" }
+indexmap = { workspace = true }
 oc-llm = { version = "0.1", path = "../oc-llm" }
 oc-plugin = { version = "0.1", path = "../oc-plugin" }
 oc-mcp = { version = "0.1", path = "../oc-mcp" }

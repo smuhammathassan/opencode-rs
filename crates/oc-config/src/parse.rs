@@ -45,6 +45,7 @@ pub const KNOWN_TOP_LEVEL_KEYS: &[&str] = &[
     "watcher",
     "snapshot",
     "plugin",
+    "plugins",
     "share",
     "autoshare",
     "autoupdate",
@@ -91,6 +92,12 @@ pub fn schema(data: Value, source: &str) -> Result<Info, ConfigError> {
         return Err(ConfigError::invalid(source, vec![issue], None));
     }
 
+    // Merge the `plugins` alias into the canonical `plugin` key before the
+    // typed decode. The v1.18.13 reference only declares `plugin` (zod strips
+    // `plugins`), while newer configs emit `plugins`; a serde alias alone
+    // errors when a file declares both keys.
+    let data = merge_plugins_alias(data);
+
     let value = serde_path_to_error::deserialize::<_, Info>(data).map_err(|error| {
         let path = error
             .path()
@@ -117,6 +124,29 @@ pub fn schema(data: Value, source: &str) -> Result<Info, ConfigError> {
 }
 
 use crate::v1::lsp;
+
+/// Merge the `plugins` alias into the canonical `plugin` key. `plugin` wins
+/// ordering (it appears first in the file); `plugins` entries append after.
+fn merge_plugins_alias(data: Value) -> Value {
+    let Value::Object(mut map) = data else {
+        return data;
+    };
+    let canonical = map.remove("plugin");
+    let alias = map.remove("plugins");
+    if canonical.is_none() && alias.is_none() {
+        return Value::Object(map);
+    }
+    let mut merged: Vec<Value> = match canonical {
+        Some(Value::Array(items)) => items,
+        Some(other) => vec![other],
+        None => Vec::new(),
+    };
+    if let Some(Value::Array(items)) = alias {
+        merged.extend(items);
+    }
+    map.insert("plugin".to_string(), Value::Array(merged));
+    Value::Object(map)
+}
 
 /// Replicates `topLevelExtraKeys` in `ConfigParse.schema`.
 fn top_level_extra_keys(data: &Value) -> Vec<String> {
