@@ -16,7 +16,7 @@ use ratatui::style::{Color, Modifier, Style};
 use ratatui::Terminal;
 use tokio::sync::mpsc;
 
-use crate::client::SdkClient;
+use crate::client::{SdkClient, TuiControlRequest};
 use crate::components::dialog::{self, DialogItem, DialogKind, DialogState};
 use crate::components::permission::{self, PermissionState};
 use crate::components::question::{self, QuestionState};
@@ -31,7 +31,7 @@ use crate::prompt::stash::PromptStash;
 use crate::prompt::state::{PromptMode, PromptState};
 use crate::sync::SyncState;
 use crate::theme::{Mode, Theme};
-use crate::types::{GlobalEvent, SessionStatus};
+use crate::types::{BackgroundJobInfo, GlobalEvent, SessionStatus};
 use crate::util::locale;
 
 pub const OPENCODE_BASE_MODE: &str = "base";
@@ -56,11 +56,19 @@ pub struct TuiInput {
     pub agent: Option<String>,
     pub model: Option<String>,
     pub prompt: Option<String>,
+    /// Structured parts to seed into the initial prompt before auto-submit.
+    /// File parts use the same marker/source shape as interactive attachments.
+    pub initial_parts: Vec<serde_json::Value>,
+    /// Whether resumed sessions should hydrate their prior message history.
+    pub replay: bool,
+    /// Maximum number of newest messages to hydrate for a resumed session.
+    pub replay_limit: Option<usize>,
 }
 
 pub(crate) enum ClientMessage {
     Event(GlobalEvent),
     Bootstrap(BootstrapData),
+    Control(TuiControlRequest),
 }
 
 #[derive(Default)]
@@ -68,6 +76,7 @@ pub(crate) struct BootstrapData {
     providers: Vec<crate::types::Provider>,
     agents: Vec<crate::types::Agent>,
     commands: Vec<crate::types::Command>,
+    skills: Vec<crate::types::Skill>,
     config: crate::types::Config,
     sessions: Vec<crate::types::Session>,
     capabilities: crate::types::ExperimentalCapabilities,
@@ -122,7 +131,12 @@ pub struct App {
     pub prompt_ready: bool,
     pub autosubmitted: bool,
     pub kv: HashMap<String, serde_json::Value>,
+    terminal_suspend_requested: bool,
     pub(crate) pending_session_data: Option<(String, mpsc::Receiver<SessionData>)>,
+    pub(crate) pending_background_jobs:
+        Option<mpsc::Receiver<anyhow::Result<Vec<BackgroundJobInfo>>>>,
+    pub(crate) pending_background_cancel:
+        Option<(String, mpsc::Receiver<anyhow::Result<BackgroundJobInfo>>)>,
     pub(crate) pending_create: Option<(
         mpsc::Receiver<Option<String>>,
         String,
@@ -136,7 +150,11 @@ pub struct App {
     pub initial_agent: Option<String>,
     pub initial_model: Option<String>,
     pub initial_prompt: Option<String>,
+    pub initial_parts: Vec<serde_json::Value>,
+    pub background_jobs: Vec<BackgroundJobInfo>,
     pub continue_requested: bool,
+    pub replay: bool,
+    pub replay_limit: Option<usize>,
     pub dirty: bool,
 }
 
@@ -161,8 +179,10 @@ impl Default for StatusMsg {
 
 impl App {
     pub fn new(input: TuiInput, client: Arc<dyn SdkClient>) -> Self {
+        let leader = input.config.leader_key();
+        let theme = Theme::from_config(&input.config);
         let keymap = Keymap::new(KeymapOptions {
-            leader: "ctrl+x".to_string(),
+            leader,
             leader_timeout: Duration::from_millis(input.config.leader_timeout),
         });
         App {
@@ -170,7 +190,7 @@ impl App {
             config: input.config,
             sync: SyncState::default(),
             route: Route::Home,
-            theme: Theme::dark(),
+            theme,
             local: Local::default(),
             home_prompt: PromptState::default(),
             session_prompt: None,
@@ -198,7 +218,10 @@ impl App {
             prompt_ready: false,
             autosubmitted: false,
             kv: HashMap::new(),
+            terminal_suspend_requested: false,
             pending_session_data: None,
+            pending_background_jobs: None,
+            pending_background_cancel: None,
             pending_create: None,
             on_submit: None,
             initial_session_id: if input.continue_session {
@@ -209,7 +232,11 @@ impl App {
             initial_agent: input.agent,
             initial_model: input.model,
             initial_prompt: input.prompt,
+            initial_parts: input.initial_parts,
+            background_jobs: Vec::new(),
             continue_requested: input.continue_session,
+            replay: input.replay,
+            replay_limit: input.replay_limit,
             dirty: false,
         }
     }
@@ -617,6 +644,7 @@ impl App {
                 self.sync.providers = data.providers;
                 self.sync.agents = data.agents;
                 self.sync.commands = data.commands;
+                self.sync.skills = data.skills;
                 self.sync.config = data.config;
                 self.sync.capabilities = data.capabilities;
                 self.sync.console_state = data.console_state;
@@ -636,7 +664,89 @@ impl App {
                     }
                 }
             }
+            ClientMessage::Control(request) => self.handle_tui_control(request),
         }
+    }
+
+    fn handle_tui_control(&mut self, request: TuiControlRequest) {
+        let path = request.path.clone();
+        match request.path.as_str() {
+            "/tui/open-help" => self.dispatch("help.show"),
+            "/tui/open-sessions" => self.dispatch("session.list"),
+            "/tui/open-themes" => self.dispatch("theme.switch"),
+            "/tui/open-models" => self.dispatch("model.list"),
+            "/tui/submit-prompt" => self.dispatch("prompt.submit"),
+            "/tui/clear-prompt" => self.dispatch("prompt.clear"),
+            "/tui/execute-command" => {
+                if let Some(command) = request
+                    .body
+                    .get("command")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    self.dispatch(command);
+                }
+            }
+            "/tui/append-prompt" => {
+                let text = request
+                    .body
+                    .get("text")
+                    .or_else(|| request.body.get("prompt"))
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                if let Some(prompt) = self.active_prompt() {
+                    prompt.buffer.insert_str(text);
+                    prompt.sync_parts();
+                    prompt.update_autocomplete();
+                }
+            }
+            "/tui/show-toast" => {
+                let message = request
+                    .body
+                    .get("message")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or_default();
+                let variant = match request
+                    .body
+                    .get("variant")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    Some("success") => ToastVariant::Success,
+                    Some("warning") => ToastVariant::Warning,
+                    Some("error") => ToastVariant::Error,
+                    _ => ToastVariant::Info,
+                };
+                let mut toast = Toast::new(message).with_variant(variant);
+                if let Some(title) = request
+                    .body
+                    .get("title")
+                    .and_then(serde_json::Value::as_str)
+                {
+                    toast = toast.with_title(title);
+                }
+                self.toasts.show(toast);
+            }
+            "/tui/select-session" => {
+                if let Some(session_id) = request
+                    .body
+                    .get("sessionID")
+                    .or_else(|| request.body.get("sessionId"))
+                    .and_then(serde_json::Value::as_str)
+                {
+                    self.navigate_session(session_id);
+                }
+            }
+            "/tui/publish" => {}
+            _ => self
+                .toasts
+                .warning(format!("Unknown TUI control request: {path}")),
+        }
+
+        let client = self.client.clone();
+        tokio::spawn(async move {
+            let _ = client
+                .tui_control_response(serde_json::json!({ "path": path, "ok": true }))
+                .await;
+        });
     }
 
     fn handle_tui_event(&mut self, event: &GlobalEvent) {
@@ -734,15 +844,496 @@ impl App {
     fn sync_session(&mut self, session_id: &str) {
         let client = self.client.clone();
         let session_id = session_id.to_string();
+        let replay = self.replay;
+        let replay_limit = self.replay_limit;
         let (tx, rx) = mpsc::channel::<SessionData>(1);
         let fetch_id = session_id.clone();
         tokio::spawn(async move {
             let session = client.session_get(&fetch_id).await.ok();
-            let messages = client.session_messages(&fetch_id).await.unwrap_or_default();
+            let messages = if replay {
+                replay_messages(
+                    client.session_messages(&fetch_id).await.unwrap_or_default(),
+                    replay_limit,
+                )
+            } else {
+                Vec::new()
+            };
             let _ = tx.send(SessionData { session, messages }).await;
         });
         // Draining happens in the main loop; store the channel until consumed.
         self.pending_session_data = Some((session_id, rx));
+    }
+}
+
+/// Keep the newest messages for mini-mode history replay.
+///
+/// Session APIs return messages in chronological order, so truncating the
+/// prefix preserves the most recent conversation context.
+fn replay_messages<T>(mut messages: Vec<T>, limit: Option<usize>) -> Vec<T> {
+    if let Some(limit) = limit {
+        let keep_from = messages.len().saturating_sub(limit);
+        messages.drain(..keep_from);
+    }
+    messages
+}
+
+#[cfg(test)]
+mod replay_tests {
+    use super::{replay_messages, App};
+    use serde_json::json;
+
+    #[test]
+    fn replay_limit_keeps_newest_messages() {
+        assert_eq!(replay_messages(vec![1, 2, 3, 4], Some(2)), vec![3, 4]);
+        assert_eq!(replay_messages(vec![1, 2], Some(10)), vec![1, 2]);
+        assert!(replay_messages(vec![1, 2], Some(0)).is_empty());
+        assert_eq!(replay_messages(vec![1, 2], None), vec![1, 2]);
+    }
+
+    #[test]
+    fn submission_parts_include_expanded_text_after_attachments() {
+        let parts = App::prompt_submission_parts(
+            "Review these",
+            vec![json!({
+                "type": "file",
+                "url": "file:///tmp/notes.txt",
+                "source": { "type": "file", "text": { "value": "[file:notes.txt]", "start": 14, "end": 30 } }
+            })],
+        );
+        assert_eq!(parts.len(), 2);
+        assert_eq!(parts[0]["type"], "file");
+        assert_eq!(parts[1], json!({ "type": "text", "text": "Review these" }));
+    }
+
+    #[test]
+    fn submission_parts_replace_local_pasted_text_metadata() {
+        let parts = App::prompt_submission_parts(
+            "expanded paste",
+            vec![json!({
+                "type": "text",
+                "text": "expanded paste",
+                "source": { "text": { "value": "[Pasted]", "start": 0, "end": 8 } }
+            })],
+        );
+        assert_eq!(
+            parts,
+            vec![json!({ "type": "text", "text": "expanded paste" })]
+        );
+    }
+}
+
+#[cfg(test)]
+mod leader_tests {
+    use super::*;
+    use crate::client::MockSdkClient;
+    use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
+    use serde_json::json;
+
+    fn input(config: ResolvedConfig) -> TuiInput {
+        TuiInput {
+            url: "http://localhost".to_string(),
+            directory: None,
+            workspace: None,
+            cwd: PathBuf::from("/tmp"),
+            home: PathBuf::from("/tmp"),
+            state_dir: PathBuf::from("/tmp"),
+            config,
+            continue_session: false,
+            session_id: None,
+            agent: None,
+            model: None,
+            prompt: None,
+            initial_parts: Vec::new(),
+            replay: false,
+            replay_limit: None,
+        }
+    }
+
+    #[test]
+    fn app_uses_configured_leader_for_chords() {
+        let config = crate::config::resolve(
+            &json!({
+                "keybinds": {
+                    "leader": "ctrl+space",
+                    "session_new": "<leader>n"
+                }
+            }),
+            crate::config::ResolveOptions::default(),
+        );
+        let mut app = App::new(input(config), Arc::new(MockSdkClient::new()));
+        app.route = Route::Session {
+            id: "ses_test".to_string(),
+        };
+        app.rebuild_keymap();
+
+        let now = Instant::now();
+        assert_eq!(
+            app.keymap.handle(
+                &KeyEvent::new(KeyCode::Char(' '), KeyModifiers::CONTROL),
+                now,
+            ),
+            MatchResult::Pending
+        );
+        assert_eq!(
+            app.keymap
+                .handle(&KeyEvent::new(KeyCode::Char('n'), KeyModifiers::NONE), now),
+            MatchResult::Command("session.new".to_string())
+        );
+    }
+
+    #[test]
+    fn app_loads_configured_theme_mode() {
+        let config = crate::config::resolve(
+            &json!({ "theme": "opencode", "theme_mode": "light" }),
+            crate::config::ResolveOptions::default(),
+        );
+        let app = App::new(input(config), Arc::new(MockSdkClient::new()));
+
+        assert_eq!(app.theme.mode, Mode::Light);
+    }
+
+    #[test]
+    fn terminal_title_toggle_persists_preference() {
+        let mut app = App::new(
+            input(crate::config::ResolvedConfig::default_config()),
+            Arc::new(MockSdkClient::new()),
+        );
+        assert!(app.kv_get_bool("terminal_title_enabled", true));
+        app.dispatch("terminal.title.toggle");
+        assert!(!app.kv_get_bool("terminal_title_enabled", true));
+        app.dispatch("terminal.title.toggle");
+        assert!(app.kv_get_bool("terminal_title_enabled", false));
+    }
+
+    #[test]
+    fn terminal_suspend_dispatch_defers_to_terminal_loop() {
+        let mut app = App::new(
+            input(crate::config::ResolvedConfig::default_config()),
+            Arc::new(MockSdkClient::new()),
+        );
+        assert!(!app.take_terminal_suspend_request());
+        app.dispatch("terminal.suspend");
+        assert!(app.take_terminal_suspend_request());
+        assert!(!app.take_terminal_suspend_request());
+    }
+
+    #[tokio::test]
+    async fn server_tui_control_requests_reach_the_application_loop() {
+        let mut app = App::new(
+            input(crate::config::ResolvedConfig::default_config()),
+            Arc::new(MockSdkClient::new()),
+        );
+        app.handle_client_message(ClientMessage::Control(TuiControlRequest {
+            path: "/tui/append-prompt".into(),
+            body: json!({ "text": "from server" }),
+        }));
+        assert_eq!(app.home_prompt.text(), "from server");
+
+        app.handle_client_message(ClientMessage::Control(TuiControlRequest {
+            path: "/tui/open-help".into(),
+            body: json!({}),
+        }));
+        assert!(matches!(
+            app.dialog.as_ref().map(|dialog| &dialog.kind),
+            Some(DialogKind::Help)
+        ));
+    }
+}
+
+#[cfg(test)]
+mod dialog_tests {
+    use super::*;
+    use crate::client::MockSdkClient;
+    use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
+    use serde_json::json;
+
+    fn app() -> App {
+        App::new(
+            TuiInput {
+                url: "http://localhost".to_string(),
+                directory: None,
+                workspace: None,
+                cwd: PathBuf::from("/tmp"),
+                home: PathBuf::from("/tmp"),
+                state_dir: PathBuf::from("/tmp"),
+                config: ResolvedConfig::default_config(),
+                continue_session: false,
+                session_id: None,
+                agent: None,
+                model: None,
+                prompt: None,
+                initial_parts: Vec::new(),
+                replay: false,
+                replay_limit: None,
+            },
+            Arc::new(MockSdkClient::new()),
+        )
+    }
+
+    fn providers() -> Vec<crate::types::Provider> {
+        serde_json::from_value(json!([
+            {
+                "id": "p1", "name": "Provider One", "source": "config", "env": [], "options": {},
+                "models": {
+                    "alpha": {
+                        "id": "alpha", "providerID": "p1", "name": "Alpha",
+                        "capabilities": {"input": {}, "output": {}},
+                        "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+                        "limit": {"context": 10, "output": 10}, "status": "active",
+                        "options": {}, "headers": {}, "release_date": ""
+                    },
+                    "beta": {
+                        "id": "beta", "providerID": "p1", "name": "Beta",
+                        "capabilities": {"input": {}, "output": {}},
+                        "cost": {"input": 0, "output": 0, "cache": {"read": 0, "write": 0}},
+                        "limit": {"context": 10, "output": 10}, "status": "active",
+                        "options": {}, "headers": {}, "release_date": ""
+                    }
+                }
+            }
+        ]))
+        .unwrap()
+    }
+
+    #[test]
+    fn model_switcher_filters_typed_query_before_submit() {
+        let mut app = app();
+        app.sync.providers = providers();
+        app.dispatch("model.list");
+        app.rebuild_keymap();
+        app.handle_input(Event::Key(KeyEvent::new(
+            KeyCode::Char('b'),
+            KeyModifiers::NONE,
+        )));
+
+        assert_eq!(
+            app.dialog.as_ref().map(|dialog| dialog.filter.as_str()),
+            Some("b")
+        );
+        app.dispatch("dialog.select.submit");
+
+        assert_eq!(app.local.model.unwrap().model_id, "beta");
+        assert!(app.dialog.is_none());
+    }
+
+    #[test]
+    fn session_switcher_orders_newest_first() {
+        let mut app = app();
+        app.sync.sessions = serde_json::from_value(json!([
+            {
+                "id": "ses_old", "slug": "old", "projectID": "p", "directory": "/proj",
+                "title": "Older", "version": "1", "time": {"created": 1, "updated": 10}
+            },
+            {
+                "id": "ses_new", "slug": "new", "projectID": "p", "directory": "/proj",
+                "title": "Newest", "version": "1", "time": {"created": 2, "updated": 20}
+            }
+        ]))
+        .unwrap();
+        app.dispatch("session.list");
+
+        let items = app.dialog_items();
+        assert_eq!(items[0].title, "Newest");
+        assert_eq!(items[1].title, "Older");
+    }
+
+    #[test]
+    fn queued_prompts_dialog_shows_current_session_queue() {
+        let mut app = app();
+        app.route = Route::Session {
+            id: "ses_1".to_string(),
+        };
+        app.sync.queued_prompts.insert(
+            "ses_1".to_string(),
+            vec![crate::types::QueuedPrompt {
+                id: "msg_1".to_string(),
+                session_id: "ses_1".to_string(),
+                prompt: json!({ "text": "review the queued changes" }),
+                timestamp: 1,
+            }],
+        );
+
+        app.dispatch("session.queued_prompts");
+
+        assert!(matches!(
+            app.dialog.as_ref().map(|dialog| &dialog.kind),
+            Some(DialogKind::InfoItems { title, .. }) if title == "Queued prompts"
+        ));
+        assert_eq!(app.dialog_items()[0].title, "review the queued changes");
+        assert_eq!(
+            app.dialog_items()[0].description.as_deref(),
+            Some("queued · msg_1")
+        );
+    }
+
+    #[test]
+    fn skill_bootstrap_opens_selector_and_inserts_invocation() {
+        let mut app = app();
+        app.handle_client_message(ClientMessage::Bootstrap(BootstrapData {
+            skills: vec![
+                crate::types::Skill {
+                    name: "review".to_string(),
+                    description: Some("Review the current changes".to_string()),
+                    location: "/project/.opencode/skills/review/SKILL.md".to_string(),
+                    content: "Review instructions".to_string(),
+                },
+                crate::types::Skill {
+                    name: "docs".to_string(),
+                    description: Some("Update documentation".to_string()),
+                    location: "/project/.opencode/skills/docs/SKILL.md".to_string(),
+                    content: "Documentation instructions".to_string(),
+                },
+            ],
+            ..BootstrapData::default()
+        }));
+
+        app.dispatch("prompt.skills");
+        assert!(matches!(
+            app.dialog.as_ref().map(|dialog| &dialog.kind),
+            Some(DialogKind::SkillList)
+        ));
+        assert_eq!(app.dialog_items()[0].title, "/docs");
+
+        app.dialog.as_mut().unwrap().selected = 1;
+        app.dispatch("dialog.select.submit");
+
+        assert_eq!(app.home_prompt.text(), "/review ");
+        assert!(app.dialog.is_none());
+    }
+
+    #[test]
+    fn skill_selection_preserves_existing_prompt_as_arguments() {
+        let mut app = app();
+        app.sync.skills = vec![crate::types::Skill {
+            name: "review".to_string(),
+            description: None,
+            location: String::new(),
+            content: String::new(),
+        }];
+        app.home_prompt.buffer.insert_str("src/main.rs");
+        app.dispatch("prompt.skills");
+        app.dispatch("dialog.select.submit");
+
+        assert_eq!(app.home_prompt.text(), "/review src/main.rs");
+    }
+
+    #[test]
+    fn session_timeline_lists_messages_and_closes_after_jump() {
+        let mut app = app();
+        app.route = Route::Session {
+            id: "ses_test".to_string(),
+        };
+        let message: crate::types::Message = serde_json::from_value(json!({
+            "role": "user",
+            "id": "msg_user",
+            "sessionID": "ses_test",
+            "time": {"created": 1},
+            "agent": "build",
+            "model": {"id": "model", "providerID": "provider"}
+        }))
+        .unwrap();
+        let part: crate::types::Part = serde_json::from_value(json!({
+            "type": "text",
+            "id": "prt_user",
+            "sessionID": "ses_test",
+            "messageID": "msg_user",
+            "text": "Inspect the current changes"
+        }))
+        .unwrap();
+        app.sync
+            .messages
+            .insert("ses_test".to_string(), vec![message]);
+        app.sync.parts.insert("msg_user".to_string(), vec![part]);
+
+        app.dispatch("session.timeline");
+        let items = app.dialog_items();
+        assert_eq!(items.len(), 1);
+        assert!(items[0].title.contains("Inspect the current changes"));
+        assert!(items[0]
+            .description
+            .as_deref()
+            .unwrap()
+            .starts_with("msg_user"));
+
+        app.dispatch("dialog.select.submit");
+        assert!(app.dialog.is_none());
+    }
+
+    #[tokio::test]
+    async fn background_dialog_lists_status_and_cancels_running_job() {
+        let client = Arc::new(MockSdkClient::new());
+        client
+            .background_jobs
+            .lock()
+            .unwrap()
+            .push(crate::types::BackgroundJobInfo {
+                id: "ses_background_1".to_string(),
+                r#type: "subagent".to_string(),
+                title: Some("Inspect repository".to_string()),
+                status: "running".to_string(),
+                started_at: 1,
+                completed_at: None,
+                output: None,
+                error: None,
+                metadata: None,
+            });
+        let mut app = App::new(
+            TuiInput {
+                url: "http://localhost".to_string(),
+                directory: None,
+                workspace: None,
+                cwd: PathBuf::from("/tmp"),
+                home: PathBuf::from("/tmp"),
+                state_dir: PathBuf::from("/tmp"),
+                config: ResolvedConfig::default_config(),
+                continue_session: false,
+                session_id: None,
+                agent: None,
+                model: None,
+                prompt: None,
+                initial_parts: Vec::new(),
+                replay: false,
+                replay_limit: None,
+            },
+            client.clone(),
+        );
+
+        app.dispatch("session.background");
+        assert!(matches!(
+            app.dialog.as_ref().map(|dialog| &dialog.kind),
+            Some(DialogKind::BackgroundJobs)
+        ));
+        for _ in 0..8 {
+            tokio::task::yield_now().await;
+            app.drain_pending();
+            if app.background_jobs.len() == 1 {
+                break;
+            }
+        }
+        assert_eq!(app.dialog_items()[0].title, "Inspect repository [running]");
+        assert!(app.dialog_items()[0]
+            .description
+            .as_deref()
+            .unwrap()
+            .contains("ses_background_1"));
+
+        app.dispatch("dialog.select.submit");
+        for _ in 0..8 {
+            tokio::task::yield_now().await;
+            app.drain_pending();
+            if client.cancelled_background_jobs.lock().unwrap().len() == 1 {
+                break;
+            }
+        }
+        assert_eq!(
+            client.cancelled_background_jobs.lock().unwrap().as_slice(),
+            ["ses_background_1"]
+        );
+        assert_eq!(app.background_jobs[0].status, "cancelled");
+        assert!(matches!(
+            app.dialog.as_ref().map(|dialog| &dialog.kind),
+            Some(DialogKind::BackgroundJobs)
+        ));
     }
 }
 
@@ -754,6 +1345,52 @@ pub(crate) struct SessionData {
 impl App {
     /// Drain pending session sync results.
     pub fn drain_pending(&mut self) {
+        if let Some(mut rx) = self.pending_background_jobs.take() {
+            match rx.try_recv() {
+                Ok(Ok(jobs)) => {
+                    self.background_jobs = jobs;
+                }
+                Ok(Err(error)) => {
+                    if matches!(
+                        self.dialog.as_ref().map(|dialog| &dialog.kind),
+                        Some(DialogKind::BackgroundJobs)
+                    ) {
+                        self.dialog = None;
+                    }
+                    self.toasts
+                        .error(format!("Failed to load background jobs: {error}"));
+                }
+                Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {
+                    self.pending_background_jobs = Some(rx);
+                }
+                Err(_) => {}
+            }
+        }
+
+        if let Some((job_id, mut rx)) = self.pending_background_cancel.take() {
+            match rx.try_recv() {
+                Ok(Ok(job)) => {
+                    if let Some(existing) = self
+                        .background_jobs
+                        .iter_mut()
+                        .find(|existing| existing.id == job.id)
+                    {
+                        *existing = job;
+                    }
+                    self.toasts
+                        .success(format!("Cancelled background job {job_id}"));
+                }
+                Ok(Err(error)) => {
+                    self.toasts
+                        .error(format!("Failed to cancel background job {job_id}: {error}"));
+                }
+                Err(tokio::sync::mpsc::error::TryRecvError::Empty) => {
+                    self.pending_background_cancel = Some((job_id, rx));
+                }
+                Err(_) => {}
+            }
+        }
+
         if let Some((session_id, mut rx)) = self.pending_session_data.take() {
             match rx.try_recv() {
                 Ok(data) => {
@@ -821,8 +1458,31 @@ impl App {
             }
             MatchResult::None => {
                 self.leader_active = self.keymap.leader_active;
+                if self.dialog.is_some() {
+                    use crossterm::event::{KeyCode, KeyModifiers};
+                    let printable = !key.modifiers.intersects(
+                        KeyModifiers::CONTROL | KeyModifiers::ALT | KeyModifiers::SUPER,
+                    );
+                    match key.code {
+                        KeyCode::Char(character) if printable => {
+                            if let Some(dialog) = &mut self.dialog {
+                                dialog.filter.push(character);
+                                dialog.selected = 0;
+                            }
+                        }
+                        KeyCode::Backspace if printable => {
+                            if let Some(dialog) = &mut self.dialog {
+                                dialog.filter.pop();
+                                dialog.selected = 0;
+                            }
+                        }
+                        KeyCode::Esc => self.dialog = None,
+                        _ => {}
+                    }
+                    return;
+                }
                 // Raw character input into the focused prompt.
-                if self.dialog.is_none() && self.route_is_prompt_focusable() {
+                if self.route_is_prompt_focusable() {
                     use crossterm::event::KeyCode;
                     match key.code {
                         KeyCode::Char(c)
@@ -891,22 +1551,22 @@ impl App {
     }
 
     fn scroll_by(&mut self, delta: i64) {
-        let max = self.messages.len() as i64;
+        let max = self.messages.len().saturating_sub(1) as i64;
         if let Some(id) = self.current_session_id() {
             let view = self.session_view_mut(&id);
-            view.scroll = (view.scroll + delta).clamp(0, max.saturating_sub(1));
+            view.scroll = (view.scroll + delta).clamp(0, max);
             if delta > 0 {
-                view.sticky_bottom = view.scroll >= max.saturating_sub(1);
+                view.sticky_bottom = view.scroll >= max;
             }
         }
     }
 
     fn scroll_to(&mut self, target: i64) {
-        let max = self.messages.len() as i64;
+        let max = self.messages.len().saturating_sub(1) as i64;
         if let Some(id) = self.current_session_id() {
             let view = self.session_view_mut(&id);
-            view.scroll = target.clamp(0, max.saturating_sub(1));
-            view.sticky_bottom = view.scroll >= max.saturating_sub(1);
+            view.scroll = target.clamp(0, max);
+            view.sticky_bottom = view.scroll >= max;
         }
     }
 
@@ -915,11 +1575,13 @@ impl App {
     pub fn dispatch(&mut self, command: &str) {
         match command {
             "app.exit" => self.exit_app(),
+            "terminal.suspend" => self.terminal_suspend_requested = true,
             "command.palette.show" => self.open_dialog(DialogKind::CommandPalette),
             "session.new" => self.navigate_home(),
             "session.list" => self.open_dialog(DialogKind::SessionList),
             "model.list" => self.open_dialog(DialogKind::ModelList),
             "agent.list" => self.open_dialog(DialogKind::AgentList),
+            "prompt.skills" => self.open_dialog(DialogKind::SkillList),
             "provider.connect" => self.open_dialog(DialogKind::ProviderList),
             "help.show" => self.open_dialog(DialogKind::Help),
             "opencode.status" => self.show_status_dialog(),
@@ -1019,18 +1681,15 @@ impl App {
             "session.quick_switch.8" => self.quick_switch(7),
             "session.quick_switch.9" => self.quick_switch(8),
             "session.interrupt" => self.interrupt_session(),
-            "session.export" => {
-                self.toasts
-                    .info("TODO(integration): session export to editor");
-            }
+            "session.export" => self.export_session(),
             "session.timeline" => {
-                self.toasts.info("TODO(integration): session timeline");
+                self.show_session_timeline();
             }
             "session.queued_prompts" => {
-                self.toasts.info("TODO(integration): queued prompts");
+                self.show_queued_prompts();
             }
             "session.background" => {
-                self.toasts.info("TODO(integration): background subagents");
+                self.show_background_jobs();
             }
             "messages.copy" => self.copy_last_assistant_message(),
             "prompt.clear" => self.clear_prompt(),
@@ -1039,12 +1698,11 @@ impl App {
                     self.submit_prompt();
                 }
             }
-            "prompt.editor" => self.toasts.info("TODO(integration): external editor"),
-            "prompt.paste" => self.toasts.info("TODO(integration): clipboard paste"),
+            "prompt.editor" => self.open_prompt_editor(),
+            "prompt.paste" => self.paste_clipboard(),
             "prompt.stash" => self.stash_prompt(),
             "prompt.stash.pop" => self.stash_pop(),
             "prompt.stash.list" => self.open_dialog(DialogKind::StashList),
-            "prompt.skills" => self.toasts.info("TODO(integration): skill selector"),
             "prompt.history.previous" => self.history_move(-1),
             "prompt.history.next" => self.history_move(1),
             "prompt.shell.enter" => self.set_prompt_mode(PromptMode::Shell),
@@ -1088,6 +1746,20 @@ impl App {
             "app.toggle.paste_summary" => self.kv_toggle("paste_summary_enabled"),
             "app.toggle.session_directory_filter" => {
                 self.kv_toggle("session_directory_filter_enabled")
+            }
+            "terminal.title.toggle" => {
+                let enabled = !self.kv_get_bool("terminal_title_enabled", true);
+                self.kv_set("terminal_title_enabled", enabled);
+                let title = if enabled {
+                    self.current_session_id()
+                        .and_then(|id| self.sync.session(&id).map(|session| session.title.clone()))
+                        .filter(|title| !title.trim().is_empty())
+                        .unwrap_or_else(|| "opencode".to_string())
+                } else {
+                    "opencode".to_string()
+                };
+                let _ =
+                    crossterm::execute!(std::io::stdout(), crossterm::terminal::SetTitle(title));
             }
             "permission.prompt.fullscreen" => {
                 if let Some(id) = self.current_session_id() {
@@ -1174,6 +1846,10 @@ impl App {
         self.exiting = true;
     }
 
+    pub(crate) fn take_terminal_suspend_request(&mut self) -> bool {
+        std::mem::take(&mut self.terminal_suspend_requested)
+    }
+
     fn kv_get_bool(&self, key: &str, default: bool) -> bool {
         self.kv
             .get(key)
@@ -1239,6 +1915,114 @@ impl App {
             title: "Themes".to_string(),
             items,
         }));
+    }
+
+    fn show_session_timeline(&mut self) {
+        let Some(session_id) = self.current_session_id() else {
+            self.toasts.info("Timeline is available inside a session");
+            return;
+        };
+        let messages = self.sync.messages_for(&session_id);
+        if messages.is_empty() {
+            self.toasts.info("This session has no messages yet");
+            return;
+        }
+
+        let items =
+            messages
+                .iter()
+                .map(|message| {
+                    let preview = self
+                        .sync
+                        .parts_for(message.id())
+                        .iter()
+                        .find_map(|part| match part {
+                            crate::types::Part::Text(text)
+                                if !text.is_synthetic() && !text.is_ignored() =>
+                            {
+                                Some(text.text.trim().replace('\n', " "))
+                            }
+                            _ => None,
+                        })
+                        .filter(|text| !text.is_empty())
+                        .map(|text| {
+                            if text.chars().count() > 72 {
+                                format!("{}…", text.chars().take(72).collect::<String>())
+                            } else {
+                                text
+                            }
+                        })
+                        .unwrap_or_else(|| "(no text)".to_string());
+                    DialogItem::new(format!("{}: {preview}", message.role()))
+                        .with_description(format!("{} · {}", message.id(), message.role()))
+                })
+                .collect();
+        self.dialog = Some(DialogState::new(DialogKind::InfoItems {
+            title: "Timeline".to_string(),
+            items,
+        }));
+    }
+
+    /// Fetch and show the process-local background jobs exposed by the
+    /// experimental session background API. The request is asynchronous so
+    /// the TUI remains responsive while a remote server responds.
+    fn show_background_jobs(&mut self) {
+        self.dialog = Some(DialogState::new(DialogKind::BackgroundJobs));
+        let client = self.client.clone();
+        let (tx, rx) = mpsc::channel(1);
+        tokio::spawn(async move {
+            let _ = tx
+                .send(client.experimental_session_background_list().await)
+                .await;
+        });
+        self.pending_background_jobs = Some(rx);
+    }
+
+    fn show_queued_prompts(&mut self) {
+        let items = self
+            .current_session_id()
+            .and_then(|session_id| self.sync.queued_prompts.get(&session_id))
+            .map(|prompts| {
+                prompts
+                    .iter()
+                    .map(|prompt| {
+                        DialogItem::new(prompt.summary())
+                            .with_description(format!("queued · {}", prompt.id))
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        let items = if items.is_empty() {
+            vec![DialogItem::new("No queued prompts")]
+        } else {
+            items
+        };
+        self.dialog = Some(DialogState::new(DialogKind::InfoItems {
+            title: "Queued prompts".to_string(),
+            items,
+        }));
+    }
+
+    fn cancel_background_job(&mut self, job_id: &str) {
+        if self.pending_background_cancel.is_some() {
+            self.toasts
+                .info("A background job cancellation is already pending");
+            return;
+        }
+        let client = self.client.clone();
+        let job_id = job_id.to_string();
+        let request_id = job_id.clone();
+        let (tx, rx) = mpsc::channel(1);
+        tokio::spawn(async move {
+            let _ = tx
+                .send(
+                    client
+                        .experimental_session_background_cancel(&request_id)
+                        .await,
+                )
+                .await;
+        });
+        self.pending_background_cancel = Some((job_id, rx));
     }
 
     fn message_height(&self) -> usize {
@@ -1546,10 +2330,85 @@ impl App {
             self.toasts
                 .error("No text content found in last assistant message");
         } else {
-            self.toasts.info("Message copied to clipboard");
-            // TODO(integration): write to the system clipboard.
+            match crate::clipboard::copy(&text) {
+                Ok(()) => self.toasts.info("Message copied to clipboard"),
+                Err(error) => self.toasts.error(format!("Clipboard unavailable: {error}")),
+            }
         }
         self.dialog = None;
+    }
+
+    fn paste_clipboard(&mut self) {
+        match crate::clipboard::paste() {
+            Ok(text) if !text.is_empty() => {
+                if let Some(prompt) = self.active_prompt() {
+                    prompt.buffer.insert_str(&text);
+                    prompt.sync_parts();
+                    prompt.update_autocomplete();
+                    self.dirty = true;
+                }
+            }
+            Ok(_) => self.toasts.info("Clipboard is empty"),
+            Err(error) => self.toasts.error(format!("Clipboard unavailable: {error}")),
+        }
+    }
+
+    fn open_prompt_editor(&mut self) {
+        let initial = self
+            .active_prompt_ref()
+            .map(PromptState::text)
+            .unwrap_or_default();
+        match crate::editor::edit(&initial) {
+            Ok(text) => {
+                if let Some(prompt) = self.active_prompt() {
+                    prompt.buffer.set_text(&text);
+                    prompt.sync_parts();
+                    prompt.update_autocomplete();
+                }
+                self.dirty = true;
+            }
+            Err(error) => self.toasts.error(format!("Editor unavailable: {error}")),
+        }
+    }
+
+    fn export_session(&mut self) {
+        let Some(session_id) = self.current_session_id() else {
+            self.toasts.error("No active session");
+            return;
+        };
+        let mut transcript = String::new();
+        for message in self.sync.messages_for(&session_id) {
+            transcript.push_str("## ");
+            transcript.push_str(message.role());
+            transcript.push_str("\n\n");
+            for part in self.sync.parts_for(message.id()) {
+                match part {
+                    crate::types::Part::Text(part) if !part.is_ignored() => {
+                        transcript.push_str(&part.text);
+                    }
+                    crate::types::Part::Reasoning(part) => {
+                        transcript.push_str("\n\n<details><summary>reasoning</summary>\n\n");
+                        transcript.push_str(&part.text);
+                        transcript.push_str("\n\n</details>");
+                    }
+                    crate::types::Part::File(part) => {
+                        transcript.push_str("\n\n[file: ");
+                        transcript.push_str(part.filename.as_deref().unwrap_or(&part.url));
+                        transcript.push(']');
+                    }
+                    _ => {}
+                }
+            }
+            transcript.push_str("\n\n");
+        }
+        if transcript.trim().is_empty() {
+            self.toasts.error("No session messages to export");
+            return;
+        }
+        match crate::editor::edit(&transcript) {
+            Ok(_) => self.toasts.info("Session opened in editor"),
+            Err(error) => self.toasts.error(format!("Editor unavailable: {error}")),
+        }
     }
 
     fn clear_prompt(&mut self) {
@@ -1704,6 +2563,26 @@ impl App {
         }
     }
 
+    /// Build the v1 prompt parts sent to the server. Prompt markers and pasted
+    /// text are local TUI metadata; the server still requires one explicit text
+    /// part for the expanded prompt, followed by any file/agent attachments.
+    fn prompt_submission_parts(
+        input_text: &str,
+        parts: Vec<serde_json::Value>,
+    ) -> Vec<serde_json::Value> {
+        let mut submission = parts
+            .into_iter()
+            .filter(|part| part.get("type").and_then(serde_json::Value::as_str) != Some("text"))
+            .collect::<Vec<_>>();
+        if !input_text.is_empty() || !submission.is_empty() {
+            submission.push(serde_json::json!({
+                "type": "text",
+                "text": input_text,
+            }));
+        }
+        submission
+    }
+
     fn send_to_session(
         &mut self,
         session_id: &str,
@@ -1791,7 +2670,8 @@ impl App {
                 });
             }
             _ => {
-                let non_text_parts = strip_prompt_part_ids(&parts);
+                let submission_parts = Self::prompt_submission_parts(&input_text, parts);
+                let non_text_parts = strip_prompt_part_ids(&submission_parts);
                 let prompt_variant = model_ref.variant.clone();
                 tokio::spawn(async move {
                     let _ = client
@@ -1845,6 +2725,33 @@ impl App {
                 }
                 items
             }
+            DialogKind::SkillList => {
+                let mut skills = self.sync.skills.iter().collect::<Vec<_>>();
+                skills.sort_by(|a, b| a.name.cmp(&b.name));
+                skills
+                    .into_iter()
+                    .map(|skill| {
+                        let mut item = DialogItem::new(format!("/{}", skill.name));
+                        item.description = skill.description.clone();
+                        item
+                    })
+                    .collect()
+            }
+            DialogKind::BackgroundJobs => self
+                .background_jobs
+                .iter()
+                .map(|job| {
+                    let title = job
+                        .title
+                        .clone()
+                        .unwrap_or_else(|| format!("{} ({})", job.r#type, job.id));
+                    let mut item = DialogItem::new(format!("{} [{}]", title, job.status));
+                    item.description =
+                        Some(format!("{} · {} · {}", job.id, job.status, job.r#type));
+                    item.selected = job.status == "running";
+                    item
+                })
+                .collect(),
             DialogKind::AgentList => {
                 let current = self.local.current_agent(&self.sync).map(|a| a.name.clone());
                 let mut items: Vec<DialogItem> = self
@@ -1872,17 +2779,21 @@ impl App {
                 items
             }
             DialogKind::SessionList => {
-                let mut items: Vec<DialogItem> = self
-                    .sync
-                    .sessions
-                    .iter()
+                let mut sessions: Vec<&crate::types::Session> = self.sync.sessions.iter().collect();
+                sessions.sort_by(|a, b| {
+                    b.time
+                        .updated
+                        .cmp(&a.time.updated)
+                        .then_with(|| a.title.cmp(&b.title))
+                        .then_with(|| a.id.cmp(&b.id))
+                });
+                sessions
+                    .into_iter()
                     .map(|s| {
                         DialogItem::new(s.title.clone())
                             .with_description(format!("{} · {}", s.id, s.time.updated))
                     })
-                    .collect();
-                items.sort_by(|a, b| a.description.cmp(&b.description));
-                items
+                    .collect()
             }
             DialogKind::ProviderList => {
                 let mut items: Vec<DialogItem> = self
@@ -1953,14 +2864,14 @@ impl App {
     }
 
     fn dialog_move(&mut self, delta: i32) {
-        let total = self.dialog_items().len();
+        let total = self.dialog_filtered_indices().len();
         if let Some(dialog) = &mut self.dialog {
             dialog.selected = dialog::move_selection(dialog.selected, total, delta);
         }
     }
 
     fn dialog_move_page(&mut self, direction: i32) {
-        let total = self.dialog_items().len();
+        let total = self.dialog_filtered_indices().len();
         let page = 10i32;
         if let Some(dialog) = &mut self.dialog {
             dialog.selected = dialog::move_selection(dialog.selected, total, direction * page);
@@ -1974,10 +2885,28 @@ impl App {
     }
 
     fn dialog_end(&mut self) {
-        let total = self.dialog_items().len();
+        let total = self.dialog_filtered_indices().len();
         if let Some(dialog) = &mut self.dialog {
             dialog.selected = total.saturating_sub(1);
         }
+    }
+
+    fn dialog_filtered_indices(&self) -> Vec<usize> {
+        let filter = self
+            .dialog
+            .as_ref()
+            .map(|dialog| dialog.filter.as_str())
+            .unwrap_or_default();
+        let items = self.dialog_items();
+        dialog::filter_items(&items, filter)
+    }
+
+    fn selected_dialog_item(&self, dialog: &DialogState) -> Option<(usize, DialogItem)> {
+        let items = self.dialog_items();
+        let filtered = dialog::filter_items(&items, &dialog.filter);
+        filtered
+            .get(dialog.selected)
+            .and_then(|index| items.get(*index).cloned().map(|item| (*index, item)))
     }
 
     fn dialog_submit(&mut self) {
@@ -1986,17 +2915,52 @@ impl App {
         };
         match dialog.kind {
             DialogKind::ModelList => {
-                let items = self.dialog_items();
-                if let Some(item) = items.get(dialog.selected) {
-                    if let Some(model) = self.parse_model_item(item) {
+                if let Some((_, item)) = self.selected_dialog_item(&dialog) {
+                    if let Some(model) = self.parse_model_item(&item) {
                         self.local.set_model(model, true);
                     }
                 }
                 self.dialog = None;
             }
+            DialogKind::SkillList => {
+                if let Some((_, item)) = self.selected_dialog_item(&dialog) {
+                    if let Some(prompt) = self.active_prompt() {
+                        let invocation = format!("{} ", item.title);
+                        prompt.buffer.set_cursor(0);
+                        prompt.buffer.insert_str(&invocation);
+                        prompt.buffer.buffer_end();
+                        prompt.sync_parts();
+                        prompt.update_autocomplete();
+                    }
+                }
+                self.dialog = None;
+            }
+            DialogKind::BackgroundJobs => {
+                if let Some((_, item)) = self.selected_dialog_item(&dialog) {
+                    let job_id = item
+                        .description
+                        .as_deref()
+                        .and_then(|description| description.split(" · ").next())
+                        .filter(|id| !id.is_empty())
+                        .map(str::to_string);
+                    if let Some(job_id) = job_id {
+                        if self
+                            .background_jobs
+                            .iter()
+                            .find(|job| job.id == job_id)
+                            .map(|job| job.status.as_str())
+                            == Some("running")
+                        {
+                            self.cancel_background_job(&job_id);
+                        } else {
+                            self.toasts
+                                .info("Only running background jobs can be cancelled");
+                        }
+                    }
+                }
+            }
             DialogKind::AgentList => {
-                let items = self.dialog_items();
-                if let Some(item) = items.get(dialog.selected) {
+                if let Some((_, item)) = self.selected_dialog_item(&dialog) {
                     let name = item.title.trim_start_matches('@').to_string();
                     if self
                         .local
@@ -2010,8 +2974,7 @@ impl App {
                 self.dialog = None;
             }
             DialogKind::SessionList => {
-                let items = self.dialog_items();
-                if let Some(item) = items.get(dialog.selected) {
+                if let Some((_, item)) = self.selected_dialog_item(&dialog) {
                     // The description carries the session id.
                     if let Some(desc) = &item.description {
                         let id = desc.split(" · ").next().unwrap_or("").to_string();
@@ -2020,10 +2983,6 @@ impl App {
                             return;
                         }
                     }
-                    if let Some(session) = self.sync.sessions.get(dialog.selected) {
-                        let id = session.id.clone();
-                        self.navigate_session(&id);
-                    }
                 }
                 self.dialog = None;
             }
@@ -2031,8 +2990,7 @@ impl App {
                 self.dialog = None;
             }
             DialogKind::CommandPalette => {
-                let items = self.dialog_items();
-                let command = if let Some(item) = items.get(dialog.selected) {
+                let command = if let Some((_, item)) = self.selected_dialog_item(&dialog) {
                     self.palette_command_for_title(&item.title)
                 } else {
                     None
@@ -2043,21 +3001,45 @@ impl App {
                 }
             }
             DialogKind::InfoItems { title, items } => {
-                if title == "Themes" {
-                    if let Some(item) = items.get(dialog.selected) {
-                        if item.title.contains("light mode") {
-                            self.theme = Theme::light();
-                        } else if item.title.contains("dark mode") {
-                            self.theme = Theme::dark();
+                if title == "Timeline" {
+                    let filtered = dialog::filter_items(&items, &dialog.filter);
+                    let target_id = filtered
+                        .get(dialog.selected)
+                        .and_then(|item_index| items.get(*item_index))
+                        .and_then(|item| item.description.as_deref())
+                        .and_then(|description| description.split(" · ").next())
+                        .filter(|id| !id.is_empty())
+                        .map(str::to_string);
+                    if let (Some(session_id), Some(target_id)) =
+                        (self.current_session_id(), target_id)
+                    {
+                        let target = self
+                            .sync
+                            .messages_for(&session_id)
+                            .iter()
+                            .position(|message| message.id() == target_id)
+                            .map(|index| self.message_line_for_message(index));
+                        if let Some(target) = target {
+                            self.scroll_to(target as i64);
+                        }
+                    }
+                } else if title == "Themes" {
+                    let filtered = dialog::filter_items(&items, &dialog.filter);
+                    if let Some(item_index) = filtered.get(dialog.selected) {
+                        if let Some(item) = items.get(*item_index) {
+                            if item.title.contains("light mode") {
+                                self.theme = Theme::light();
+                            } else if item.title.contains("dark mode") {
+                                self.theme = Theme::dark();
+                            }
                         }
                     }
                 }
                 self.dialog = None;
             }
             DialogKind::StashList => {
-                let items = self.dialog_items();
-                if let Some(item) = items.get(dialog.selected) {
-                    if let Some(entry) = self.stash.list().get(dialog.selected).cloned() {
+                if let Some((item_index, item)) = self.selected_dialog_item(&dialog) {
+                    if let Some(entry) = self.stash.list().get(item_index).cloned() {
                         if let Some(prompt) = self.active_prompt() {
                             prompt.buffer.set_text(&entry.input);
                             prompt.parts = entry.parts;
@@ -2171,6 +3153,10 @@ impl App {
             Route::Session { id } => self.render_session(frame, id.clone()),
         }
 
+        if self.dialog.is_some() {
+            self.render_dialog(frame);
+        }
+
         // Toasts overlay at the top.
         let toast_lines = crate::components::toast::toast_lines(&self.toasts, &self.theme);
         for (idx, line) in toast_lines.iter().enumerate() {
@@ -2184,6 +3170,107 @@ impl App {
                 ratatui::layout::Rect::new(0, idx as u16, size.width.min(80), 1),
             );
         }
+    }
+
+    fn render_dialog(&self, frame: &mut ratatui::Frame<'_>) {
+        let Some(dialog_state) = &self.dialog else {
+            return;
+        };
+        let size = frame.area();
+        if size.width == 0 || size.height == 0 {
+            return;
+        }
+
+        let width = size.width.saturating_sub(4).min(96).max(1);
+        let height = size.height.saturating_sub(4).min(24).max(1);
+        let rect = ratatui::layout::Rect::new(
+            size.x + size.width.saturating_sub(width) / 2,
+            size.y + size.height.saturating_sub(height) / 2,
+            width,
+            height,
+        );
+        frame.render_widget(ratatui::widgets::Clear, rect);
+        frame.render_widget(
+            ratatui::widgets::Block::default()
+                .style(Style::default().bg(self.theme.background_panel)),
+            rect,
+        );
+
+        let (lines, selected_visible) = match &dialog_state.kind {
+            DialogKind::ModelList
+            | DialogKind::AgentList
+            | DialogKind::SkillList
+            | DialogKind::BackgroundJobs
+            | DialogKind::SessionList
+            | DialogKind::ProviderList
+            | DialogKind::CommandPalette
+            | DialogKind::StashList => {
+                let items = self.dialog_items();
+                let filtered = dialog::filter_items(&items, &dialog_state.filter);
+                let title = match &dialog_state.kind {
+                    DialogKind::ModelList => "Models",
+                    DialogKind::AgentList => "Agents",
+                    DialogKind::SkillList => "Skills",
+                    DialogKind::BackgroundJobs => "Background jobs",
+                    DialogKind::SessionList => "Sessions",
+                    DialogKind::ProviderList => "Providers",
+                    DialogKind::CommandPalette => "Commands",
+                    DialogKind::StashList => "Stashed prompts",
+                    _ => unreachable!(),
+                };
+                dialog::render_list_filtered(
+                    title,
+                    &items,
+                    &filtered,
+                    dialog_state.selected,
+                    width as usize,
+                    &self.theme,
+                    height as usize,
+                    &dialog_state.filter,
+                )
+            }
+            DialogKind::InfoItems { title, items } => {
+                let filtered = dialog::filter_items(items, &dialog_state.filter);
+                dialog::render_list_filtered(
+                    title,
+                    items,
+                    &filtered,
+                    dialog_state.selected,
+                    width as usize,
+                    &self.theme,
+                    height as usize,
+                    &dialog_state.filter,
+                )
+            }
+            DialogKind::Help => (
+                dialog::help_lines(width as usize, &self.theme, &self.config),
+                0,
+            ),
+            DialogKind::Confirm { title, message } | DialogKind::Alert { title, message } => (
+                dialog::render_confirm(
+                    title,
+                    message,
+                    &["Close".to_string()],
+                    dialog_state.selected,
+                    width as usize,
+                    &self.theme,
+                ),
+                0,
+            ),
+            DialogKind::Rename => (
+                dialog::render_confirm(
+                    "Rename",
+                    "Session rename is not available in this TUI slice.",
+                    &["Close".to_string()],
+                    dialog_state.selected,
+                    width as usize,
+                    &self.theme,
+                ),
+                0,
+            ),
+        };
+        let _ = selected_visible;
+        self.draw_styled_lines(frame, rect, &lines);
     }
 
     fn drain_pending_create(&mut self) {
@@ -2719,6 +3806,7 @@ pub fn paste_into_prompt(prompt: &mut PromptState, text: &str, summary_enabled: 
 async fn bootstrap(client: Arc<dyn SdkClient>) -> BootstrapData {
     let providers_fut = client.config_providers();
     let agent_fut = client.app_agents();
+    let skills_fut = client.skill_list();
     let config_fut = client.config_get();
     let command_fut = client.command_list();
     let sessions_fut = client.session_list();
@@ -2726,9 +3814,10 @@ async fn bootstrap(client: Arc<dyn SdkClient>) -> BootstrapData {
     let console_fut = client.experimental_console();
     let status_fut = client.session_status();
 
-    let (providers, agents, config, commands, sessions, caps, console, status) = tokio::join!(
+    let (providers, agents, skills, config, commands, sessions, caps, console, status) = tokio::join!(
         providers_fut,
         agent_fut,
+        skills_fut,
         config_fut,
         command_fut,
         sessions_fut,
@@ -2739,6 +3828,7 @@ async fn bootstrap(client: Arc<dyn SdkClient>) -> BootstrapData {
     BootstrapData {
         providers: providers.unwrap_or_default().providers,
         agents: agents.unwrap_or_default(),
+        skills: skills.unwrap_or_default(),
         commands: commands.unwrap_or_default(),
         config: config.unwrap_or_default(),
         sessions: sessions.unwrap_or_default(),
@@ -2813,6 +3903,30 @@ async fn run_with_terminal<W: std::io::Write>(
         });
     }
 
+    // Consume server-originated TUI control requests. This attaches the
+    // `/tui/control/next` queue to the real application loop so remote
+    // control endpoints can open dialogs, edit the prompt, and submit
+    // commands instead of accumulating unread requests.
+    {
+        let client = client.clone();
+        let tx = tx.clone();
+        tokio::spawn(async move {
+            loop {
+                match client.tui_control_next().await {
+                    Ok(request) => {
+                        if tx.send(ClientMessage::Control(request)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(error) => {
+                        tracing::debug!(%error, "TUI control queue unavailable");
+                        tokio::time::sleep(Duration::from_millis(500)).await;
+                    }
+                }
+            }
+        });
+    }
+
     let mut app = App::new(input, client);
 
     // Auto-navigate to --session / --continue.
@@ -2855,6 +3969,7 @@ async fn run_with_terminal<W: std::io::Write>(
             if let Some(prompt_text) = app.initial_prompt.clone() {
                 if app.route == Route::Home && app.home_prompt.text().is_empty() {
                     app.home_prompt.buffer.set_text(&prompt_text);
+                    app.home_prompt.parts = std::mem::take(&mut app.initial_parts);
                     app.home_prompt.buffer.buffer_end();
                     app.autosubmitted = true;
                     app.submit_prompt();
@@ -2878,6 +3993,10 @@ async fn run_with_terminal<W: std::io::Write>(
                     break;
                 }
             }
+        }
+
+        if app.take_terminal_suspend_request() {
+            crate::terminal::suspend(terminal, app.config.mouse)?;
         }
 
         // Redraw on state changes or at a regular tick (spinner animation).

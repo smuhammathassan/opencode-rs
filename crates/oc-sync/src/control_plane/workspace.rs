@@ -357,7 +357,8 @@ impl Workspace {
             env
         };
 
-        adapter_runtime::create(&adapter, &config, &env, None).await?;
+        adapter_runtime::create_with_api(&adapter, &config, &env, None, self.inner.api.clone())
+            .await?;
 
         // From the reference: wait for the workspace to connect/error while
         // starting the sync loop.
@@ -573,16 +574,25 @@ impl Workspace {
     /// `syncList` from the reference: discover workspaces from adapters and
     /// insert the ones not already known.
     pub async fn sync_list(&self, project_id: &str) -> anyhow::Result<()> {
-        let mut names: std::collections::HashSet<String> = self
-            .list(project_id)
-            .await
-            .into_iter()
-            .map(|workspace| workspace.name)
+        let known_workspaces = self.list(project_id).await;
+        let mut names: std::collections::HashSet<String> = known_workspaces
+            .iter()
+            .map(|workspace| workspace.name.clone())
             .collect();
 
         let mut discovered = Vec::new();
         for (ty, adapter) in adapters::registered_adapters(project_id) {
-            match adapter_runtime::list(&adapter).await {
+            // Adapter `list` has no WorkspaceInfo parameter, so use an
+            // existing workspace of the same type to supply the remote
+            // endpoint. This keeps local adapters unchanged and avoids
+            // guessing a URL for a remote/console adapter on first use.
+            let target = match known_workspaces.iter().find(|workspace| workspace.ty == ty) {
+                Some(workspace) => adapter_runtime::target(&WorkspaceInfo::from(workspace))
+                    .await
+                    .ok(),
+                None => None,
+            };
+            match adapter_runtime::list_with_api(&adapter, self.inner.api.clone(), target).await {
                 Ok(items) => discovered.extend(items.into_iter().map(|item| (ty.clone(), item))),
                 Err(error) => {
                     tracing::warn!(r#type = %ty, error = %error, "workspace adapter list failed");
@@ -657,7 +667,10 @@ impl Workspace {
         self.stop_sync(id).await;
 
         let info = Info::from_row(&row);
-        if let Err(error) = adapter_runtime::remove(&WorkspaceInfo::from(&info)).await {
+        if let Err(error) =
+            adapter_runtime::remove_with_api(&WorkspaceInfo::from(&info), self.inner.api.clone())
+                .await
+        {
             tracing::error!(r#type = %row.ty, error = %error, "adapter not available when removing workspace");
         }
         Some(info)

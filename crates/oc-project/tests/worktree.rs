@@ -12,6 +12,7 @@ use oc_project::worktree::WorktreeInfoOptions;
 async fn worktree_path_rule_and_lifecycle() {
     let home = test_home().clone();
     let repo = init_repo("wt-repo", "file.txt", "hello\n");
+    let canonical_repo = repo.canonicalize().expect("canonical repo path");
     let project_id = root_commit(&repo);
 
     let runtime = Runtime::new(Config::default());
@@ -22,7 +23,7 @@ async fn worktree_path_rule_and_lifecycle() {
 
     assert_eq!(ctx.project.vcs.as_deref(), Some("git"));
     assert_eq!(ctx.project.id.0, project_id);
-    assert_eq!(ctx.worktree, repo.to_str().unwrap());
+    assert_eq!(ctx.worktree, canonical_repo.to_str().unwrap());
 
     // Path-creation rules: name is slugified, directory = {data}/worktree/{id}/{name},
     // branch = opencode/{name}.
@@ -62,6 +63,9 @@ async fn worktree_path_rule_and_lifecycle() {
         .as_deref()
         .unwrap_or_default()
         .starts_with("opencode/"));
+    let canonical_created = std::path::Path::new(&created.directory)
+        .canonicalize()
+        .expect("canonical created worktree");
 
     // Golden: worktree Info serializes with the exact zod shape.
     let json = serde_json::to_value(&created).unwrap();
@@ -78,7 +82,7 @@ async fn worktree_path_rule_and_lifecycle() {
     let list = runtime.worktree.list(&ctx).await.expect("worktree list");
     let listed = list
         .iter()
-        .find(|item| item.directory == created.directory)
+        .find(|item| item.directory == canonical_created.to_string_lossy())
         .expect("created worktree listed");
     assert_eq!(listed.branch.as_deref(), created.branch.as_deref());
 
@@ -101,7 +105,9 @@ async fn worktree_path_rule_and_lifecycle() {
         .list(&ctx)
         .await
         .expect("worktree list after remove");
-    assert!(!list.iter().any(|item| item.directory == created.directory));
+    assert!(!list
+        .iter()
+        .any(|item| item.directory == canonical_created.to_string_lossy()));
 
     let _ = home;
 }

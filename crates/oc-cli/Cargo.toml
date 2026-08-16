@@ -16,6 +16,7 @@ anyhow = { workspace = true }
 thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
+async-trait = "0.1"
 oc-schema = { version = "0.1", path = "../oc-schema" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-config = { version = "0.1", path = "../oc-config" }
@@ -34,8 +35,10 @@ oc-client = { version = "0.1", path = "../oc-client" }
 oc-command = { version = "0.1", path = "../oc-command" }
 oc-project = { version = "0.1", path = "../oc-project" }
 oc-sync = { version = "0.1", path = "../oc-sync" }
+oc-tui = { version = "0.1", path = "../oc-tui" }
 tokio = { workspace = true }
 clap = { version = "4.6.5", features = ["derive"] }
+clap_complete = "4.6.0"
 reqwest = { workspace = true }
 chrono = { workspace = true }
 directories = { workspace = true }
@@ -43,3 +46,7 @@ base64 = "0.23.1"
 bytes = "1.12.1"
 mime_guess = "2.0.5"
 url.workspace = true
+libc = "0.2"
+tar = "0.4"
+flate2 = "1"
+zip = { version = "2.4", default-features = false, features = ["deflate"] }

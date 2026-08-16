@@ -77,6 +77,7 @@ impl KeyStroke {
             parts.push("hyper".to_string());
         }
         let name = match &self.code {
+            KeyCode::Char(' ') => "space".to_string(),
             KeyCode::Char(c) => c.to_string(),
             KeyCode::F(n) => format!("F{n}"),
             KeyCode::Backspace => "backspace".to_string(),
@@ -709,6 +710,16 @@ mod tests {
             parse_binding("pgup").unwrap().sequences[0].strokes[0],
             Stroke::Key(KeyStroke::plain(KeyCode::PageUp))
         );
+    }
+
+    #[test]
+    fn display_uses_space_alias() {
+        let binding = parse_binding("ctrl+space").unwrap();
+        let stroke = match &binding.sequences[0].strokes[0] {
+            Stroke::Key(stroke) => stroke,
+            Stroke::Leader => panic!("expected a key stroke"),
+        };
+        assert_eq!(stroke.display(), "ctrl+space");
     }
 
     #[test]

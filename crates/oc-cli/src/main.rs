@@ -104,6 +104,13 @@ fn main() {
         std::process::exit(0);
     }
 
+    // Initialize file logging after the version short-circuit so `--version`
+    // remains byte-clean. The logger writes to the reference data directory
+    // and mirrors stderr only when OPENCODE_PRINT_LOGS=1.
+    cli.apply_env();
+    oc_util::logging::init();
+    tracing::debug!(pid = %std::process::id(), "opencode starting");
+
     let runtime = match tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -114,6 +121,11 @@ fn main() {
             std::process::exit(1);
         }
     };
-    let code = runtime.block_on(cmd::dispatch(&cli));
+    let code = runtime.block_on(async {
+        let signal_task = oc_util::util::signal::spawn_process_signal_handler();
+        let code = cmd::dispatch(&cli).await;
+        signal_task.abort();
+        code
+    });
     std::process::exit(code);
 }

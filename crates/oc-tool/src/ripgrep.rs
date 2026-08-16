@@ -270,9 +270,10 @@ mod tests {
 
     #[test]
     fn glob_resolves_relative_entries() {
-        let dir = std::env::temp_dir();
+        let dir = tempfile::tempdir().expect("temporary directory");
+        std::fs::write(dir.path().join("one.rs"), "fn one() {}\n").unwrap();
         let results = glob(&GlobInput {
-            cwd: dir.to_str().unwrap().to_string(),
+            cwd: dir.path().to_str().unwrap().to_string(),
             pattern: "*.rs".to_string(),
             limit: 100,
             hidden: false,

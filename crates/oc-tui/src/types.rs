@@ -666,6 +666,34 @@ pub struct SessionMessageData {
     pub parts: Vec<Part>,
 }
 
+/// A prompt admitted with `delivery=queue` while a session turn is active.
+#[derive(Debug, Clone, PartialEq)]
+pub struct QueuedPrompt {
+    pub id: String,
+    pub session_id: String,
+    pub prompt: serde_json::Value,
+    pub timestamp: i64,
+}
+
+impl QueuedPrompt {
+    pub fn summary(&self) -> String {
+        self.prompt
+            .get("text")
+            .and_then(serde_json::Value::as_str)
+            .map(str::trim)
+            .filter(|text| !text.is_empty())
+            .map(str::to_string)
+            .or_else(|| {
+                self.prompt
+                    .get("files")
+                    .and_then(serde_json::Value::as_array)
+                    .filter(|files| !files.is_empty())
+                    .map(|files| format!("[{} attachment(s)]", files.len()))
+            })
+            .unwrap_or_else(|| "[empty prompt]".to_string())
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct Todo {
     pub content: String,
@@ -827,6 +855,47 @@ pub struct Command {
     pub subtask: Option<bool>,
     #[serde(default)]
     pub hints: Vec<String>,
+}
+
+/// A skill returned by the v1 `GET /skill` endpoint.
+///
+/// The TUI only needs the name and description to present the selector. The
+/// location and content fields are retained so the wire shape stays tolerant
+/// of the server's complete `Skill.Info` response.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct Skill {
+    pub name: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub location: String,
+    #[serde(default)]
+    pub content: String,
+}
+
+/// A process-local background job returned by the experimental session
+/// background routes.
+///
+/// The server currently serializes the timestamp fields in snake_case while
+/// the reference API has also used camelCase, so accept both wire spellings.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct BackgroundJobInfo {
+    pub id: String,
+    #[serde(rename = "type")]
+    pub r#type: String,
+    #[serde(default)]
+    pub title: Option<String>,
+    pub status: String,
+    #[serde(alias = "startedAt")]
+    pub started_at: u64,
+    #[serde(default, alias = "completedAt")]
+    pub completed_at: Option<u64>,
+    #[serde(default)]
+    pub output: Option<String>,
+    #[serde(default)]
+    pub error: Option<String>,
+    #[serde(default)]
+    pub metadata: Option<serde_json::Map<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

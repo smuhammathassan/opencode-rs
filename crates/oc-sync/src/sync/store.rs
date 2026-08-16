@@ -7,11 +7,6 @@
 //! commit), which is what makes the sync/replay design in
 //! reference/packages/opencode/src/sync/README.md work.
 //!
-//! TODO(integration): the reference backs this with SQLite (`EventTable` /
-//! `EventSequenceTable` in `core/event/sql.ts`, see `sync::sql`); this port uses
-//! an in-memory store with identical commit semantics so oc-database can back it
-//! later without changing callers.
-
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
@@ -19,6 +14,9 @@ use futures::stream::{self, BoxStream};
 use futures::StreamExt;
 use serde_json::Value;
 use tokio::sync::broadcast;
+
+use oc_database::tables::{EventRow as SqlEventRow, EventSequenceRow as SqlSequenceRow};
+use oc_database::Database;
 
 use super::event::{versioned_type, Definition, DurableEnvelope, EventID, LocationRef, Payload};
 
@@ -202,6 +200,7 @@ pub struct ReplayOptions {
 
 struct StoreInner {
     db: Mutex<Db>,
+    database: Option<Arc<Database>>,
     all: broadcast::Sender<Payload>,
     typed: Mutex<HashMap<String, broadcast::Sender<Payload>>>,
     wakes: Mutex<HashMap<String, broadcast::Sender<()>>>,
@@ -209,7 +208,9 @@ struct StoreInner {
     listeners: Mutex<Vec<Listener>>,
 }
 
-/// Cloneable handle to the in-memory event store.
+/// Cloneable handle to the event store. `Store::new` remains an isolated
+/// in-memory store for tests and embedders; `Store::with_database` adds the
+/// SQLite-backed durable rows used by the production listener.
 #[derive(Clone)]
 pub struct Store {
     inner: Arc<StoreInner>,
@@ -225,10 +226,45 @@ impl Store {
     /// Create a store with the session durable definitions registered.
     pub fn new() -> Self {
         register_session_durable_definitions();
+        Self::new_with_db(None, Db::default())
+    }
+
+    /// Create a store backed by the existing SQLite database and hydrate its
+    /// cursors/events before the listener starts accepting requests.
+    pub fn with_database(database: Arc<Database>) -> oc_database::Result<Self> {
+        register_session_durable_definitions();
+        let sequences = database.list_event_sequences()?;
+        let events = database.list_events()?;
+        let mut db = Db::default();
+        for row in sequences {
+            db.sequences.insert(
+                row.aggregate_id.clone(),
+                SequenceRow {
+                    aggregate_id: row.aggregate_id,
+                    seq: row.seq,
+                    owner_id: row.owner_id,
+                },
+            );
+        }
+        db.events = events
+            .into_iter()
+            .map(|row| EventRow {
+                id: EventID::from(row.id),
+                aggregate_id: row.aggregate_id,
+                seq: row.seq,
+                r#type: row.r#type,
+                data: row.data,
+            })
+            .collect();
+        Ok(Self::new_with_db(Some(database), db))
+    }
+
+    fn new_with_db(database: Option<Arc<Database>>, db: Db) -> Self {
         let (all, _) = broadcast::channel(256);
         Self {
             inner: Arc::new(StoreInner {
-                db: Mutex::new(Db::default()),
+                db: Mutex::new(db),
+                database,
                 all,
                 typed: Mutex::new(HashMap::new()),
                 wakes: Mutex::new(HashMap::new()),
@@ -240,6 +276,10 @@ impl Store {
 
     fn db(&self) -> &Mutex<Db> {
         &self.inner.db
+    }
+
+    fn database_error(error: oc_database::Error) -> StoreError {
+        InvalidDurableEvent::die("database", error.to_string())
     }
 
     fn notify(&self, event: &Payload, isolate_listeners: bool) {
@@ -468,6 +508,11 @@ impl Store {
 
     /// `remove` from reference/packages/core/src/event.ts.
     pub fn remove(&self, aggregate_id: &str) {
+        if let Some(database) = &self.inner.database {
+            if let Err(error) = database.remove_event_aggregate(aggregate_id) {
+                tracing::warn!(%aggregate_id, ?error, "failed to remove durable sync aggregate");
+            }
+        }
         let mut db = self.db().lock().expect("db poisoned");
         db.sequences.remove(aggregate_id);
         db.events.retain(|e| e.aggregate_id != aggregate_id);
@@ -475,6 +520,11 @@ impl Store {
 
     /// `claim` from reference/packages/core/src/event.ts.
     pub fn claim(&self, aggregate_id: &str, owner_id: &str) {
+        if let Some(database) = &self.inner.database {
+            if let Err(error) = database.claim_event_owner(aggregate_id, owner_id) {
+                tracing::warn!(%aggregate_id, ?error, "failed to persist durable sync owner claim");
+            }
+        }
         let mut db = self.db().lock().expect("db poisoned");
         if let Some(row) = db.sequences.get_mut(aggregate_id) {
             row.owner_id = Some(owner_id.to_string());
@@ -791,6 +841,23 @@ impl Store {
         } else {
             input.and_then(|i| i.owner_id.clone())
         };
+        if let Some(database) = &self.inner.database {
+            let sequence = SqlSequenceRow {
+                aggregate_id: aggregate_id.clone(),
+                seq,
+                owner_id: owner_id.clone(),
+            };
+            let event = SqlEventRow {
+                id: event.id.0.clone(),
+                aggregate_id: aggregate_id.clone(),
+                seq,
+                r#type: storage_type.clone(),
+                data: encoded.clone(),
+            };
+            database
+                .persist_event(&sequence, &event)
+                .map_err(Self::database_error)?;
+        }
         db.sequences.insert(
             aggregate_id.clone(),
             SequenceRow {
@@ -897,6 +964,28 @@ mod tests {
         store.replay(&event, &ReplayOptions::default()).unwrap();
         assert_eq!(store.latest_sequence("ses_1"), 0);
         assert_eq!(store.history("ses_1").len(), 1);
+    }
+
+    #[test]
+    fn sqlite_store_persists_and_hydrates_history() {
+        let database = Arc::new(Database::open_memory().expect("database"));
+        let store = Store::with_database(Arc::clone(&database)).expect("durable store");
+        let definition = Definition::durable("session.next.moved", "sessionID", 1);
+        let published = store
+            .publish(
+                &definition,
+                serde_json::json!({ "sessionID": "ses_sqlite", "value": 7 }),
+                PublishOptions::default(),
+            )
+            .expect("publish");
+        assert_eq!(published.durable.as_ref().map(|value| value.seq), Some(0));
+        assert_eq!(database.list_events().expect("event rows").len(), 1);
+
+        let reloaded = Store::with_database(database).expect("reload durable store");
+        assert_eq!(reloaded.latest_sequence("ses_sqlite"), 0);
+        let history = reloaded.read_after("ses_sqlite", -1).expect("history");
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].data["value"], serde_json::json!(7));
     }
 
     #[test]

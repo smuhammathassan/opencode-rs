@@ -3,16 +3,20 @@
 //! From reference/packages/opencode/src/control-plane/workspace-adapter-runtime.ts.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
 use super::adapters::{self, AdapterRef};
+use super::sync_api::SyncApi;
 use super::types::{Target, WorkspaceAdapterContext, WorkspaceInfo, WorkspaceListedInfo};
 use super::workspace_context::{InstanceContext, WorkspaceContext};
 
 /// Builds the `WorkspaceAdapterContext` from ambient instance/workspace context.
-fn context() -> WorkspaceAdapterContext {
+fn context(api: Option<Arc<dyn SyncApi>>, target: Option<Target>) -> WorkspaceAdapterContext {
     WorkspaceAdapterContext {
         workspace_id: WorkspaceContext::workspace_id(),
         project_id: InstanceContext::project_id(),
+        sync_api: api,
+        target,
     }
 }
 
@@ -20,13 +24,13 @@ fn context() -> WorkspaceAdapterContext {
 /// ask it for the target.
 pub async fn target(info: &WorkspaceInfo) -> anyhow::Result<Target> {
     let adapter = adapters::get_adapter(&info.project_id, &info.ty)?;
-    let ctx = context();
+    let ctx = context(None, None);
     adapter.target(info, &ctx).await
 }
 
 /// `configure` from the reference.
 pub async fn configure(adapter: &AdapterRef, info: WorkspaceInfo) -> anyhow::Result<WorkspaceInfo> {
-    let ctx = context();
+    let ctx = context(None, None);
     adapter.configure(info, &ctx).await
 }
 
@@ -37,20 +41,50 @@ pub async fn create(
     env: &BTreeMap<String, Option<String>>,
     from: Option<&WorkspaceInfo>,
 ) -> anyhow::Result<()> {
-    let ctx = context();
+    let ctx = context(None, None);
+    adapter.create(info, env, from, &ctx).await
+}
+
+/// `create` with the owning workspace runtime's injectable transport.
+pub async fn create_with_api(
+    adapter: &AdapterRef,
+    info: &WorkspaceInfo,
+    env: &BTreeMap<String, Option<String>>,
+    from: Option<&WorkspaceInfo>,
+    api: Arc<dyn SyncApi>,
+) -> anyhow::Result<()> {
+    let ctx = context(Some(api), None);
     adapter.create(info, env, from, &ctx).await
 }
 
 /// `list` from the reference (`adapter.list?.(ctx) ?? []`).
 pub async fn list(adapter: &AdapterRef) -> anyhow::Result<Vec<WorkspaceListedInfo>> {
-    let ctx = context();
+    let ctx = context(None, None);
+    adapter.list(&ctx).await
+}
+
+/// `list` with an injectable transport and the target resolved from a known
+/// workspace of the same adapter type.
+pub async fn list_with_api(
+    adapter: &AdapterRef,
+    api: Arc<dyn SyncApi>,
+    target: Option<Target>,
+) -> anyhow::Result<Vec<WorkspaceListedInfo>> {
+    let ctx = context(Some(api), target);
     adapter.list(&ctx).await
 }
 
 /// `remove` from the reference.
 pub async fn remove(info: &WorkspaceInfo) -> anyhow::Result<()> {
     let adapter = adapters::get_adapter(&info.project_id, &info.ty)?;
-    let ctx = context();
+    let ctx = context(None, None);
+    adapter.remove(info, &ctx).await
+}
+
+/// `remove` with the owning workspace runtime's injectable transport.
+pub async fn remove_with_api(info: &WorkspaceInfo, api: Arc<dyn SyncApi>) -> anyhow::Result<()> {
+    let adapter = adapters::get_adapter(&info.project_id, &info.ty)?;
+    let ctx = context(Some(api), None);
     adapter.remove(info, &ctx).await
 }
 #[cfg(test)]

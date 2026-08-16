@@ -3,12 +3,30 @@
 //! (`validateName`, `withPermission`, `definition`, `settle`).
 
 use serde_json::Value as JsonValue;
+use std::future::Future;
+use std::pin::Pin;
 
-use crate::model::{BoxFuture, Content, ToolCall, ToolContent, ToolError, ToolFailure, ToolOutput};
+use crate::model::{
+    BoxFuture, Content, LspRequest, SubagentRequest, SubagentResult, ToolCall, ToolContent,
+    ToolError, ToolFailure, ToolOutput,
+};
 use crate::schema::Schema;
 
+/// The callback supplied by a session host for Core task execution.
+///
+/// Keeping this capability at the core boundary avoids making the tool engine
+/// depend on the server/session crates. Hosts that do not have child-session
+/// execution wired must return an error; the task adapter never invents a
+/// successful child result.
+pub type CoreSubagentExecute = std::sync::Arc<
+    dyn Fn(SubagentRequest) -> BoxFuture<'static, Result<SubagentResult, String>> + Send + Sync,
+>;
+
+pub type CoreLspRequest =
+    std::sync::Arc<dyn Fn(LspRequest) -> Result<Vec<JsonValue>, String> + Send + Sync>;
+
 /// `Core.Tool.Context` — the V2 invocation context.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CoreContext {
     pub session_id: String,
     pub agent: String,
@@ -18,6 +36,30 @@ pub struct CoreContext {
     pub location_directory: String,
     /// Recorded V2 permission requests.
     pub asks: Vec<CorePermissionRequest>,
+    /// Maximum allowed nested subagent depth. `None` uses the reference
+    /// default of one level.
+    pub subagent_depth: Option<usize>,
+    /// Number of parent subagent sessions above the active session.
+    pub subagent_parent_depth: std::sync::Arc<dyn Fn(&str) -> usize + Send + Sync>,
+    /// Host callback for foreground/background child-session execution.
+    pub execute_subagent: Option<CoreSubagentExecute>,
+    pub lsp_request: Option<CoreLspRequest>,
+}
+
+impl std::fmt::Debug for CoreContext {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("CoreContext")
+            .field("session_id", &self.session_id)
+            .field("agent", &self.agent)
+            .field("assistant_message_id", &self.assistant_message_id)
+            .field("tool_call_id", &self.tool_call_id)
+            .field("location_directory", &self.location_directory)
+            .field("asks", &self.asks)
+            .field("subagent_depth", &self.subagent_depth)
+            .field("lsp_configured", &self.lsp_request.is_some())
+            .finish_non_exhaustive()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -213,9 +255,11 @@ fn poll(
     run_future(future)
 }
 
-pub fn run_future<T>(future: BoxFuture<'_, Result<T, ToolError>>) -> Result<T, ToolError> {
+pub fn run_future<T, E>(
+    future: Pin<Box<dyn Future<Output = Result<T, E>> + Send + '_>>,
+) -> Result<T, E> {
     match tokio::runtime::Handle::try_current() {
-        Ok(handle) => handle.block_on(future),
+        Ok(handle) => tokio::task::block_in_place(|| handle.block_on(future)),
         Err(_) => tokio::runtime::Runtime::new()
             .expect("failed to start tokio runtime")
             .block_on(future),

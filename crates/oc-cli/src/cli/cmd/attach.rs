@@ -5,7 +5,6 @@ use std::io::IsTerminal;
 use std::path::PathBuf;
 
 use crate::cli::args::{AttachArgs, Cli};
-use crate::cli::effect_cmd::not_wired;
 use crate::cli::network::resolve_network_options;
 use crate::cli::ui::{self, Style};
 
@@ -42,6 +41,10 @@ pub async fn run(_cli: &Cli, args: &AttachArgs) -> anyhow::Result<i32> {
         return Ok(1);
     }
     let no_replay = args.replay == Some(false) || args.no_replay;
+    if args.replay_limit == Some(0) {
+        ui::error("--replay-limit must be a positive integer");
+        return Ok(1);
+    }
 
     let directory = if let Some(dir) = &args.dir {
         match std::env::set_current_dir(dir) {
@@ -69,9 +72,18 @@ pub async fn run(_cli: &Cli, args: &AttachArgs) -> anyhow::Result<i32> {
         return Ok(1);
     }
 
-    // TODO(integration): validate the session via `oc_client` and launch the TUI
-    // via `oc_tui` (`run()` from cli/tui/layer.ts) once those crates land.
-    Err(not_wired("attaching the TUI to a running server is not yet wired in this build (TODO(integration): oc-tui/oc-client)"))
+    run_tui(
+        args.url.clone(),
+        directory,
+        args.continue_,
+        args.session.clone(),
+        None,
+        None,
+        None,
+        true,
+        None,
+    )
+    .await
 }
 
 async fn run_mini_attach(
@@ -79,12 +91,18 @@ async fn run_mini_attach(
     directory: Option<PathBuf>,
     no_replay: bool,
 ) -> anyhow::Result<i32> {
-    // TODO(integration): `runMini` from run.ts drives the split-footer
-    // interactive mode over an attached server.
-    let _ = (args, directory, no_replay);
-    Err(not_wired(
-        "mini interactive mode is not yet wired in this build (TODO(integration): oc-tui)",
-    ))
+    run_tui(
+        args.url.clone(),
+        directory,
+        args.continue_,
+        args.session.clone(),
+        None,
+        None,
+        None,
+        !no_replay,
+        args.replay_limit.map(|limit| limit as usize),
+    )
+    .await
 }
 
 /// Run the default `opencode [project]` command (the TUI thread).
@@ -96,6 +114,11 @@ pub async fn run_default_tui(cli: &Cli) -> anyhow::Result<i32> {
         return Ok(1);
     }
     let no_replay = args.replay == Some(false) || args.no_replay;
+
+    if args.replay_limit == Some(0) {
+        ui::error("--replay-limit must be a positive integer");
+        return Ok(1);
+    }
 
     if args.mini {
         let network = [
@@ -117,22 +140,17 @@ pub async fn run_default_tui(cli: &Cli) -> anyhow::Result<i32> {
             ui::error(&format!("{network} cannot be used with --mini"));
             return Ok(1);
         }
-        // TODO(integration): `runMini` over the in-process server.
-        let _ = no_replay;
-        return Err(not_wired(
-            "mini interactive mode is not yet wired in this build (TODO(integration): oc-tui)",
-        ));
     }
 
-    if no_replay {
+    if no_replay && !args.mini {
         ui::error("--no-replay requires --mini");
         return Ok(1);
     }
-    if args.replay_limit.is_some() {
+    if args.replay_limit.is_some() && !args.mini {
         ui::error("--replay-limit requires --mini");
         return Ok(1);
     }
-    if args.demo == Some(true) {
+    if args.demo == Some(true) && !args.mini {
         ui::error("--demo requires --mini");
         return Ok(1);
     }
@@ -153,19 +171,126 @@ pub async fn run_default_tui(cli: &Cli) -> anyhow::Result<i32> {
         return Err(err.into());
     }
 
-    // Mirror the external-server detection in tui.ts: explicit --port/--hostname
-    // or mDNS turn the default TUI into a client of an external server.
+    // Start the same HTTP server used by `serve` and have the TUI speak its
+    // public contract. This keeps local and attached sessions on one path.
     let network = resolve_network_options(&args.network, None);
-    let external = network.port != 0 || !network.hostname.is_empty() || network.mdns;
-
-    // TODO(integration): launch the TUI via `oc_tui` (`run()` from
-    // cli/tui/layer.ts), with an in-process or external server + worker.
-    let _ = (external, directory);
     if !std::io::stdout().is_terminal() {
         ui::println(&[Style::TEXT_DIM, "opencode: starting TUI (requires a TTY)"]);
         return Ok(0);
     }
-    Err(not_wired(
-        "the TUI is not yet wired in this build (TODO(integration): oc-tui)",
+    let mut options = oc_server::server::ListenOptions::new(&network.hostname, network.port);
+    options.auth = oc_server::auth::AuthConfig::from_env();
+    options.cors = oc_server::cors::CorsOptions {
+        cors: (!network.cors.is_empty()).then_some(network.cors),
+    };
+    options.mdns = network.mdns;
+    options.mdns_domain = Some(network.mdns_domain);
+    let listener = oc_server::server::listen(options).await?;
+    let result = run_tui(
+        listener.url.to_string(),
+        Some(directory.clone()),
+        args.continue_,
+        args.session.clone(),
+        args.agent.clone(),
+        args.model.clone(),
+        args.prompt.clone(),
+        !no_replay,
+        args.replay_limit.map(|limit| limit as usize),
+    )
+    .await;
+    listener.stop(false).await;
+    result
+}
+
+async fn run_tui(
+    url: String,
+    directory: Option<PathBuf>,
+    continue_session: bool,
+    session_id: Option<String>,
+    agent: Option<String>,
+    model: Option<String>,
+    prompt: Option<String>,
+    replay: bool,
+    replay_limit: Option<usize>,
+) -> anyhow::Result<i32> {
+    if !std::io::stdout().is_terminal() {
+        ui::error("interactive TUI requires a terminal");
+        return Ok(1);
+    }
+    oc_tui::run_async(tui_input(
+        url,
+        directory,
+        continue_session,
+        session_id,
+        agent,
+        model,
+        prompt,
+        replay,
+        replay_limit,
     ))
+    .await?;
+    Ok(0)
+}
+
+fn tui_input(
+    url: String,
+    directory: Option<PathBuf>,
+    continue_session: bool,
+    session_id: Option<String>,
+    agent: Option<String>,
+    model: Option<String>,
+    prompt: Option<String>,
+    replay: bool,
+    replay_limit: Option<usize>,
+) -> oc_tui::TuiInput {
+    let cwd = directory
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let state_dir = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".local/state"))
+        .join("opencode");
+    oc_tui::TuiInput {
+        url,
+        directory: directory.map(|path| path.to_string_lossy().into_owned()),
+        workspace: None,
+        cwd,
+        home,
+        state_dir,
+        config: oc_tui::config::ResolvedConfig::from_environment(),
+        continue_session,
+        session_id,
+        agent,
+        model,
+        prompt,
+        initial_parts: Vec::new(),
+        replay,
+        replay_limit,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::tui_input;
+    use std::path::PathBuf;
+
+    #[test]
+    fn default_tui_launch_preserves_initial_prompt() {
+        let input = tui_input(
+            "http://127.0.0.1:0".into(),
+            Some(PathBuf::from("/workspace")),
+            false,
+            None,
+            None,
+            None,
+            Some("summarize this project".into()),
+            true,
+            None,
+        );
+
+        assert_eq!(input.prompt.as_deref(), Some("summarize this project"));
+    }
 }

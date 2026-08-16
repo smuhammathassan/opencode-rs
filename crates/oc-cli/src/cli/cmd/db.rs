@@ -5,7 +5,6 @@ use std::path::PathBuf;
 
 use crate::cli::args::{Cli, DbArgs, DbCommand};
 use crate::cli::context::Context;
-use crate::cli::effect_cmd::not_wired;
 
 /// Mirrors `Database.path()` from
 /// reference/packages/core/src/database/database.ts.
@@ -28,18 +27,55 @@ pub async fn run(_cli: &Cli, args: &DbArgs) -> anyhow::Result<i32> {
             println!("{}", database_path(&ctx).display());
             Ok(0)
         }
+        None if args.query.is_none() => {
+            let status = std::process::Command::new("sqlite3")
+                .arg(database_path(&ctx))
+                .status()
+                .map_err(|error| {
+                    anyhow::anyhow!(
+                        "failed to start sqlite3 interactive shell: {error}. Pass --query '<SQL>' instead"
+                    )
+                })?;
+            Ok(status.code().unwrap_or(1))
+        }
         _ => {
             if let Some(query) = &args.query {
-                // TODO(integration): run `query` through `oc_database` once the
-                // SQLite crate lands. `--format json` prints rows as JSON,
-                // `tsv` prints a header + tab-separated rows.
-                let format = &args.format;
-                let _ = (format, query);
-                Err(not_wired("database queries are not yet wired in this build (TODO(integration): oc-database)"))
+                let database = oc_database::Database::open(database_path(&ctx))?;
+                let rows = database.db.run(query)?;
+                if args.format == "json" {
+                    let data = rows
+                        .iter()
+                        .map(oc_database::Row::to_json)
+                        .collect::<Result<Vec<_>, _>>()?;
+                    println!("{}", serde_json::to_string_pretty(&data)?);
+                } else {
+                    if let Some(row) = rows.first() {
+                        println!("{}", row.column_names().join("\t"));
+                    }
+                    for row in rows {
+                        let values = (0..row.len())
+                            .map(|index| row.value(index).map(sql_value_string).unwrap_or_default())
+                            .collect::<Vec<_>>();
+                        println!("{}", values.join("\t"));
+                    }
+                }
+                Ok(0)
             } else {
-                // Mirrors spawning an interactive `sqlite3` shell.
-                Err(not_wired("interactive sqlite3 shell is not yet wired in this build (TODO(integration): oc-database)"))
+                unreachable!("query-less database invocation is handled above")
             }
+        }
+    }
+}
+
+fn sql_value_string(value: &oc_database::Value) -> String {
+    match value {
+        oc_database::Value::Null => String::new(),
+        oc_database::Value::Integer(value) => value.to_string(),
+        oc_database::Value::Real(value) => value.to_string(),
+        oc_database::Value::Text(value) => value.clone(),
+        oc_database::Value::Blob(value) => {
+            use base64::Engine;
+            base64::engine::general_purpose::STANDARD.encode(value)
         }
     }
 }

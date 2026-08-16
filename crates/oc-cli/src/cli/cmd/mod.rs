@@ -30,7 +30,13 @@ use crate::cli::ui;
 
 /// Dispatch a parsed CLI invocation and return the process exit code.
 pub async fn dispatch(cli: &Cli) -> i32 {
-    cli.apply_env();
+    // The reference checks for updates as the interactive default command
+    // starts. Keep the check out of server, ACP, attach, and noninteractive
+    // subcommands so those protocols remain deterministic and offline-safe.
+    if cli.command.is_none() {
+        crate::cli::upgrade::notify_startup_update().await;
+    }
+
     let result = match &cli.command {
         None => crate::cli::cmd::attach::run_default_tui(cli).await,
         Some(Command::Completion) => completion::run(),
@@ -61,15 +67,16 @@ pub async fn dispatch(cli: &Cli) -> i32 {
         Ok(code) => code,
         Err(err) => {
             let formatted = crate::cli::error::format_error(&err);
+            let exit_code = crate::cli::error::exit_code(&err);
             if let Some(formatted) = formatted {
                 ui::error(&formatted);
-                std::process::exit(1)
+                std::process::exit(exit_code)
             } else {
                 ui::error("Unexpected error\n");
                 let _ = std::io::stderr()
                     .write_all(crate::cli::error::format_unknown_error(&err).as_bytes());
                 let _ = std::io::stderr().write_all(b"\n");
-                std::process::exit(1)
+                std::process::exit(exit_code)
             }
         }
     }

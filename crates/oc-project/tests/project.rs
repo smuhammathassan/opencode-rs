@@ -22,6 +22,7 @@ async fn from_directory_resolves_global_and_git_projects() {
 
     // A git repo resolves to a project keyed by its root commit.
     let repo = init_repo("proj-repo", "main.ts", "export const a = 1;\n");
+    let canonical_repo = repo.canonicalize().expect("canonical repo path");
     let project_id = root_commit(&repo);
     let result = runtime
         .project
@@ -30,8 +31,8 @@ async fn from_directory_resolves_global_and_git_projects() {
         .expect("fromDirectory");
     assert_eq!(result.project.id.0, project_id);
     assert_eq!(result.project.vcs.as_deref(), Some("git"));
-    assert_eq!(result.project.worktree, repo.to_str().unwrap());
-    assert_eq!(result.sandbox, repo.to_str().unwrap());
+    assert_eq!(result.project.worktree, canonical_repo.to_str().unwrap());
+    assert_eq!(result.sandbox, canonical_repo.to_str().unwrap());
 
     // get/list round-trips the persisted row.
     let fetched = runtime.project.get(&result.project.id).await.expect("get");

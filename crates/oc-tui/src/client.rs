@@ -23,6 +23,16 @@ pub struct ClientConfig {
     pub workspace: Option<String>,
 }
 
+/// A server-originated TUI control request delivered through the v1 control
+/// queue. The queue is used by remote clients that cannot inject terminal
+/// keystrokes directly.
+#[derive(Debug, Clone, Default, serde::Deserialize)]
+pub struct TuiControlRequest {
+    pub path: String,
+    #[serde(default)]
+    pub body: serde_json::Value,
+}
+
 /// The client surface the TUI relies on.
 pub trait SdkClient: Send + Sync {
     fn subscribe_events(&self) -> Result<BoxStream<'static, GlobalEvent>>;
@@ -52,11 +62,23 @@ pub trait SdkClient: Send + Sync {
         model_id: &str,
     ) -> BoxFuture<Result<()>>;
 
+    // Experimental background session jobs.
+    fn experimental_session_background_list(&self) -> BoxFuture<Result<Vec<BackgroundJobInfo>>>;
+    fn experimental_session_background_status(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>>;
+    fn experimental_session_background_cancel(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>>;
+
     // Status & configuration
     fn session_status(&self) -> BoxFuture<Result<HashMap<String, SessionStatus>>>;
     fn config_providers(&self) -> BoxFuture<Result<ConfigProviders>>;
     fn provider_list(&self) -> BoxFuture<Result<ProviderList>>;
     fn app_agents(&self) -> BoxFuture<Result<Vec<Agent>>>;
+    fn skill_list(&self) -> BoxFuture<Result<Vec<Skill>>>;
     fn config_get(&self) -> BoxFuture<Result<Config>>;
     fn command_list(&self) -> BoxFuture<Result<Vec<Command>>>;
     fn experimental_capabilities(&self) -> BoxFuture<Result<ExperimentalCapabilities>>;
@@ -74,6 +96,10 @@ pub trait SdkClient: Send + Sync {
 
     // Filesystem
     fn fs_find(&self, query: &str, limit: &str) -> BoxFuture<Result<Vec<FileSystemEntry>>>;
+
+    // Remote TUI control queue.
+    fn tui_control_next(&self) -> BoxFuture<Result<TuiControlRequest>>;
+    fn tui_control_response(&self, body: serde_json::Value) -> BoxFuture<Result<()>>;
 }
 
 pub type BoxFuture<T> = Pin<Box<dyn std::future::Future<Output = T> + Send + 'static>>;
@@ -154,6 +180,11 @@ impl HttpSdkClient {
     fn request(&self, method: reqwest::Method, path: &str) -> reqwest::RequestBuilder {
         let url = format!("{}{}", self.url, path);
         let mut req = self.http.request(method, url);
+        if let Some(password) = std::env::var_os("OPENCODE_SERVER_PASSWORD") {
+            let username = std::env::var("OPENCODE_SERVER_USERNAME")
+                .unwrap_or_else(|_| "opencode".to_string());
+            req = req.basic_auth(username, Some(password.to_string_lossy().into_owned()));
+        }
         if let Some(directory) = &self.directory {
             req = req.query(&[("directory", directory)]);
         }
@@ -478,6 +509,48 @@ impl SdkClient for HttpSdkClient {
         })
     }
 
+    fn experimental_session_background_list(&self) -> BoxFuture<Result<Vec<BackgroundJobInfo>>> {
+        let this = self.clone_ref();
+        Box::pin(async move { this.get_json("/experimental/session/background").await })
+    }
+
+    fn experimental_session_background_status(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>> {
+        let this = self.clone_ref();
+        let session_id = session_id.to_string();
+        Box::pin(async move {
+            this.get_json(&format!("/experimental/session/{session_id}/background"))
+                .await
+        })
+    }
+
+    fn experimental_session_background_cancel(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>> {
+        let this = self.clone_ref();
+        let session_id = session_id.to_string();
+        Box::pin(async move {
+            let response = this
+                .request(
+                    reqwest::Method::DELETE,
+                    &format!("/experimental/session/{session_id}/background"),
+                )
+                .send()
+                .await
+                .with_context(|| {
+                    format!("DELETE /experimental/session/{session_id}/background failed")
+                })?;
+            this.decode(
+                response,
+                &format!("/experimental/session/{session_id}/background"),
+            )
+            .await
+        })
+    }
+
     fn session_status(&self) -> BoxFuture<Result<HashMap<String, SessionStatus>>> {
         let this = self.clone_ref();
         Box::pin(async move { this.get_json("/session/status").await })
@@ -496,6 +569,11 @@ impl SdkClient for HttpSdkClient {
     fn app_agents(&self) -> BoxFuture<Result<Vec<Agent>>> {
         let this = self.clone_ref();
         Box::pin(async move { this.get_json("/agent").await })
+    }
+
+    fn skill_list(&self) -> BoxFuture<Result<Vec<Skill>>> {
+        let this = self.clone_ref();
+        Box::pin(async move { this.get_json("/skill").await })
     }
 
     fn config_get(&self) -> BoxFuture<Result<Config>> {
@@ -586,6 +664,19 @@ impl SdkClient for HttpSdkClient {
                 .into_iter()
                 .filter_map(|v| serde_json::from_value(v).ok())
                 .collect())
+        })
+    }
+
+    fn tui_control_next(&self) -> BoxFuture<Result<TuiControlRequest>> {
+        let this = self.clone_ref();
+        Box::pin(async move { this.get_json("/tui/control/next").await })
+    }
+
+    fn tui_control_response(&self, body: serde_json::Value) -> BoxFuture<Result<()>> {
+        let this = self.clone_ref();
+        Box::pin(async move {
+            let _: serde_json::Value = this.post_json("/tui/control/response", &body).await?;
+            Ok(())
         })
     }
 }
@@ -684,12 +775,16 @@ impl SseParser {
 /// Provide a mock client for headless tests.
 pub struct MockSdkClient {
     pub events: std::sync::Mutex<Vec<GlobalEvent>>,
+    pub background_jobs: std::sync::Mutex<Vec<BackgroundJobInfo>>,
+    pub cancelled_background_jobs: std::sync::Mutex<Vec<String>>,
 }
 
 impl MockSdkClient {
     pub fn new() -> Self {
         MockSdkClient {
             events: std::sync::Mutex::new(Vec::new()),
+            background_jobs: std::sync::Mutex::new(Vec::new()),
+            cancelled_background_jobs: std::sync::Mutex::new(Vec::new()),
         }
     }
 }
@@ -764,6 +859,44 @@ impl SdkClient for MockSdkClient {
     ) -> BoxFuture<Result<()>> {
         Box::pin(async { Ok(()) })
     }
+    fn experimental_session_background_list(&self) -> BoxFuture<Result<Vec<BackgroundJobInfo>>> {
+        let jobs = self.background_jobs.lock().unwrap().clone();
+        Box::pin(async move { Ok(jobs) })
+    }
+    fn experimental_session_background_status(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>> {
+        let job = self
+            .background_jobs
+            .lock()
+            .unwrap()
+            .iter()
+            .find(|job| job.id == session_id)
+            .cloned();
+        Box::pin(async move { job.ok_or_else(|| anyhow!("mock: background job not found")) })
+    }
+    fn experimental_session_background_cancel(
+        &self,
+        session_id: &str,
+    ) -> BoxFuture<Result<BackgroundJobInfo>> {
+        let session_id = session_id.to_string();
+        let result = {
+            let mut jobs = self.background_jobs.lock().unwrap();
+            jobs.iter_mut().find(|job| job.id == session_id).map(|job| {
+                job.status = "cancelled".to_string();
+                job.completed_at = Some(job.started_at);
+                job.clone()
+            })
+        };
+        if result.is_some() {
+            self.cancelled_background_jobs
+                .lock()
+                .unwrap()
+                .push(session_id);
+        }
+        Box::pin(async move { result.ok_or_else(|| anyhow!("mock: background job not found")) })
+    }
     fn session_status(&self) -> BoxFuture<Result<HashMap<String, SessionStatus>>> {
         Box::pin(async { Ok(HashMap::new()) })
     }
@@ -774,6 +907,9 @@ impl SdkClient for MockSdkClient {
         Box::pin(async { Ok(ProviderList::default()) })
     }
     fn app_agents(&self) -> BoxFuture<Result<Vec<Agent>>> {
+        Box::pin(async { Ok(Vec::new()) })
+    }
+    fn skill_list(&self) -> BoxFuture<Result<Vec<Skill>>> {
         Box::pin(async { Ok(Vec::new()) })
     }
     fn config_get(&self) -> BoxFuture<Result<Config>> {
@@ -812,6 +948,14 @@ impl SdkClient for MockSdkClient {
     }
     fn fs_find(&self, _query: &str, _limit: &str) -> BoxFuture<Result<Vec<FileSystemEntry>>> {
         Box::pin(async { Ok(Vec::new()) })
+    }
+
+    fn tui_control_next(&self) -> BoxFuture<Result<TuiControlRequest>> {
+        Box::pin(async { Err(anyhow!("mock: TUI control queue unavailable")) })
+    }
+
+    fn tui_control_response(&self, _body: serde_json::Value) -> BoxFuture<Result<()>> {
+        Box::pin(async { Ok(()) })
     }
 }
 

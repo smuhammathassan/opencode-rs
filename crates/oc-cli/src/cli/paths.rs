@@ -23,6 +23,9 @@ fn xdg(var: &str, fallback: PathBuf) -> PathBuf {
 }
 
 fn home_dir() -> PathBuf {
+    if let Some(home) = std::env::var_os("OPENCODE_TEST_HOME") {
+        return PathBuf::from(home);
+    }
     if let Some(home) = std::env::var_os("HOME") {
         return PathBuf::from(home);
     }

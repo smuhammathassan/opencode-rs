@@ -12,22 +12,22 @@ async fn snapshot_track_diff_and_restore() {
         .with_max_level(tracing::Level::TRACE)
         .try_init();
     let repo = init_repo("snap-repo", "file.txt", "line one\n");
-    let project_id = root_commit(&repo);
 
     let runtime = Runtime::new(Config::default());
     let ctx = runtime
         .load(repo.to_str().unwrap())
         .await
         .expect("instance loads");
+    let expected_file = std::path::Path::new(&ctx.worktree)
+        .join("file.txt")
+        .to_string_lossy()
+        .replace('\\', "/");
 
     // Snapshot storage layout: {data}/snapshot/{project.id}/{sha1(worktree)}.
-    let expected =
-        data_dir()
-            .join("snapshot")
-            .join(&project_id)
-            .join(&oc_project::util::hash::Hash::fast(
-                repo.to_str().unwrap().as_bytes(),
-            ));
+    let expected = data_dir()
+        .join("snapshot")
+        .join(&ctx.project.id.0)
+        .join(&oc_project::util::hash::Hash::fast(ctx.worktree.as_bytes()));
     let first = runtime
         .snapshot
         .track(&ctx)
@@ -66,10 +66,7 @@ async fn snapshot_track_diff_and_restore() {
     // with absolute worktree paths.
     let snapshot_patch = runtime.snapshot.patch(&ctx, &first).await;
     assert_eq!(snapshot_patch.hash, first);
-    assert_eq!(
-        snapshot_patch.files,
-        vec![repo.join("file.txt").to_str().unwrap().replace('\\', "/")]
-    );
+    assert_eq!(snapshot_patch.files, vec![expected_file.clone()]);
 
     // Restore the first snapshot and verify content is back.
     runtime.snapshot.restore(&ctx, &first).await;
@@ -82,7 +79,7 @@ async fn snapshot_track_diff_and_restore() {
         json,
         serde_json::json!({
             "hash": first,
-            "files": [repo.join("file.txt").to_str().unwrap().replace('\\', "/")],
+            "files": [expected_file],
         })
     );
 }

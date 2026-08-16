@@ -1,10 +1,8 @@
 //! Theme palette.
 //!
 //! Port of the default `opencode` theme (`reference/packages/tui/src/theme/
-//! assets/opencode.json`). Only the dark palette is implemented here; light
-//! mode (`theme.switch_mode`) is stubbed.
-//!
-//! TODO(integration): load `opencode.json` theme assets and support light mode.
+//! assets/opencode.json`). Theme selection is currently limited to the
+//! built-in palette; the resolved mode is still honored.
 
 use ratatui::style::Color;
 
@@ -58,6 +56,17 @@ impl Theme {
     pub fn light() -> Self {
         let mut theme = Self::dark();
         theme.mode = Mode::Light;
+        theme
+    }
+
+    /// Build the supported theme from the resolved TUI settings.
+    ///
+    /// The reference accepts named theme assets. This port currently ships
+    /// only the built-in `opencode` palette, so the resolved name falls back
+    /// to it while preserving the configured light/dark mode.
+    pub fn from_config(config: &crate::config::ResolvedConfig) -> Self {
+        let mut theme = Self::dark();
+        theme.mode = config.theme_mode;
         theme
     }
 
@@ -236,5 +245,27 @@ mod tests {
             theme.agent_color("unknown", &agents),
             theme.agent_colors()[0]
         );
+    }
+
+    #[test]
+    fn from_config_honors_resolved_light_mode() {
+        let config = crate::config::resolve(
+            &serde_json::json!({ "theme": "opencode", "theme_mode": "light" }),
+            crate::config::ResolveOptions::default(),
+        );
+
+        assert_eq!(Theme::from_config(&config).mode, Mode::Light);
+    }
+
+    #[test]
+    fn from_config_falls_back_to_supported_palette() {
+        let config = crate::config::resolve(
+            &serde_json::json!({ "theme": "not-installed", "theme_mode": "dark" }),
+            crate::config::ResolveOptions::default(),
+        );
+        let theme = Theme::from_config(&config);
+
+        assert_eq!(theme.mode, Mode::Dark);
+        assert_eq!(theme.primary, Theme::dark().primary);
     }
 }

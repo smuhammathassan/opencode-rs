@@ -405,6 +405,7 @@ fn core_builtins_expose_reference_tool_names() {
             "question",
             "read",
             "skill",
+            "task",
             "todowrite",
             "webfetch",
             "websearch",

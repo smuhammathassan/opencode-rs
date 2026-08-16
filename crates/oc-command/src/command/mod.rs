@@ -193,6 +193,41 @@ impl Info {
     }
 }
 
+/// Metadata needed to expose an MCP prompt as a slash command.
+///
+/// The reference command service fetches the prompt template lazily. Keeping
+/// this metadata in the registry (rather than in `Info`) lets the server do
+/// the same without making the synchronous command model depend on an async
+/// MCP client.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct McpPrompt {
+    /// The sanitized `client:prompt` command key shown to callers.
+    pub command_name: String,
+    /// The configured MCP client name used for `prompts/get`.
+    pub client: String,
+    /// The native prompt name sent to the MCP server.
+    pub name: String,
+    pub description: Option<String>,
+    /// Argument names in the order advertised by `prompts/list`.
+    pub arguments: Vec<String>,
+}
+
+impl McpPrompt {
+    /// Build the placeholder arguments used to retrieve a prompt template.
+    /// The resolved template is rendered with the user's actual slash-command
+    /// arguments afterward, matching the reference's `$1`, `$2`, ... mapping.
+    pub fn request_arguments(&self) -> serde_json::Value {
+        let mut arguments = serde_json::Map::new();
+        for (index, name) in self.arguments.iter().enumerate() {
+            arguments.insert(
+                name.clone(),
+                serde_json::Value::String(format!("${}", index + 1)),
+            );
+        }
+        serde_json::Value::Object(arguments)
+    }
+}
+
 impl Serialize for Info {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut state = serializer.serialize_struct("Command", 8)?;
@@ -330,6 +365,7 @@ pub struct ConfigCommandError(String);
 #[derive(Debug, Default)]
 pub struct Registry {
     commands: IndexMap<String, Info>,
+    mcp_prompts: IndexMap<String, McpPrompt>,
 }
 
 impl Registry {
@@ -419,9 +455,45 @@ impl Registry {
         }
     }
 
-    // TODO(integration): register MCP prompt commands (source "mcp") once
-    // oc-mcp exposes `prompts()`/`getPrompt`; mirror
-    // reference/packages/opencode/src/command/index.ts lines 105-132.
+    /// Register MCP prompts as lazy slash commands. The actual `prompts/get`
+    /// call is performed by the server when the command is executed.
+    ///
+    /// Existing commands are intentionally replaced, matching the reference
+    /// command service's MCP prompt loop; skills added afterward still do not
+    /// override the prompt command.
+    pub fn add_mcp_prompts<I>(&mut self, prompts: I)
+    where
+        I: IntoIterator<Item = McpPrompt>,
+    {
+        for prompt in prompts {
+            let command_name = prompt.command_name.clone();
+            let hints = prompt
+                .arguments
+                .iter()
+                .enumerate()
+                .map(|(index, _)| format!("${}", index + 1))
+                .collect();
+            self.commands.insert(
+                command_name.clone(),
+                Info {
+                    name: command_name.clone(),
+                    description: prompt.description.clone(),
+                    agent: None,
+                    model: None,
+                    source: Some(Source::Mcp),
+                    template: Template::static_value(String::new()),
+                    subtask: None,
+                    hints,
+                },
+            );
+            self.mcp_prompts.insert(command_name, prompt);
+        }
+    }
+
+    /// Return the backing MCP metadata for a registered prompt command.
+    pub fn get_mcp_prompt(&self, name: &str) -> Option<&McpPrompt> {
+        self.mcp_prompts.get(name)
+    }
 }
 
 /// Skill command template: the skill body plus a base-directory note.

@@ -605,16 +605,51 @@ pub mod skill {
 
     fn execute(
         input: serde_json::Value,
-        _context: &mut CoreContext,
+        context: &mut CoreContext,
     ) -> Result<serde_json::Value, ToolError> {
         let name = input
             .get("name")
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
-        // TODO(integration): `SkillV2.list`.
-        let _ = &name;
-        return Err(ToolError::failure(format!("Unable to load skill {name}")));
+        if name.trim().is_empty()
+            || std::path::Path::new(&name)
+                .components()
+                .any(|component| !matches!(component, std::path::Component::Normal(_)))
+        {
+            return Err(ToolError::failure(format!("Unable to load skill {name}")));
+        }
+
+        let mut roots = vec![
+            std::path::PathBuf::from(&context.location_directory).join(".opencode/skills"),
+            std::path::PathBuf::from(&context.location_directory).join(".opencode/skill"),
+            std::path::PathBuf::from(&context.location_directory).join("skills"),
+        ];
+        if let Some(directory) = std::env::var_os("OPENCODE_SKILL_DIR") {
+            roots.insert(0, std::path::PathBuf::from(directory));
+        }
+        if let Some(home) = std::env::var_os("HOME") {
+            let home = std::path::PathBuf::from(home);
+            roots.push(home.join(".config/opencode/skills"));
+            roots.push(home.join(".agents/skills"));
+        }
+
+        for root in roots {
+            let directory = root.join(&name);
+            for filename in ["SKILL.md", "skill.md"] {
+                let path = directory.join(filename);
+                let Ok(output) = std::fs::read_to_string(&path) else {
+                    continue;
+                };
+                return Ok(serde_json::json!({
+                    "name": name,
+                    "directory": directory,
+                    "output": output,
+                }));
+            }
+        }
+
+        Err(ToolError::failure(format!("Unable to load skill {name}")))
     }
 }
 

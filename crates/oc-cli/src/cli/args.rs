@@ -326,6 +326,9 @@ pub struct UpgradeArgs {
     /// installation method to use
     #[arg(short = 'm', long, value_parser = ["curl", "npm", "pnpm", "bun", "brew", "choco", "scoop"])]
     pub method: Option<String>,
+    /// show the upgrade plan without changing the installation
+    #[arg(long, default_value_t = false)]
+    pub dry_run: bool,
 }
 
 #[derive(Args, Clone, Debug, Default)]

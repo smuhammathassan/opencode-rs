@@ -135,14 +135,23 @@ where
             }
             "message.part.updated" => {
                 let properties = &event.properties;
-                let part: Part = serde_json::from_value(
+                let event_session_id = properties
+                    .get("sessionID")
+                    .and_then(serde_json::Value::as_str)
+                    .unwrap_or("");
+                let mut part: Part = serde_json::from_value(
                     properties
                         .get("part")
                         .cloned()
                         .unwrap_or(serde_json::Value::Null),
                 )
                 .unwrap_or_default();
-                if part.session_id.is_empty() {}
+                // The v1 compatibility envelope carries sessionID beside the
+                // part, while the v2 part schema carries it inside the part.
+                // Normalize both shapes before applying the session filter.
+                if part.session_id.is_empty() && !event_session_id.is_empty() {
+                    part.session_id = event_session_id.to_string();
+                }
                 if part.session_id != *session_id {
                     continue;
                 }
@@ -183,7 +192,7 @@ where
                             toggles.insert(part.id.clone(), true);
                         }
                     }
-                    "step-start" => {
+                    "step-start" | "session.next.step.started" => {
                         let mut extra = serde_json::Map::new();
                         extra.insert(
                             "part".into(),
@@ -191,7 +200,7 @@ where
                         );
                         emit(opts.format_json, "step_start", &extra, session_id);
                     }
-                    "step-finish" => {
+                    "step-finish" | "session.next.step.ended" => {
                         let mut extra = serde_json::Map::new();
                         extra.insert(
                             "part".into(),

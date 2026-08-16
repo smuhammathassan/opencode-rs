@@ -3,6 +3,8 @@
 //! From reference/packages/opencode/src/control-plane/adapters/index.ts: a
 //! per-project map of custom adapters layered over the builtin adapters.
 
+pub mod console;
+pub mod remote;
 pub mod worktree;
 
 use std::collections::HashMap;
@@ -24,6 +26,8 @@ fn state() -> &'static Mutex<HashMap<String, HashMap<String, AdapterRef>>> {
 pub fn builtin() -> HashMap<String, AdapterRef> {
     let mut map = HashMap::new();
     map.insert("worktree".to_string(), worktree::worktree_adapter());
+    map.insert("remote".to_string(), remote::remote_adapter());
+    map.insert("console".to_string(), console::console_adapter());
     map
 }
 

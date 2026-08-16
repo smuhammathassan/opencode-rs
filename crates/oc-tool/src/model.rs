@@ -246,6 +246,21 @@ pub struct SkillInfo {
     pub content: String,
 }
 
+/// A request sent from the LSP tool to the host's language-server service.
+///
+/// Paths and positions are kept in the same shape as the tool contract. The
+/// LSP implementation owns conversion to file URIs and zero-based protocol
+/// positions, so callers cannot accidentally send editor-facing coordinates
+/// directly to a server.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LspRequest {
+    pub operation: String,
+    pub file_path: String,
+    pub line: usize,
+    pub character: usize,
+    pub query: Option<String>,
+}
+
 /// Session/service capabilities tools delegate to. The session runner wires
 /// real implementations; the default is a permissive stub.
 ///
@@ -277,6 +292,14 @@ pub trait ToolServices: Send + Sync {
         Ok(false)
     }
 
+    /// Executes one LSP tool request through the host's configured language
+    /// server manager. The default is an explicit error: returning an empty
+    /// result here would make an unconfigured server look like a successful
+    /// query and was the source of the old placeholder behavior.
+    fn lsp_request(&self, _request: LspRequest) -> BoxFuture<'_, Result<Vec<JsonValue>, String>> {
+        Box::pin(async { Err("LSP execution is not configured for this tool host".to_string()) })
+    }
+
     /// `LSP.diagnostics` used by write/edit/apply_patch to append LSP blocks.
     fn lsp_diagnostics(&self, _file: &str) -> Result<Option<String>, String> {
         Ok(None)
@@ -295,6 +318,58 @@ pub trait ToolServices: Send + Sync {
     fn subagent_depth(&self) -> Option<usize> {
         None
     }
+
+    /// The number of parent subagent sessions above the active session.
+    ///
+    /// The task tool keeps the depth guard in the tool layer so callers that
+    /// use the v1 tool engine cannot accidentally bypass it.  Production
+    /// runners can provide the durable session ancestry here.
+    fn subagent_parent_depth(&self, _session_id: &str) -> usize {
+        0
+    }
+
+    /// Execute or schedule one subagent task.
+    ///
+    /// This is intentionally a callback-shaped capability rather than a
+    /// dependency on the server/session crates.  CLI, embedded, and server
+    /// runners can each supply their own child-session implementation while
+    /// sharing the permission, depth, and output semantics of the task tool.
+    fn execute_subagent(
+        &self,
+        _request: SubagentRequest,
+    ) -> BoxFuture<'static, Result<SubagentResult, String>> {
+        Box::pin(async {
+            Err("Subagent execution is not configured for this tool runtime".to_string())
+        })
+    }
+
+    /// Observe a child-session lifecycle transition. Hosts can use this to
+    /// publish a completion notification for foreground work or a started
+    /// notification for background work without coupling the tool crate to a
+    /// particular event transport.
+    fn notify_subagent(
+        &self,
+        _request: &SubagentRequest,
+        _result: &SubagentResult,
+    ) -> Result<(), String> {
+        Ok(())
+    }
+
+    /// Cooperatively cancel a child whose parent tool call was aborted.
+    fn cancel_subagent(&self, _request: &SubagentRequest) -> Result<(), String> {
+        Ok(())
+    }
+
+    /// Release host-side transient resources after a terminal child result.
+    /// This must not delete the durable child session; the session host owns
+    /// that policy.
+    fn cleanup_subagent(
+        &self,
+        _request: &SubagentRequest,
+        _session_id: Option<&str>,
+    ) -> Result<(), String> {
+        Ok(())
+    }
 }
 
 /// Default permissive service implementations.
@@ -302,6 +377,29 @@ pub trait ToolServices: Send + Sync {
 pub struct NullServices;
 
 impl ToolServices for NullServices {}
+
+/// Request passed from the v1 task tool to the active session runner.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubagentRequest {
+    pub parent_session_id: String,
+    pub parent_message_id: String,
+    pub description: String,
+    pub prompt: String,
+    pub subagent_type: String,
+    pub task_id: Option<String>,
+    pub command: Option<String>,
+    pub background: bool,
+}
+
+/// Completed, failed, or background-started subagent output.
+#[derive(Debug, Clone, PartialEq)]
+pub struct SubagentResult {
+    pub session_id: String,
+    pub state: String,
+    pub summary: Option<String>,
+    pub output: String,
+    pub metadata: JsonValue,
+}
 
 /// `Tool.Context` from `reference/packages/opencode/src/tool/tool.ts:36`.
 ///

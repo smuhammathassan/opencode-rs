@@ -26,4 +26,7 @@ oc-session = { version = "0.1", path = "../oc-session" }
 ratatui = "0.29"
 crossterm = { version = "0.28", features = ["events"] }
 
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]

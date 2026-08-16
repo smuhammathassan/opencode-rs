@@ -120,10 +120,24 @@ fn line_count(text: &str) -> usize {
 
 /// Managed output directory (mirrors `Global.Path.data` + `tool-output`).
 pub fn managed_directory() -> std::path::PathBuf {
-    let data = directories::ProjectDirs::from("", "", "opencode")
-        .map(|dirs| dirs.data_dir().to_path_buf())
+    writable_data_dir().join("tool-output")
+}
+
+fn writable_data_dir() -> std::path::PathBuf {
+    let preferred = std::env::var_os("OPENCODE_DATA_DIR")
+        .map(std::path::PathBuf::from)
+        .or_else(|| {
+            directories::ProjectDirs::from("", "", "opencode")
+                .map(|dirs| dirs.data_dir().to_path_buf())
+        })
         .unwrap_or_else(|| std::env::temp_dir().join("opencode"));
-    data.join("tool-output")
+    if std::fs::create_dir_all(&preferred).is_ok() {
+        preferred
+    } else {
+        let fallback = std::env::temp_dir().join("opencode");
+        let _ = std::fs::create_dir_all(&fallback);
+        fallback
+    }
 }
 
 /// `ToolOutputStore.limits` — config-free defaults.
@@ -227,9 +241,7 @@ pub fn cleanup() {
 
 /// Helper for the managed directory path used by core tools.
 pub fn global_data_dir() -> std::path::PathBuf {
-    directories::ProjectDirs::from("", "", "opencode")
-        .map(|dirs| dirs.data_dir().to_path_buf())
-        .unwrap_or_else(|| std::env::temp_dir().join("opencode"))
+    writable_data_dir()
 }
 
 #[cfg(test)]

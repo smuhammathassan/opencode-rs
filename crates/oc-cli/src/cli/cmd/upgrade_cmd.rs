@@ -10,12 +10,23 @@ pub async fn run(_cli: &Cli, args: &UpgradeArgs) -> anyhow::Result<i32> {
     ui::println(&[&ui::logo(Some("  "))]);
     ui::empty();
 
-    let method = args.method.clone().unwrap_or_else(|| "unknown".to_string());
+    let method = args.method.as_deref().unwrap_or("auto");
     ui::println(&["◇  Upgrade"]);
     ui::println(&["│  ", &format!("Using method: {method}")]);
 
     let target = match &args.target {
-        Some(target) => target.trim_start_matches('v').to_string(),
+        Some(target) => match upgrade::normalize_target(target) {
+            Some(target) => target,
+            None => {
+                ui::println(&[
+                    Style::TEXT_DANGER_BOLD,
+                    "✖  ",
+                    Style::TEXT_NORMAL,
+                    "target must be a release version in the form x.y.z",
+                ]);
+                return Ok(2);
+            }
+        },
         None => match upgrade::fetch_latest().await {
             Some(latest) => latest,
             None => {
@@ -30,7 +41,21 @@ pub async fn run(_cli: &Cli, args: &UpgradeArgs) -> anyhow::Result<i32> {
         },
     };
 
-    if crate::VERSION == target {
+    let current = match upgrade::parse_version(crate::VERSION) {
+        Some(current) => current,
+        None => {
+            ui::println(&[
+                Style::TEXT_DANGER_BOLD,
+                "✖  ",
+                Style::TEXT_NORMAL,
+                "the installed version is invalid; refusing to upgrade",
+            ]);
+            return Ok(1);
+        }
+    };
+    let requested = upgrade::parse_version(&target).expect("target was validated above");
+
+    if current == requested {
         ui::println(&[
             Style::TEXT_WARNING_BOLD,
             "▲  ",
@@ -41,18 +66,99 @@ pub async fn run(_cli: &Cli, args: &UpgradeArgs) -> anyhow::Result<i32> {
         return Ok(0);
     }
 
+    if requested < current {
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "▲  ",
+            Style::TEXT_NORMAL,
+            &format!("refusing to downgrade from {} to {target}", crate::VERSION),
+        ]);
+        return Ok(2);
+    }
+
     ui::println(&[
         Style::TEXT_INFO_BOLD,
         "ℹ  ",
         Style::TEXT_NORMAL,
         &format!("From {} → {target}", crate::VERSION),
     ]);
-    ui::println(&[
-        Style::TEXT_WARNING_BOLD,
-        "!  ",
-        Style::TEXT_NORMAL,
-        "the Rust port is installed in-process; automatic upgrades are not supported.",
-    ]);
+    if args.dry_run {
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "▲  ",
+            Style::TEXT_NORMAL,
+            "Dry run - no changes made",
+        ]);
+        ui::println(&["└  Done"]);
+        return Ok(0);
+    }
+
+    if method != "auto" {
+        ui::println(&[
+            Style::TEXT_DANGER_BOLD,
+            "✖  ",
+            Style::TEXT_NORMAL,
+            &format!(
+                "installation method `{method}` is not available for the bundled Rust installer"
+            ),
+        ]);
+        ui::println(&["└  Done"]);
+        return Ok(2);
+    }
+
+    let destination = match std::env::current_exe() {
+        Ok(path) => path,
+        Err(error) => {
+            ui::println(&[
+                Style::TEXT_DANGER_BOLD,
+                "✖  ",
+                Style::TEXT_NORMAL,
+                &format!("cannot locate the running executable: {error}"),
+            ]);
+            ui::println(&["└  Done"]);
+            return Ok(1);
+        }
+    };
+    let platform = match upgrade::current_platform() {
+        Ok(platform) => platform,
+        Err(error) => {
+            ui::println(&[
+                Style::TEXT_DANGER_BOLD,
+                "✖  ",
+                Style::TEXT_NORMAL,
+                &error.to_string(),
+            ]);
+            ui::println(&["└  Done"]);
+            return Ok(1);
+        }
+    };
+    match upgrade::install_release(
+        &upgrade::ReleaseClient::default(),
+        &target,
+        platform,
+        &destination,
+    )
+    .await
+    {
+        Ok(asset) => {
+            ui::println(&[
+                Style::TEXT_SUCCESS_BOLD,
+                "✓  ",
+                Style::TEXT_NORMAL,
+                &format!("installed {target} from {asset}"),
+            ]);
+            ui::println(&["└  Done"]);
+            return Ok(0);
+        }
+        Err(error) => {
+            ui::println(&[
+                Style::TEXT_DANGER_BOLD,
+                "✖  ",
+                Style::TEXT_NORMAL,
+                &format!("upgrade failed: {error}"),
+            ]);
+        }
+    }
     ui::println(&["└  Done"]);
-    Ok(0)
+    Ok(1)
 }

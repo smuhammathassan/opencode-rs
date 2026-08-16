@@ -27,6 +27,7 @@ pub struct SyncState {
     pub providers: Vec<Provider>,
     pub agents: Vec<Agent>,
     pub commands: Vec<Command>,
+    pub skills: Vec<Skill>,
     pub config: Config,
     pub sessions: Vec<Session>,
     pub messages: HashMap<String, Vec<Message>>,
@@ -36,6 +37,7 @@ pub struct SyncState {
     pub session_status: HashMap<String, SessionStatus>,
     pub todos: HashMap<String, Vec<Todo>>,
     pub session_diff: HashMap<String, Vec<SnapshotFileDiff>>,
+    pub queued_prompts: HashMap<String, Vec<QueuedPrompt>>,
     pub capabilities: ExperimentalCapabilities,
     pub console_state: ConsoleState,
 }
@@ -152,12 +154,46 @@ impl SyncState {
                     }
                 }
             }
+            "session.next.prompt.admitted" => {
+                let session_id = props.get("sessionID").and_then(v_str);
+                let message_id = props.get("messageID").and_then(v_str);
+                let delivery = props.get("delivery").and_then(v_str);
+                let prompt = props.get("prompt").cloned();
+                let timestamp = props
+                    .get("timestamp")
+                    .and_then(serde_json::Value::as_i64)
+                    .unwrap_or_default();
+                if let (Some(session_id), Some(message_id), Some(delivery), Some(prompt)) =
+                    (session_id, message_id, delivery, prompt)
+                {
+                    if delivery == "queue" {
+                        let queued = self
+                            .queued_prompts
+                            .entry(session_id.to_string())
+                            .or_default();
+                        if !queued.iter().any(|item| item.id == message_id) {
+                            queued.push(QueuedPrompt {
+                                id: message_id.to_string(),
+                                session_id: session_id.to_string(),
+                                prompt,
+                                timestamp,
+                            });
+                            queued.sort_by(|a, b| {
+                                a.timestamp.cmp(&b.timestamp).then_with(|| a.id.cmp(&b.id))
+                            });
+                        }
+                    }
+                }
+            }
             "session.status" => {
                 let session_id = props.get("sessionID").and_then(v_str);
                 let status = props
                     .get("status")
                     .and_then(|v| serde_json::from_value::<SessionStatus>(v.clone()).ok());
                 if let (Some(session_id), Some(status)) = (session_id, status) {
+                    if status.kind() == "idle" {
+                        self.queued_prompts.remove(session_id);
+                    }
                     self.session_status.insert(session_id.to_string(), status);
                 }
             }
@@ -591,6 +627,50 @@ mod tests {
             json!({ "sessionID": "ses_1", "status": { "type": "retry", "attempt": 2, "message": "boom", "next": 123 } }),
         ));
         assert_eq!(sync.session_status.get("ses_1").unwrap().kind(), "retry");
+    }
+
+    #[test]
+    fn queued_prompt_event_is_sorted_and_cleared_when_idle() {
+        let mut sync = SyncState::default();
+        sync.apply_event(&event(
+            "session.next.prompt.admitted",
+            json!({
+                "sessionID": "ses_1", "messageID": "msg_b", "timestamp": 20,
+                "delivery": "queue", "prompt": { "text": "second" }
+            }),
+        ));
+        sync.apply_event(&event(
+            "session.next.prompt.admitted",
+            json!({
+                "sessionID": "ses_1", "messageID": "msg_a", "timestamp": 10,
+                "delivery": "queue", "prompt": { "text": "first" }
+            }),
+        ));
+        assert_eq!(
+            sync.queued_prompts["ses_1"]
+                .iter()
+                .map(|item| item.summary())
+                .collect::<Vec<_>>(),
+            vec!["first", "second"]
+        );
+        sync.apply_event(&event(
+            "session.status",
+            json!({ "sessionID": "ses_1", "status": { "type": "idle" } }),
+        ));
+        assert!(!sync.queued_prompts.contains_key("ses_1"));
+    }
+
+    #[test]
+    fn steer_prompt_is_not_shown_as_queued() {
+        let mut sync = SyncState::default();
+        sync.apply_event(&event(
+            "session.next.prompt.admitted",
+            json!({
+                "sessionID": "ses_1", "messageID": "msg_a", "timestamp": 10,
+                "delivery": "steer", "prompt": { "text": "interrupt" }
+            }),
+        ));
+        assert!(sync.queued_prompts.is_empty());
     }
 
     #[test]

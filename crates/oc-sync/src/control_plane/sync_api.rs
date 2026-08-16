@@ -47,7 +47,7 @@ pub struct SyncHttpResponse {
 pub type ReplayEvent = SerializedEvent;
 
 /// `ReplayPayload` from the reference: `{ directory, events }`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct ReplayPayload {
     pub directory: String,
     pub events: Vec<ReplayEvent>,
@@ -89,6 +89,7 @@ pub struct SyncHttpRequest {
 pub enum Method {
     Get,
     Post,
+    Delete,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -138,6 +139,7 @@ impl SyncApi for ReqwestSyncApi {
         let method = match request.method {
             Method::Get => reqwest::Method::GET,
             Method::Post => reqwest::Method::POST,
+            Method::Delete => reqwest::Method::DELETE,
         };
         let mut builder = self.client.request(method, &request.url);
         for (name, value) in as_headers(&request.headers) {

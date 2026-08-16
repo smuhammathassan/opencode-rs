@@ -1,5 +1,6 @@
 //! Mirrors `reference/packages/opencode/src/cli/`.
 
+pub mod account;
 pub mod args;
 pub mod auth;
 pub mod bootstrap;

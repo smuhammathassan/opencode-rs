@@ -12,10 +12,24 @@ const RETENTION_MILLIS: u64 = 7 * 24 * 60 * 60 * 1000;
 /// `TRUNCATION_DIR` from `reference/packages/opencode/src/tool/truncation-dir.ts:4`
 /// (`Global.Path.data` + `tool-output`).
 pub fn truncation_dir() -> PathBuf {
-    let data = directories::ProjectDirs::from("", "", "opencode")
-        .map(|dirs| dirs.data_dir().to_path_buf())
+    writable_data_dir().join("tool-output")
+}
+
+fn writable_data_dir() -> PathBuf {
+    let preferred = std::env::var_os("OPENCODE_DATA_DIR")
+        .map(PathBuf::from)
+        .or_else(|| {
+            directories::ProjectDirs::from("", "", "opencode")
+                .map(|dirs| dirs.data_dir().to_path_buf())
+        })
         .unwrap_or_else(|| std::env::temp_dir().join("opencode"));
-    data.join("tool-output")
+    if std::fs::create_dir_all(&preferred).is_ok() {
+        preferred
+    } else {
+        let fallback = std::env::temp_dir().join("opencode");
+        let _ = std::fs::create_dir_all(&fallback);
+        fallback
+    }
 }
 
 pub fn glob() -> String {

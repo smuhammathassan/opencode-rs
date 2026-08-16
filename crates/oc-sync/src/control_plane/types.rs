@@ -5,6 +5,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::sync_api::SyncApi;
+use std::sync::Arc;
+
 /// `WorkspaceInfo` from reference/packages/opencode/src/control-plane/types.ts.
 ///
 /// `branch`, `directory`, and `extra` are `optional(NullOr(...))`: absent is
@@ -90,10 +93,30 @@ pub enum Target {
 ///
 /// The reference passes the whole `InstanceContext`; the port only carries the
 /// subset the adapters need, notably the project id (`context.instance.project.id`).
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct WorkspaceAdapterContext {
     pub workspace_id: Option<String>,
     pub project_id: Option<String>,
+    /// Optional transport supplied by the owning workspace runtime. Builtin
+    /// remote adapters use this instead of constructing their own client so
+    /// callers can inject a deterministic transport in tests and embedders.
+    pub sync_api: Option<Arc<dyn SyncApi>>,
+    /// The configured target is needed by adapter-level list operations, which
+    /// otherwise do not receive a `WorkspaceInfo` value to read the remote URL
+    /// from. Create/remove continue to derive their target from `info`.
+    pub target: Option<Target>,
+}
+
+impl std::fmt::Debug for WorkspaceAdapterContext {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("WorkspaceAdapterContext")
+            .field("workspace_id", &self.workspace_id)
+            .field("project_id", &self.project_id)
+            .field("sync_api", &self.sync_api.as_ref().map(|_| "injected"))
+            .field("target", &self.target)
+            .finish()
+    }
 }
 
 /// `WorkspaceAdapter` from reference/packages/opencode/src/control-plane/types.ts.

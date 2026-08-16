@@ -8,4 +8,6 @@ pub mod version;
 
 /// Version reported by `opencode --version`.
 /// From reference/packages/opencode/package.json (`"version": "1.18.13"`).
-pub const VERSION: &str = "1.18.13";
+/// Re-exports the shared `oc-util` constant so every crate reports the same
+/// value (RELEASE-006/RELEASE-018).
+pub const VERSION: &str = oc_util::version::REFERENCE_VERSION;

@@ -1,7 +1,8 @@
 //! `opencode uninstall`
 //! From reference/packages/opencode/src/cli/cmd/uninstall.ts.
 
-use std::path::PathBuf;
+use std::io::{self, IsTerminal};
+use std::path::{Path, PathBuf};
 
 use crate::cli::args::{Cli, UninstallArgs};
 use crate::cli::paths::GlobalPaths;
@@ -51,16 +52,21 @@ fn format_size(bytes: u64) -> String {
 }
 
 fn shorten_path(path: &std::path::Path, home: &std::path::Path) -> String {
-    let p = path.to_string_lossy();
-    let home = home.to_string_lossy();
-    if let Some(rest) = p.strip_prefix(home.as_ref()) {
-        format!("~{rest}")
-    } else {
-        p.to_string()
-    }
+    path.strip_prefix(home)
+        .map(|rest| {
+            if rest.as_os_str().is_empty() {
+                "~".to_string()
+            } else {
+                format!(
+                    "~{}",
+                    std::path::MAIN_SEPARATOR.to_string() + &rest.to_string_lossy()
+                )
+            }
+        })
+        .unwrap_or_else(|_| path.to_string_lossy().into_owned())
 }
 
-fn directory_size(dir: &PathBuf) -> u64 {
+fn directory_size(dir: &Path) -> u64 {
     let mut total = 0;
     if let Ok(entries) = std::fs::read_dir(dir) {
         for entry in entries.flatten() {
@@ -73,6 +79,43 @@ fn directory_size(dir: &PathBuf) -> u64 {
         }
     }
     total
+}
+
+fn confirm_from_stdin() -> io::Result<bool> {
+    if !io::stdin().is_terminal() {
+        return Ok(false);
+    }
+    let mut answer = String::new();
+    io::stdin().read_line(&mut answer)?;
+    Ok(matches!(
+        answer.trim().to_ascii_lowercase().as_str(),
+        "y" | "yes"
+    ))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn size_formatting_is_bounded_and_human_readable() {
+        assert_eq!(format_size(0), "0 B");
+        assert_eq!(format_size(1024), "1.0 KB");
+        assert_eq!(format_size(1024 * 1024), "1.0 MB");
+    }
+
+    #[test]
+    fn paths_are_shortened_only_under_home() {
+        let home = Path::new("/tmp/home");
+        assert_eq!(
+            shorten_path(Path::new("/tmp/home/.cache"), home),
+            "~/.cache"
+        );
+        assert_eq!(
+            shorten_path(Path::new("/tmp/home-other"), home),
+            "/tmp/home-other"
+        );
+    }
 }
 
 pub async fn run(_cli: &Cli, args: &UninstallArgs) -> anyhow::Result<i32> {
@@ -125,7 +168,15 @@ pub async fn run(_cli: &Cli, args: &UninstallArgs) -> anyhow::Result<i32> {
             Style::TEXT_WARNING_BOLD,
             "?  ",
             Style::TEXT_NORMAL,
-            "Are you sure you want to uninstall?",
+            "Are you sure you want to uninstall? [y/N]",
+        ]);
+    }
+    if !args.force && !confirm_from_stdin()? {
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "?  ",
+            Style::TEXT_NORMAL,
+            "confirmation required; no changes made",
         ]);
         ui::println(&[
             Style::TEXT_WARNING_BOLD,
@@ -133,9 +184,10 @@ pub async fn run(_cli: &Cli, args: &UninstallArgs) -> anyhow::Result<i32> {
             Style::TEXT_NORMAL,
             "pass --force to proceed without confirmation (or --dry-run to preview)",
         ]);
-        return Ok(0);
+        return Ok(2);
     }
 
+    let mut failed = false;
     for target in &targets {
         if target.keep {
             continue;
@@ -145,14 +197,17 @@ pub async fn run(_cli: &Cli, args: &UninstallArgs) -> anyhow::Result<i32> {
         }
         match std::fs::remove_dir_all(&target.path) {
             Ok(()) => ui::println(&["│  ", &format!("✓ Removed {}", target.label)]),
-            Err(err) => ui::println(&[
-                Style::TEXT_DANGER_BOLD,
-                "✖  ",
-                Style::TEXT_NORMAL,
-                &format!("Failed to remove {}: {}", target.label, err),
-            ]),
+            Err(err) => {
+                failed = true;
+                ui::println(&[
+                    Style::TEXT_DANGER_BOLD,
+                    "✖  ",
+                    Style::TEXT_NORMAL,
+                    &format!("Failed to remove {}: {}", target.label, err),
+                ])
+            }
         }
     }
     ui::println(&["└  Done"]);
-    Ok(0)
+    Ok(if failed { 1 } else { 0 })
 }

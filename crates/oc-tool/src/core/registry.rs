@@ -178,7 +178,7 @@ pub struct ExecuteInput {
 
 pub struct Materialization {
     pub definitions: Vec<ToolDefinition>,
-    pub settle: Box<dyn Fn(&mut ExecuteInput, &mut CoreContext) -> Settlement>,
+    pub settle: Box<dyn Fn(&mut ExecuteInput, &mut CoreContext) -> Settlement + Send + Sync>,
 }
 
 #[derive(Debug, Clone)]
@@ -322,6 +322,10 @@ mod tests {
             tool_call_id: "call_1".into(),
             location_directory: "/tmp".into(),
             asks: vec![],
+            subagent_depth: None,
+            subagent_parent_depth: std::sync::Arc::new(|_| 0),
+            execute_subagent: None,
+            lsp_request: None,
         };
         let settlement = (materialization.settle)(&mut input, &mut context);
         match settlement {
@@ -354,6 +358,10 @@ mod tests {
             tool_call_id: "call_1".into(),
             location_directory: "/tmp".into(),
             asks: vec![],
+            subagent_depth: None,
+            subagent_parent_depth: std::sync::Arc::new(|_| 0),
+            execute_subagent: None,
+            lsp_request: None,
         };
         let settlement = (materialization.settle)(&mut input, &mut context);
         match settlement {

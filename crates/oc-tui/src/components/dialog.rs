@@ -16,6 +16,8 @@ use crate::theme::{selected_foreground, Theme};
 pub enum DialogKind {
     ModelList,
     AgentList,
+    SkillList,
+    BackgroundJobs,
     SessionList,
     ProviderList,
     CommandPalette,
@@ -77,16 +79,34 @@ impl DialogItem {
 }
 
 /// Filter item indices by the query using fuzzy relevance.
-pub fn filter_items<'a>(items: &'a [DialogItem], query: &str) -> Vec<usize> {
+///
+/// Search both the visible label and its description. Session switchers put
+/// the session id in the description, while model switchers put the provider
+/// id there, so both remain discoverable without changing their compact rows.
+pub fn filter_items(items: &[DialogItem], query: &str) -> Vec<usize> {
     if query.trim().is_empty() {
         return (0..items.len()).collect();
     }
+    let query = query.trim();
     let mut scored: Vec<(f32, usize)> = items
         .iter()
         .enumerate()
         .filter_map(|(idx, item)| {
-            fuzzy_score(query, &item.title).map(|score| {
-                let bonus = if item.title.to_lowercase().starts_with(&query.to_lowercase()) {
+            let searchable = match &item.description {
+                Some(description) if !description.is_empty() => {
+                    format!("{} {}", item.title, description)
+                }
+                _ => item.title.clone(),
+            };
+            fuzzy_score(query, &searchable).map(|score| {
+                let query = query.to_lowercase();
+                let title = item.title.to_lowercase();
+                let description = item
+                    .description
+                    .as_deref()
+                    .unwrap_or_default()
+                    .to_lowercase();
+                let bonus = if title.starts_with(&query) || description.starts_with(&query) {
                     1.0
                 } else {
                     0.0
@@ -118,49 +138,105 @@ pub fn render_list(
     theme: &Theme,
     height: usize,
 ) -> (Vec<StyledLine>, usize) {
-    let max_visible = height.saturating_sub(3).max(1);
-    let visible = filtered.len().min(max_visible);
+    render_list_filtered(title, items, filtered, selected, width, theme, height, "")
+}
+
+/// Render a list dialog with a visible filter prompt.
+pub fn render_list_filtered(
+    title: &str,
+    items: &[DialogItem],
+    filtered: &[usize],
+    selected: usize,
+    width: usize,
+    theme: &Theme,
+    height: usize,
+    filter: &str,
+) -> (Vec<StyledLine>, usize) {
+    let height = height.max(3);
+    let content_height = height.saturating_sub(2).max(1);
     let selected = selected.min(filtered.len().saturating_sub(1));
-    let start = if filtered.len() <= max_visible {
+
+    let mut rows: Vec<(usize, String, bool)> = Vec::new();
+    for (filtered_index, item_index) in filtered.iter().copied().enumerate() {
+        let item = &items[item_index];
+        let text = match &item.description {
+            Some(description) if !description.is_empty() => {
+                format!("{} — {}", item.title, description)
+            }
+            _ => item.title.clone(),
+        };
+        let body_width = width.saturating_sub(3).max(1);
+        let wrapped = wrap_display(&text, body_width);
+        for (line_index, line) in wrapped.into_iter().enumerate() {
+            rows.push((filtered_index, line, line_index == 0));
+        }
+    }
+
+    if rows.is_empty() {
+        rows.push((usize::MAX, "No matches".to_string(), true));
+    }
+
+    let selected_row = rows
+        .iter()
+        .position(|(filtered_index, _, first)| *first && *filtered_index == selected)
+        .unwrap_or(0);
+    let start = if rows.len() <= content_height {
+        0
+    } else if selected_row < content_height {
         0
     } else {
-        selected
+        (selected_row + 1).saturating_sub(content_height)
     };
-    let selected_visible = selected.saturating_sub(start);
+    let selected_visible = selected_row.saturating_sub(start);
 
     let mut lines: Vec<StyledLine> = Vec::new();
+    let header_title = if filter.is_empty() {
+        title.to_string()
+    } else {
+        format!("{title} /{filter}")
+    };
+    let header_title = truncate_display(&header_title, width.saturating_sub(2));
     let mut header: StyledLine = vec![
         ("┏ ".to_string(), Style::default().fg(theme.border_active)),
         (
-            title.to_string(),
+            header_title,
             Style::default().fg(theme.text).add_modifier(Modifier::BOLD),
         ),
     ];
     header.push((
-        " ━".repeat(width.saturating_sub(header_len(&header))),
+        "━".repeat(width.saturating_sub(header_len(&header))),
         Style::default().fg(theme.border),
     ));
     lines.push(pad_to(header, width));
 
-    for offset in 0..visible {
-        let item_index = filtered.get(start + offset).copied().unwrap_or(0);
-        let item = &items[item_index];
-        let active = offset == selected_visible;
+    for offset in 0..content_height {
+        let row_index = start + offset;
+        let Some((filtered_index, text, first_line)) = rows.get(row_index) else {
+            lines.push(pad_to(StyledLine::new(), width));
+            continue;
+        };
+        let active = *filtered_index == selected && *filtered_index != usize::MAX;
         let bg = if active {
             theme.primary
         } else {
             theme.background_panel
         };
-        let fg = if active {
+        let fg = if active || *filtered_index == usize::MAX {
             selected_foreground(theme.primary)
-        } else if item.selected {
-            theme.text
         } else {
             theme.text
         };
         let mut spans: StyledLine = Vec::new();
         spans.push((" ".to_string(), Style::default().bg(bg)));
-        let marker = if item.selected { "● " } else { "  " };
+        let marker = if *first_line {
+            filtered
+                .get(*filtered_index)
+                .and_then(|item_index| items.get(*item_index))
+                .map(|item| if item.selected { "● " } else { "  " })
+                .unwrap_or("  ")
+        } else {
+            "  "
+        };
         spans.push((
             marker.to_string(),
             Style::default().fg(fg).bg(bg).add_modifier(if active {
@@ -169,29 +245,93 @@ pub fn render_list(
                 Modifier::empty()
             }),
         ));
-        spans.push((item.title.clone(), Style::default().fg(fg).bg(bg)));
-        if let Some(description) = &item.description {
-            spans.push((" ".to_string(), Style::default().bg(bg)));
-            spans.push((
-                description.clone(),
-                Style::default().fg(theme.text_muted).bg(bg),
-            ));
-        }
+        spans.push((text.clone(), Style::default().fg(fg).bg(bg)));
         lines.push(pad_to(spans, width));
-    }
-    for _ in lines.len()..max_visible + 1 {
-        lines.push(pad_to(StyledLine::new(), width));
     }
     let footer: StyledLine = vec![
         ("└ ".to_string(), Style::default().fg(theme.border_active)),
         (
-            format!("{} items", filtered.len()),
+            truncate_display(
+                &format!("{} items", filtered.len()),
+                width.saturating_sub(2),
+            ),
             Style::default().fg(theme.text_muted),
         ),
     ];
     lines.push(pad_to(footer, width));
 
     (lines, selected_visible)
+}
+
+/// Wrap a dialog row by display cells, breaking long ids and model names too.
+fn wrap_display(text: &str, width: usize) -> Vec<String> {
+    let width = width.max(1);
+    let mut lines = Vec::new();
+    let mut current = String::new();
+    let mut current_width = 0;
+
+    for word in text.split_whitespace() {
+        let word_width = unicode_width::UnicodeWidthStr::width(word);
+        if word_width > width {
+            if !current.is_empty() {
+                lines.push(std::mem::take(&mut current));
+                current_width = 0;
+            }
+            let mut chunk = String::new();
+            let mut chunk_width = 0;
+            for character in word.chars() {
+                let character_width =
+                    unicode_width::UnicodeWidthChar::width(character).unwrap_or(0);
+                if chunk_width + character_width > width && !chunk.is_empty() {
+                    lines.push(std::mem::take(&mut chunk));
+                    chunk_width = 0;
+                }
+                chunk.push(character);
+                chunk_width += character_width;
+            }
+            if !chunk.is_empty() {
+                current = chunk;
+                current_width = chunk_width;
+            }
+            continue;
+        }
+
+        let separator = usize::from(!current.is_empty());
+        if current_width + separator + word_width > width && !current.is_empty() {
+            lines.push(std::mem::take(&mut current));
+            current_width = 0;
+        }
+        if !current.is_empty() {
+            current.push(' ');
+            current_width += 1;
+        }
+        current.push_str(word);
+        current_width += word_width;
+    }
+    if !current.is_empty() {
+        lines.push(current);
+    }
+    if lines.is_empty() {
+        lines.push(String::new());
+    }
+    lines
+}
+
+fn truncate_display(text: &str, width: usize) -> String {
+    if unicode_width::UnicodeWidthStr::width(text) <= width {
+        return text.to_string();
+    }
+    let mut result = String::new();
+    let mut used = 0;
+    for character in text.chars() {
+        let character_width = unicode_width::UnicodeWidthChar::width(character).unwrap_or(0);
+        if used + character_width > width {
+            break;
+        }
+        result.push(character);
+        used += character_width;
+    }
+    result
 }
 
 fn header_len(line: &StyledLine) -> usize {
@@ -392,6 +532,15 @@ mod tests {
     }
 
     #[test]
+    fn filter_searches_descriptions() {
+        let items = vec![
+            DialogItem::new("Fix auth").with_description("ses_old"),
+            DialogItem::new("Fix tests").with_description("ses_new"),
+        ];
+        assert_eq!(filter_items(&items, "ses_new"), vec![1]);
+    }
+
+    #[test]
     fn selection_wraps() {
         assert_eq!(move_selection(0, 3, -1), 2);
         assert_eq!(move_selection(2, 3, 1), 0);
@@ -407,6 +556,20 @@ mod tests {
         assert_eq!(selected_visible, 1);
         assert!(lines[0].iter().any(|(s, _)| s.contains("Test")));
         assert!(lines[2].iter().any(|(s, _)| s.contains("models")));
+    }
+
+    #[test]
+    fn list_render_wraps_long_switcher_rows() {
+        let items =
+            vec![DialogItem::new("provider-with-a-very-long-model-name")
+                .with_description("provider-id")];
+        let filtered = filter_items(&items, "");
+        let (lines, _) =
+            render_list_filtered("Models", &items, &filtered, 0, 20, &Theme::dark(), 8, "");
+        assert!(lines
+            .iter()
+            .all(|line| crate::components::text::width(line) <= 20));
+        assert!(lines.iter().filter(|line| !line.is_empty()).count() > 3);
     }
 
     #[test]

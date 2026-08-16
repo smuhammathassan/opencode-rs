@@ -145,6 +145,43 @@ fn disable_claude_code_skills_keeps_agents() {
 }
 
 #[test]
+fn environment_flags_disable_external_skill_scans() {
+    static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    let _guard = ENV_LOCK
+        .get_or_init(|| std::sync::Mutex::new(()))
+        .lock()
+        .unwrap();
+    let original_external = std::env::var_os("OPENCODE_DISABLE_EXTERNAL_SKILLS");
+    let original_claude = std::env::var_os("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS");
+    std::env::set_var("OPENCODE_DISABLE_EXTERNAL_SKILLS", "1");
+    std::env::remove_var("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS");
+
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    write(&home, ".claude/skills/c/SKILL.md", &skill_md("c", "Claude"));
+    write(&home, ".agents/skills/a/SKILL.md", &skill_md("a", "Agents"));
+    let settings = settings(&home, &tmp.path().join("proj"), &tmp.path().join("proj"));
+    let service = SkillService::load_with_environment(&settings).unwrap();
+    assert!(service.get("c").is_none());
+    assert!(service.get("a").is_none());
+
+    std::env::remove_var("OPENCODE_DISABLE_EXTERNAL_SKILLS");
+    std::env::set_var("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS", "1");
+    let service = SkillService::load_with_environment(&settings).unwrap();
+    assert!(service.get("c").is_none());
+    assert!(service.get("a").is_some());
+
+    match original_external {
+        Some(value) => std::env::set_var("OPENCODE_DISABLE_EXTERNAL_SKILLS", value),
+        None => std::env::remove_var("OPENCODE_DISABLE_EXTERNAL_SKILLS"),
+    }
+    match original_claude {
+        Some(value) => std::env::set_var("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS", value),
+        None => std::env::remove_var("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS"),
+    }
+}
+
+#[test]
 fn skill_without_valid_frontmatter_is_skipped() {
     let tmp = tempfile::tempdir().unwrap();
     write(

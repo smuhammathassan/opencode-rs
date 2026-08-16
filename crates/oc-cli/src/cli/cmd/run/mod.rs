@@ -289,12 +289,7 @@ async fn execute(sdk: Box<dyn RunClient>, opts: &ExecuteOpts<'_>) -> anyhow::Res
         return Ok(0);
     }
 
-    // Interactive (--mini) mode is not yet wired.
-    // TODO(integration): `runInteractiveMode` / `runInteractiveLocalMode` from
-    // the reference (run/runtime.ts) once oc-tui lands.
-    Err(anyhow::anyhow!(
-        "interactive (--mini) mode is not yet wired in this build (TODO(integration): oc-tui)"
-    ))
+    unreachable!("interactive mode is handled by run_mini");
 }
 
 fn build_prompt_parts(opts: &ExecuteOpts<'_>) -> Vec<PromptPart> {
@@ -412,51 +407,37 @@ async fn pick_agent(sdk: &dyn RunClient, opts: &ExecuteOpts<'_>) -> Option<Strin
         return None;
     };
 
-    if opts.attach_url.is_some() {
-        let modes = sdk.app_agents().await.ok();
-        let Some(modes) = modes else {
-            ui::println(&[
-                Style::TEXT_WARNING_BOLD,
-                "!",
-                Style::TEXT_NORMAL,
-                &format!(
-                    "failed to list agents from {}. Falling back to default agent",
-                    opts.attach_url.as_deref().unwrap_or("")
-                ),
-            ]);
-            return None;
-        };
-        let agent = modes.into_iter().find(|a| a.name == name);
-        let Some(agent) = agent else {
-            ui::println(&[
-                Style::TEXT_WARNING_BOLD,
-                "!",
-                Style::TEXT_NORMAL,
-                &format!("agent \"{name}\" not found. Falling back to default agent"),
-            ]);
-            return None;
-        };
-        if agent.mode == "subagent" {
-            ui::println(&[
-                Style::TEXT_WARNING_BOLD,
-                "!",
-                Style::TEXT_NORMAL,
-                &format!("agent \"{name}\" is a subagent, not a primary agent. Falling back to default agent"),
-            ]);
-            return None;
-        }
-        return Some(name);
+    let modes = sdk.app_agents().await.ok();
+    let Some(modes) = modes else {
+        let source = opts.attach_url.as_deref().unwrap_or("the local server");
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "!",
+            Style::TEXT_NORMAL,
+            &format!("failed to list agents from {source}. Falling back to default agent"),
+        ]);
+        return None;
+    };
+    let agent = modes.into_iter().find(|a| a.name == name);
+    let Some(agent) = agent else {
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "!",
+            Style::TEXT_NORMAL,
+            &format!("agent \"{name}\" not found. Falling back to default agent"),
+        ]);
+        return None;
+    };
+    if agent.mode == "subagent" {
+        ui::println(&[
+            Style::TEXT_WARNING_BOLD,
+            "!",
+            Style::TEXT_NORMAL,
+            &format!("agent \"{name}\" is a subagent, not a primary agent. Falling back to default agent"),
+        ]);
+        return None;
     }
-
-    // TODO(integration): look up the agent via `oc_command`/`oc-session` agent
-    // service. Fall back to the default agent like the reference does.
-    ui::println(&[
-        Style::TEXT_WARNING_BOLD,
-        "!",
-        Style::TEXT_NORMAL,
-        &format!("agent \"{name}\" not found. Falling back to default agent"),
-    ]);
-    None
+    Some(name)
 }
 
 pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
@@ -467,7 +448,7 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
         .cloned()
         .collect::<Vec<_>>()
         .join(" ");
-    let interactive = args.mini;
+    let interactive = args.mini || args.interactive;
     let auto = args.auto || args.yolo || args.dangerously_skip_permissions;
     let thinking = if interactive {
         args.thinking.unwrap_or(true)
@@ -491,9 +472,6 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
 
     if interactive && args.command.is_some() {
         die("--mini cannot be used with --command");
-    }
-    if interactive {
-        die("--mini must be used without the run subcommand");
     }
     if args.demo && !interactive {
         die("--demo requires --mini");
@@ -543,6 +521,10 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
         die("--fork requires --continue or --session");
     }
 
+    if interactive {
+        return run_mini(args, directory, message, files).await;
+    }
+
     let rules = if interactive {
         Vec::new()
     } else {
@@ -558,7 +540,7 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
         ))
     } else {
         let ctx = Context::load(std::env::current_dir()?)?;
-        match LocalClient::create(&ctx) {
+        match LocalClient::create(&ctx).await {
             Ok(client) => client,
             Err(err) => {
                 let message = format!(
@@ -585,4 +567,128 @@ pub async fn run(_cli: &Cli, args: &RunArgs) -> anyhow::Result<i32> {
         attach_username: args.username.clone(),
     };
     execute(sdk, &opts).await
+}
+
+async fn run_mini(
+    args: &RunArgs,
+    directory: Option<PathBuf>,
+    message: String,
+    files: Vec<FilePart>,
+) -> anyhow::Result<i32> {
+    let (message, initial_parts) = tui_initial_prompt(message, &files);
+    let cwd = directory
+        .clone()
+        .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let home = std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("."));
+    let state_dir = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home.join(".local/state"))
+        .join("opencode");
+
+    let (url, listener) = if let Some(url) = &args.attach {
+        (url.clone(), None)
+    } else {
+        let mut options =
+            oc_server::server::ListenOptions::new("127.0.0.1", args.port.unwrap_or(0));
+        options.auth = oc_server::auth::AuthConfig::from_env();
+        let listener = oc_server::server::listen(options).await?;
+        (listener.url.to_string(), Some(listener))
+    };
+
+    let result = oc_tui::run_async(oc_tui::TuiInput {
+        url,
+        directory: directory.map(|path| path.to_string_lossy().into_owned()),
+        workspace: None,
+        cwd,
+        home,
+        state_dir,
+        config: oc_tui::config::ResolvedConfig::from_environment(),
+        continue_session: args.continue_,
+        session_id: args.session.clone(),
+        agent: args.agent.clone(),
+        model: args.model.clone(),
+        prompt: (!message.trim().is_empty()).then_some(message),
+        initial_parts,
+        replay: args.replay.unwrap_or(true),
+        replay_limit: args.replay_limit.map(|limit| limit as usize),
+    })
+    .await;
+
+    if let Some(listener) = listener {
+        listener.stop(false).await;
+    }
+    result.map(|()| 0)
+}
+
+/// Build the visible bootstrap prompt and preserve every `--file` argument as
+/// a structured part. The marker is only the TUI-side representation; the
+/// submit path strips it from text and sends the file URL/mime/name separately.
+fn tui_initial_prompt(message: String, files: &[FilePart]) -> (String, Vec<Value>) {
+    let mut prompt = message;
+    let mut parts = Vec::with_capacity(files.len());
+
+    for (index, file) in files.iter().enumerate() {
+        if !prompt.is_empty() || index > 0 {
+            prompt.push_str(if index == 0 { "\n\n" } else { "\n" });
+        }
+        let marker = format!("[file:{}]", file.filename);
+        let start = prompt.chars().count();
+        prompt.push_str(&marker);
+        let end = prompt.chars().count();
+        parts.push(json!({
+            "type": "file",
+            "url": file.url,
+            "filename": file.filename,
+            "mime": file.mime,
+            "source": {
+                "type": "file",
+                "path": file.filename,
+                "text": { "value": marker, "start": start, "end": end }
+            }
+        }));
+    }
+
+    (prompt, parts)
+}
+
+#[cfg(test)]
+mod tui_initial_prompt_tests {
+    use super::{tui_initial_prompt, FilePart};
+
+    #[test]
+    fn preserves_file_parts_while_showing_markers() {
+        let (prompt, parts) = tui_initial_prompt(
+            "Review these".to_string(),
+            &[FilePart {
+                url: "file:///tmp/notes.txt".to_string(),
+                filename: "notes.txt".to_string(),
+                mime: "text/plain".to_string(),
+            }],
+        );
+
+        assert_eq!(prompt, "Review these\n\n[file:notes.txt]");
+        assert_eq!(parts.len(), 1);
+        assert_eq!(parts[0]["type"], "file");
+        assert_eq!(parts[0]["url"], "file:///tmp/notes.txt");
+        assert_eq!(parts[0]["source"]["text"]["value"], "[file:notes.txt]");
+        assert_eq!(parts[0]["source"]["text"]["start"], 14);
+        assert_eq!(parts[0]["source"]["text"]["end"], 30);
+    }
+
+    #[test]
+    fn file_only_input_still_has_a_submitable_prompt() {
+        let (prompt, parts) = tui_initial_prompt(
+            String::new(),
+            &[FilePart {
+                url: "data:text/plain;base64,YQ==".to_string(),
+                filename: "a.txt".to_string(),
+                mime: "text/plain".to_string(),
+            }],
+        );
+
+        assert_eq!(prompt, "[file:a.txt]");
+        assert_eq!(parts.len(), 1);
+    }
 }

@@ -2,7 +2,9 @@
 //! From reference/packages/opencode/src/cli/cmd/stats.ts.
 
 use crate::cli::args::{Cli, StatsArgs};
-use crate::cli::effect_cmd::not_wired;
+use std::collections::{HashMap, HashSet};
+
+use crate::cli::context::Context;
 
 /// Session usage stats mirroring the reference's `SessionStats`.
 #[derive(Debug, Clone, Default)]
@@ -260,10 +262,193 @@ pub enum ModelLimit {
 }
 
 pub async fn run(_cli: &Cli, args: &StatsArgs) -> anyhow::Result<i32> {
-    let _ = args;
-    // TODO(integration): aggregate stats from `oc_database` + `oc_session`
-    // (aggregateSessionStats in stats.ts), then `display_stats`.
-    Err(not_wired("stats aggregation is not yet wired in this build (TODO(integration): oc-database/oc-session)"))
+    let ctx = Context::load(std::env::current_dir()?)?;
+    let database = oc_database::Database::open(crate::cli::cmd::db::database_path(&ctx))?;
+    let stats = aggregate_stats(&database, args, &ctx);
+    let model_limit = args.models.as_deref().map(|value| {
+        if value.eq_ignore_ascii_case("all") {
+            ModelLimit::All
+        } else {
+            ModelLimit::Top(value.parse::<u64>().unwrap_or(10))
+        }
+    });
+    print!(
+        "{}",
+        display_stats(&stats, args.tools.map(u64::from), model_limit)
+    );
+    Ok(0)
+}
+
+fn aggregate_stats(
+    database: &oc_database::Database,
+    args: &StatsArgs,
+    ctx: &Context,
+) -> SessionStats {
+    let now = stats_now_millis();
+    let cutoff = args.days.map(|days| now - i64::from(days) * 86_400_000);
+    let project = args.project.as_deref().and_then(|value| {
+        if value.is_empty() {
+            Some(ctx.project.id.as_str())
+        } else {
+            Some(value)
+        }
+    });
+    let sessions = database
+        .list_sessions(false)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|session| cutoff.map_or(true, |cutoff| session.time_created >= cutoff))
+        .filter(|session| project.map_or(true, |project| session.project_id == project))
+        .collect::<Vec<_>>();
+    let session_ids = sessions
+        .iter()
+        .map(|session| session.id.clone())
+        .collect::<HashSet<_>>();
+
+    let mut stats = SessionStats {
+        total_sessions: sessions.len() as u64,
+        total_cost: sessions.iter().map(|session| session.cost).sum(),
+        days: sessions
+            .iter()
+            .map(|session| session.time_created / 86_400_000)
+            .collect::<HashSet<_>>()
+            .len() as u64,
+        ..Default::default()
+    };
+    for session in &sessions {
+        stats.total_tokens.input += session.tokens_input.max(0) as u64;
+        stats.total_tokens.output += session.tokens_output.max(0) as u64;
+        stats.total_tokens.reasoning += session.tokens_reasoning.max(0) as u64;
+        stats.total_tokens.cache_read += session.tokens_cache_read.max(0) as u64;
+        stats.total_tokens.cache_write += session.tokens_cache_write.max(0) as u64;
+    }
+
+    let mut tokens_per_session = sessions
+        .iter()
+        .map(|session| {
+            (session.tokens_input
+                + session.tokens_output
+                + session.tokens_reasoning
+                + session.tokens_cache_read
+                + session.tokens_cache_write)
+                .max(0) as f64
+        })
+        .collect::<Vec<_>>();
+    tokens_per_session.sort_by(f64::total_cmp);
+    stats.tokens_per_session = if stats.total_sessions == 0 {
+        0.0
+    } else {
+        (stats.total_tokens.input
+            + stats.total_tokens.output
+            + stats.total_tokens.reasoning
+            + stats.total_tokens.cache_read
+            + stats.total_tokens.cache_write) as f64
+            / stats.total_sessions as f64
+    };
+    stats.median_tokens_per_session = if tokens_per_session.is_empty() {
+        0.0
+    } else {
+        tokens_per_session[(tokens_per_session.len() - 1) / 2]
+    };
+    stats.cost_per_day = if stats.days == 0 {
+        0.0
+    } else {
+        stats.total_cost / stats.days as f64
+    };
+
+    let mut tool_counts: HashMap<String, u64> = HashMap::new();
+    let mut model_counts: HashMap<String, ModelUsage> = HashMap::new();
+    if let Ok(rows) = database.db.run("SELECT session_id, data FROM message") {
+        for row in rows {
+            let Some(session_id) = row.get_by_name::<String>("session_id").ok() else {
+                continue;
+            };
+            if !session_ids.contains(&session_id) {
+                continue;
+            }
+            stats.total_messages += 1;
+            let Some(data) = row.value_by_name("data").and_then(|value| match value {
+                oc_database::Value::Text(text) => {
+                    serde_json::from_str::<serde_json::Value>(text).ok()
+                }
+                _ => None,
+            }) else {
+                continue;
+            };
+            if data.get("type").and_then(serde_json::Value::as_str) != Some("assistant") {
+                continue;
+            }
+            let model = data
+                .get("providerID")
+                .and_then(serde_json::Value::as_str)
+                .zip(data.get("modelID").and_then(serde_json::Value::as_str))
+                .map(|(provider, model)| format!("{provider}/{model}"));
+            if let Some(model) = model {
+                let entry = model_counts.entry(model).or_default();
+                entry.messages += 1;
+                if let Some(tokens) = data.get("tokens") {
+                    entry.tokens.input += json_u64(tokens, "input");
+                    entry.tokens.output += json_u64(tokens, "output");
+                    entry.tokens.reasoning += json_u64(tokens, "reasoning");
+                    if let Some(cache) = tokens.get("cache") {
+                        entry.tokens.cache_read += json_u64(cache, "read");
+                        entry.tokens.cache_write += json_u64(cache, "write");
+                    }
+                }
+                entry.cost += data
+                    .get("cost")
+                    .and_then(serde_json::Value::as_f64)
+                    .unwrap_or(0.0);
+            }
+        }
+    }
+    if let Ok(rows) = database.db.run("SELECT session_id, data FROM part") {
+        for row in rows {
+            let Some(session_id) = row.get_by_name::<String>("session_id").ok() else {
+                continue;
+            };
+            if !session_ids.contains(&session_id) {
+                continue;
+            }
+            let Some(data) = row.value_by_name("data").and_then(|value| match value {
+                oc_database::Value::Text(text) => {
+                    serde_json::from_str::<serde_json::Value>(text).ok()
+                }
+                _ => None,
+            }) else {
+                continue;
+            };
+            let tool = data
+                .get("tool")
+                .and_then(serde_json::Value::as_str)
+                .or_else(|| {
+                    (data.get("type").and_then(serde_json::Value::as_str) == Some("tool"))
+                        .then(|| data.get("name").and_then(serde_json::Value::as_str))
+                        .flatten()
+                });
+            if let Some(tool) = tool {
+                *tool_counts.entry(tool.to_string()).or_default() += 1;
+            }
+        }
+    }
+    stats.tool_usage = tool_counts.into_iter().collect();
+    stats.model_usage = model_counts.into_iter().collect();
+    stats
+}
+
+fn stats_now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as i64)
+        .unwrap_or_default()
+}
+
+fn json_u64(value: &serde_json::Value, key: &str) -> u64 {
+    value
+        .get(key)
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0)
+        .max(0.0) as u64
 }
 
 fn pad_to(text: &str, width: usize) -> String {

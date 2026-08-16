@@ -1,4 +1,4 @@
-//! Run-mode clients: an in-process client (TODO) and a remote HTTP client for
+//! Run-mode clients: an embedded HTTP client and a remote HTTP client for
 //! `--attach`, mirroring `createOpencodeClient` from `@opencode-ai/sdk/v2`.
 
 use futures::{future::BoxFuture, Stream, StreamExt};
@@ -56,16 +56,117 @@ pub trait RunClient: Send + Sync {
 }
 
 /// In-process client backed by the embedded opencode server.
-/// TODO(integration): construct via `oc_server` + `oc_client` once those crates
-/// land their HTTP server; today the server crate is not wired, so creating a
-/// local client fails with a clear message.
-pub struct LocalClient;
+///
+/// The CLI intentionally talks to the same HTTP surface used by `--attach`.
+/// This keeps local and remote runs on one contract and ensures that route,
+/// auth, SSE, and serialization regressions are exercised by both modes.
+pub struct LocalClient {
+    inner: AttachClient,
+    // Keep the listener alive for the lifetime of the client. Dropping the
+    // JoinHandle would otherwise stop the embedded server while a run is live.
+    _listener: oc_server::server::Listener,
+}
 
 impl LocalClient {
-    pub fn create(_ctx: &Context) -> anyhow::Result<Box<dyn RunClient>> {
-        Err(anyhow::anyhow!(
-            "the in-process opencode server is not wired yet in this build (TODO(integration): oc-server)"
-        ))
+    pub async fn create(ctx: &Context) -> anyhow::Result<Box<dyn RunClient>> {
+        let mut options = oc_server::server::ListenOptions::new("127.0.0.1", 0);
+        options.auth = oc_server::auth::AuthConfig::from_env();
+        let listener = oc_server::server::listen(options).await?;
+        let base_url = listener.url.to_string();
+        let password = std::env::var("OPENCODE_SERVER_PASSWORD").ok();
+        let username = std::env::var("OPENCODE_SERVER_USERNAME").ok();
+        let inner = AttachClient::new(
+            &base_url,
+            Some(ctx.directory.to_string_lossy().into_owned()),
+            password.as_deref(),
+            username.as_deref(),
+        );
+        Ok(Box::new(Self {
+            inner,
+            _listener: listener,
+        }))
+    }
+}
+
+impl RunClient for LocalClient {
+    fn session_get(&self, id: String) -> BoxFuture<'static, anyhow::Result<Option<SessionInfo>>> {
+        self.inner.session_get(id)
+    }
+
+    fn session_list(&self) -> BoxFuture<'static, anyhow::Result<Vec<SessionInfo>>> {
+        self.inner.session_list()
+    }
+
+    fn session_fork(&self, id: String) -> BoxFuture<'static, anyhow::Result<Option<SessionInfo>>> {
+        self.inner.session_fork(id)
+    }
+
+    fn session_create(
+        &self,
+        title: Option<String>,
+        agent: Option<String>,
+        model: Option<ModelInput>,
+        variant: Option<String>,
+        permission: Vec<Value>,
+    ) -> BoxFuture<'static, anyhow::Result<Option<SessionInfo>>> {
+        self.inner
+            .session_create(title, agent, model, variant, permission)
+    }
+
+    fn session_prompt(
+        &self,
+        session_id: String,
+        agent: Option<String>,
+        model: Option<ModelInput>,
+        variant: Option<String>,
+        parts: Vec<PromptPart>,
+    ) -> BoxFuture<'static, anyhow::Result<()>> {
+        self.inner
+            .session_prompt(session_id, agent, model, variant, parts)
+    }
+
+    fn session_command(
+        &self,
+        session_id: String,
+        agent: Option<String>,
+        model: Option<String>,
+        command: String,
+        arguments: String,
+        variant: Option<String>,
+    ) -> BoxFuture<'static, anyhow::Result<()>> {
+        self.inner
+            .session_command(session_id, agent, model, command, arguments, variant)
+    }
+
+    fn session_share(
+        &self,
+        session_id: String,
+    ) -> BoxFuture<'static, anyhow::Result<Option<String>>> {
+        self.inner.session_share(session_id)
+    }
+
+    fn config_get(&self) -> BoxFuture<'static, anyhow::Result<Value>> {
+        self.inner.config_get()
+    }
+
+    fn app_agents(&self) -> BoxFuture<'static, anyhow::Result<Vec<AgentSummary>>> {
+        self.inner.app_agents()
+    }
+
+    fn permission_reply(
+        &self,
+        request_id: String,
+        reply: String,
+    ) -> BoxFuture<'static, anyhow::Result<()>> {
+        self.inner.permission_reply(request_id, reply)
+    }
+
+    fn path_get(&self) -> BoxFuture<'static, anyhow::Result<Option<String>>> {
+        self.inner.path_get()
+    }
+
+    fn subscribe(&self) -> BoxFuture<'static, anyhow::Result<EventStream>> {
+        self.inner.subscribe()
     }
 }
 
@@ -346,7 +447,9 @@ impl RunClient for AttachClient {
 
     fn app_agents(&self) -> BoxFuture<'static, anyhow::Result<Vec<AgentSummary>>> {
         let client = self.client.clone();
-        let url = self.url("/app/agents");
+        // The v1 instance route is `/agent`; `/app/agents` is not part of the
+        // HTTP contract served by oc-server.
+        let url = self.url("/agent");
         Box::pin(async move {
             let response = client.get(&url).send().await?;
             let value = unwrap_data(parse_response(response).await?);

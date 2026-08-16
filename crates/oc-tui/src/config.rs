@@ -6,6 +6,7 @@ use std::collections::HashMap;
 use serde_json::Value;
 
 use crate::keybind::{self, LEADER_TIMEOUT_DEFAULT};
+use crate::theme::Mode;
 
 #[derive(Debug, Clone, Default)]
 pub struct AttentionConfig {
@@ -39,6 +40,8 @@ pub struct ResolvedConfig {
     pub keybinds: HashMap<String, KeybindEntry>,
     pub leader_timeout: u64,
     pub mouse: bool,
+    pub theme: String,
+    pub theme_mode: Mode,
     pub attention: AttentionConfig,
     pub prompt: PromptConfig,
     pub scroll_speed: Option<f64>,
@@ -59,6 +62,20 @@ impl ResolvedConfig {
         resolve(&Value::Null, ResolveOptions::default())
     }
 
+    /// Resolve TUI settings from `OPENCODE_TUI_CONFIG` and environment
+    /// overrides. Invalid or missing files fall back to the normal defaults.
+    pub fn from_environment() -> Self {
+        let input = std::env::var_os("OPENCODE_TUI_CONFIG")
+            .and_then(|path| std::fs::read_to_string(path).ok())
+            .and_then(|text| serde_json::from_str::<Value>(&text).ok())
+            .unwrap_or(Value::Null);
+        let mut resolved = resolve(&input, ResolveOptions::default());
+        if truthy_env("OPENCODE_DISABLE_MOUSE") {
+            resolved.mouse = false;
+        }
+        resolved
+    }
+
     /// Bindings for a named keybind (e.g. `"input.move.left"`).
     pub fn get(&self, name: &str) -> Option<&crate::keymap::Binding> {
         self.keybinds.get(name).and_then(|e| e.binding.as_ref())
@@ -68,6 +85,30 @@ impl ResolvedConfig {
     pub fn has(&self, name: &str) -> bool {
         self.keybinds.contains_key(name)
     }
+
+    /// Return the configured leader key in the form accepted by `Keymap`.
+    ///
+    /// A disabled leader intentionally returns an empty string so leader
+    /// chords are not registered by the application.
+    pub fn leader_key(&self) -> String {
+        self.keybinds
+            .get("leader")
+            .and_then(|entry| entry.binding.as_ref())
+            .and_then(|binding| binding.sequences.first())
+            .and_then(|sequence| sequence.strokes.first())
+            .and_then(|stroke| match stroke {
+                crate::keymap::Stroke::Key(key) => Some(key.display()),
+                crate::keymap::Stroke::Leader => None,
+            })
+            .unwrap_or_default()
+    }
+}
+
+fn truthy_env(name: &str) -> bool {
+    matches!(
+        std::env::var(name).ok().as_deref(),
+        Some("1") | Some("true") | Some("TRUE") | Some("yes") | Some("YES")
+    )
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -177,6 +218,12 @@ pub fn resolve(input: &Value, options: ResolveOptions) -> ResolvedConfig {
         _ => DiffStyle::Auto,
     };
 
+    let theme = get_str("theme").unwrap_or("opencode").to_string();
+    let theme_mode = match get_str("theme_mode") {
+        Some("light") => Mode::Light,
+        _ => Mode::Dark,
+    };
+
     let scroll_accel = obj
         .get("scroll_acceleration")
         .and_then(Value::as_object)
@@ -200,6 +247,8 @@ pub fn resolve(input: &Value, options: ResolveOptions) -> ResolvedConfig {
         keybinds,
         leader_timeout,
         mouse: get_bool("mouse", true),
+        theme,
+        theme_mode,
         attention,
         prompt,
         scroll_speed: get_number("scroll_speed"),
@@ -267,6 +316,8 @@ mod tests {
         let config = resolve(&Value::Null, ResolveOptions::default());
         assert_eq!(config.leader_timeout, LEADER_TIMEOUT_DEFAULT);
         assert!(config.mouse);
+        assert_eq!(config.theme, "opencode");
+        assert_eq!(config.theme_mode, Mode::Dark);
         assert!(config.has("input_move_left"));
         assert!(config.has("command_list"));
     }
@@ -291,6 +342,16 @@ mod tests {
         let b = config.get("command_list").unwrap();
         assert_eq!(b.command, "command.palette.show");
         assert_eq!(b.sequences.len(), 1);
+        assert_eq!(config.leader_key(), "ctrl+space");
+    }
+
+    #[test]
+    fn disabled_leader_does_not_register_a_chord() {
+        let config = resolve(
+            &json!({ "keybinds": { "leader": "none" } }),
+            ResolveOptions::default(),
+        );
+        assert_eq!(config.leader_key(), "");
     }
 
     #[test]
@@ -363,5 +424,56 @@ mod tests {
         assert_eq!(config.diff_style, DiffStyle::Stacked);
         let config = resolve(&Value::Null, ResolveOptions::default());
         assert_eq!(config.diff_style, DiffStyle::Auto);
+    }
+
+    #[test]
+    fn theme_and_mode_parsing() {
+        let config = resolve(
+            &json!({ "theme": "opencode", "theme_mode": "light" }),
+            ResolveOptions::default(),
+        );
+        assert_eq!(config.theme, "opencode");
+        assert_eq!(config.theme_mode, Mode::Light);
+
+        let config = resolve(
+            &json!({ "theme": 42, "theme_mode": "system" }),
+            ResolveOptions::default(),
+        );
+        assert_eq!(config.theme, "opencode");
+        assert_eq!(config.theme_mode, Mode::Dark);
+    }
+
+    #[test]
+    fn environment_config_loads_file_and_disables_mouse() {
+        let path = std::env::temp_dir().join(format!(
+            "opencode-tui-config-{}-{}.json",
+            std::process::id(),
+            std::thread::current().name().unwrap_or("test")
+        ));
+        std::fs::write(
+            &path,
+            r#"{"mouse":true,"leader_timeout":777,"theme":"opencode","theme_mode":"light"}"#,
+        )
+        .unwrap();
+        let previous_path = std::env::var_os("OPENCODE_TUI_CONFIG");
+        let previous_mouse = std::env::var_os("OPENCODE_DISABLE_MOUSE");
+        std::env::set_var("OPENCODE_TUI_CONFIG", &path);
+        std::env::set_var("OPENCODE_DISABLE_MOUSE", "1");
+
+        let config = ResolvedConfig::from_environment();
+
+        assert_eq!(config.leader_timeout, 777);
+        assert!(!config.mouse);
+        assert_eq!(config.theme, "opencode");
+        assert_eq!(config.theme_mode, Mode::Light);
+        match previous_path {
+            Some(value) => std::env::set_var("OPENCODE_TUI_CONFIG", value),
+            None => std::env::remove_var("OPENCODE_TUI_CONFIG"),
+        }
+        match previous_mouse {
+            Some(value) => std::env::set_var("OPENCODE_DISABLE_MOUSE", value),
+            None => std::env::remove_var("OPENCODE_DISABLE_MOUSE"),
+        }
+        let _ = std::fs::remove_file(path);
     }
 }

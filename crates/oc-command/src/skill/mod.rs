@@ -6,7 +6,7 @@
 pub mod discovery;
 
 use crate::frontmatter;
-use crate::util::{config_directories, escape_html, scan, up, ScanOptions};
+use crate::util::{config_directories, env_flag, escape_html, scan, up, ScanOptions};
 use indexmap::IndexMap;
 use serde_json::Value;
 use std::path::{Path, PathBuf};
@@ -97,6 +97,20 @@ pub struct SkillService {
 }
 
 impl SkillService {
+    /// Discover skills using the process-wide external-skill environment
+    /// switches in addition to the explicit settings.
+    ///
+    /// `SkillService::load` remains deterministic for callers that provide
+    /// all policy explicitly; production entry points use this wrapper to
+    /// honor the reference `OPENCODE_DISABLE_EXTERNAL_SKILLS` and
+    /// `OPENCODE_DISABLE_CLAUDE_CODE_SKILLS` flags.
+    pub fn load_with_environment(settings: &Settings) -> anyhow::Result<SkillService> {
+        let mut settings = settings.clone();
+        settings.disable_external_skills |= env_flag("OPENCODE_DISABLE_EXTERNAL_SKILLS");
+        settings.disable_claude_code_skills |= env_flag("OPENCODE_DISABLE_CLAUDE_CODE_SKILLS");
+        Self::load(&settings)
+    }
+
     /// Discover and load all skills for a session.
     pub fn load(settings: &Settings) -> anyhow::Result<SkillService> {
         let mut service = SkillService::default();

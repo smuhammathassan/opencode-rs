@@ -103,6 +103,15 @@ impl ModelsDev {
 
     /// Fetch and cache the database, mirroring `ModelsDev.refresh(force)`.
     pub async fn refresh(paths: &GlobalPaths, force: bool) -> anyhow::Result<()> {
+        if matches!(
+            std::env::var("OPENCODE_DISABLE_MODELS_FETCH")
+                .unwrap_or_default()
+                .to_ascii_lowercase()
+                .as_str(),
+            "1" | "true"
+        ) {
+            anyhow::bail!("models.dev fetch disabled by OPENCODE_DISABLE_MODELS_FETCH");
+        }
         let source =
             std::env::var("OPENCODE_MODELS_URL").unwrap_or_else(|_| DEFAULT_SOURCE.to_string());
         let filepath = cache_path(paths, &source);
@@ -157,5 +166,25 @@ mod tests {
     fn empty_on_missing_file() {
         let db = ModelsDev::parse("").unwrap_or_default();
         assert!(db.providers.is_empty());
+    }
+
+    #[tokio::test]
+    async fn refresh_is_blocked_by_disable_fetch_flag() {
+        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
+        let original = std::env::var_os("OPENCODE_DISABLE_MODELS_FETCH");
+        std::env::set_var("OPENCODE_DISABLE_MODELS_FETCH", "1");
+        let result = ModelsDev::refresh(&GlobalPaths::default(), true).await;
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("OPENCODE_DISABLE_MODELS_FETCH"));
+        match original {
+            Some(value) => std::env::set_var("OPENCODE_DISABLE_MODELS_FETCH", value),
+            None => std::env::remove_var("OPENCODE_DISABLE_MODELS_FETCH"),
+        }
     }
 }

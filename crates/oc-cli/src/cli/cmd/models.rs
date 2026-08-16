@@ -13,21 +13,21 @@ pub async fn run(_cli: &Cli, args: &ModelsArgs) -> anyhow::Result<i32> {
     let ctx = Context::load(std::env::current_dir()?)?;
 
     if args.refresh {
-        ModelsDev::refresh(&ctx.paths, true)
-            .await
-            .unwrap_or_else(|err| {
+        match ModelsDev::refresh(&ctx.paths, true).await {
+            Ok(()) => ui::println(&[
+                Style::TEXT_SUCCESS_BOLD,
+                "Models cache refreshed",
+                Style::TEXT_NORMAL,
+            ]),
+            Err(err) => {
                 ui::println(&[
                     Style::TEXT_WARNING_BOLD,
                     "!  ",
                     Style::TEXT_NORMAL,
                     &format!("failed to refresh models cache: {err}"),
                 ]);
-            });
-        ui::println(&[
-            Style::TEXT_SUCCESS_BOLD,
-            "Models cache refreshed",
-            Style::TEXT_NORMAL,
-        ]);
+            }
+        }
     }
 
     let db = ModelsDev::load(&ctx.paths).unwrap_or_default();

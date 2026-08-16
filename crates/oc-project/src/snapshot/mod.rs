@@ -302,7 +302,19 @@ impl Snapshot {
         self.add(state).await;
         let cmd = with_args(state, &[], &["write-tree"]);
         let result = self.git(state, &cmd, Some(&state.directory)).await;
+        if result.code != 0 {
+            tracing::warn!(
+                code = result.code,
+                stderr = %result.stderr,
+                "snapshot write-tree failed"
+            );
+            return None;
+        }
         let hash = result.text.trim().to_string();
+        if hash.is_empty() {
+            tracing::warn!("snapshot write-tree returned an empty tree hash");
+            return None;
+        }
         tracing::info!("tracking {hash}");
         Some(hash)
     }

@@ -1,4 +1,4 @@
-use oc_command::command::{expand_shell, hints, render, Registry, Source};
+use oc_command::command::{expand_shell, hints, render, McpPrompt, Registry, Source};
 use serde_json::json;
 
 #[test]
@@ -295,6 +295,30 @@ fn skills_do_not_override_existing_commands() {
     };
     reg.add_skills(&[skill]);
     assert_eq!(reg.get("init").unwrap().template.resolve(), "custom init");
+}
+
+#[test]
+fn mcp_prompts_register_lazy_commands_and_placeholder_arguments() {
+    let mut reg = Registry::new("/work/tree");
+    reg.add_mcp_prompts([McpPrompt {
+        command_name: "server:greet".into(),
+        client: "server".into(),
+        name: "greet".into(),
+        description: Some("Greet someone".into()),
+        arguments: vec!["who".into(), "style".into()],
+    }]);
+
+    let command = reg.get("server:greet").unwrap();
+    assert_eq!(command.source, Some(Source::Mcp));
+    assert_eq!(command.description.as_deref(), Some("Greet someone"));
+    assert_eq!(command.hints, vec!["$1", "$2"]);
+    assert_eq!(
+        reg.get_mcp_prompt("server:greet")
+            .unwrap()
+            .request_arguments(),
+        json!({"who": "$1", "style": "$2"})
+    );
+    assert_eq!(render("Hello $1 ($2)", "Ada formal"), "Hello Ada (formal)");
 }
 
 fn write(root: &std::path::Path, rel: &str, content: &str) {
