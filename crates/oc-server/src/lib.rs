@@ -37,8 +37,12 @@ pub mod web;
 
 pub use state::AppState;
 
+/// The version reported by `/global/health`, `/generate`, and `/debug/info`.
+/// Mirrors `InstallationVersion` in the reference: the upstream opencode
+/// version this port tracks (`REFERENCE_VERSION`), not the crate's package
+/// version.
 pub fn version() -> &'static str {
-    env!("CARGO_PKG_VERSION")
+    oc_util::version::REFERENCE_VERSION
 }
 
 /// Build a ready-to-serve router with default settings. Convenience for embedders;
