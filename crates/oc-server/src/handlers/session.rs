@@ -9,7 +9,7 @@ use serde_json::{json, Value};
 
 use super::{json, json_value, no_content, request_location, HandlerResult};
 use crate::errors::{session_not_found, ApiError};
-use crate::event::{event_id, session_id, session_message_id};
+use crate::event::{session_id, session_message_id};
 use crate::schema::{message, Admitted, SessionCursor, SessionInfo, SessionsResponse};
 use crate::state::{timestamp, SessionRecord};
 
@@ -207,6 +207,46 @@ fn info_from_record(record: &SessionRecord) -> SessionInfo {
     record.info.clone()
 }
 
+/// Clone the selected history into a new session without reusing globally
+/// unique message ids. The SQLite `message.id` key is shared across sessions,
+/// so persisting a source id under the child would move that row out of the
+/// parent session.
+fn fork_messages(
+    source_id: &str,
+    messages: &[Value],
+    message_id: Option<&str>,
+    child_id: &str,
+) -> Result<Vec<Value>, ApiError> {
+    let end = match message_id {
+        Some(message_id) => messages
+            .iter()
+            .position(|message| message.get("id").and_then(Value::as_str) == Some(message_id))
+            .map(|index| index + 1)
+            .ok_or_else(|| ApiError::MessageNotFound {
+                session_id: source_id.to_string(),
+                message_id: message_id.to_string(),
+                message: format!("Message not found: {message_id}"),
+            })?,
+        None => messages.len(),
+    };
+
+    Ok(messages[..end]
+        .iter()
+        .map(|message| {
+            let mut forked = message.clone();
+            if let Some(object) = forked.as_object_mut() {
+                if object.contains_key("id") {
+                    object.insert("id".into(), Value::String(session_message_id()));
+                }
+                if object.contains_key("sessionID") {
+                    object.insert("sessionID".into(), Value::String(child_id.to_string()));
+                }
+            }
+            forked
+        })
+        .collect())
+}
+
 pub async fn session_create(
     State(state): State<crate::state::AppState>,
     headers: HeaderMap,
@@ -266,6 +306,7 @@ pub async fn session_create(
     let mut stores = state.stores.write().await;
     stores.sessions.insert(info.id.clone(), record);
     drop(stores);
+    state.persist_session(&info);
     json(&crate::schema::SessionData { data: info })
 }
 
@@ -322,6 +363,63 @@ pub async fn session_get(
     json(&crate::schema::SessionData { data: info })
 }
 
+/// POST /api/session/:sessionID/fork.
+///
+/// Fork the selected in-memory history and persist the child projection. The
+/// copied messages receive fresh ids because the durable message table keys by
+/// id rather than by `(session_id, id)`.
+pub async fn session_fork(
+    State(state): State<crate::state::AppState>,
+    Path(params): Path<HashMap<String, String>>,
+    body: axum::extract::Json<Value>,
+) -> HandlerResult {
+    let source_id = params
+        .get("sessionID")
+        .cloned()
+        .ok_or(ApiError::V1BadRequest)?;
+    let requested_message_id = body.get("messageID").and_then(Value::as_str);
+
+    let source = {
+        let stores = state.stores.read().await;
+        stores
+            .sessions
+            .get(&source_id)
+            .cloned()
+            .ok_or_else(|| session_not_found(&source_id))?
+    };
+
+    let child_id = session_id();
+    let messages = fork_messages(
+        &source_id,
+        &source.messages,
+        requested_message_id,
+        &child_id,
+    )?;
+    let created = timestamp();
+    let mut info = source.info;
+    info.id = child_id.clone();
+    info.parent_id = Some(source_id);
+    info.time.created = created;
+    info.time.updated = created;
+    info.title = oc_session::session::get_forked_title(&info.title);
+
+    let record = SessionRecord {
+        info: info.clone(),
+        messages: messages.clone(),
+        active: false,
+    };
+    let mut stores = state.stores.write().await;
+    stores.sessions.insert(child_id, record);
+    drop(stores);
+
+    state.persist_session(&info);
+    for message in &messages {
+        state.persist_message(&info.id, message);
+    }
+
+    json(&crate::schema::SessionData { data: info })
+}
+
 pub async fn session_switch_agent(
     State(state): State<crate::state::AppState>,
     Path(params): Path<HashMap<String, String>>,
@@ -343,7 +441,9 @@ pub async fn session_switch_agent(
         .ok_or_else(|| session_not_found(&session_id))?;
     record.info.agent = Some(agent);
     record.info.time.updated = timestamp();
+    let info = record.info.clone();
     drop(stores);
+    state.persist_session(&info);
     no_content()
 }
 
@@ -364,7 +464,9 @@ pub async fn session_switch_model(
         .ok_or_else(|| session_not_found(&session_id))?;
     record.info.model = Some(model);
     record.info.time.updated = timestamp();
+    let info = record.info.clone();
     drop(stores);
+    state.persist_session(&info);
     no_content()
 }
 
@@ -389,6 +491,7 @@ pub async fn session_prompt(
     let delivery = body
         .get("delivery")
         .and_then(|v| v.as_str())
+        .filter(|delivery| matches!(*delivery, "steer" | "queue"))
         .unwrap_or("steer")
         .to_string();
     let resume = body.get("resume").and_then(|v| v.as_bool());
@@ -399,22 +502,77 @@ pub async fn session_prompt(
     }
     let record = stores.sessions.get_mut(&session_id).unwrap();
     let created = timestamp();
-    record.messages.push(message::user(
+    let mut message = message::user(
         &id,
         created,
         prompt.get("text").and_then(|t| t.as_str()).unwrap_or(""),
-    ));
+    );
+    if let Some(files) = body
+        .get("files")
+        .or_else(|| prompt.get("files"))
+        .and_then(Value::as_array)
+    {
+        message["files"] = Value::Array(files.clone());
+    }
+    if let Some(agents) = body
+        .get("agents")
+        .or_else(|| prompt.get("agents"))
+        .and_then(Value::as_array)
+    {
+        message["agents"] = Value::Array(agents.clone());
+    }
+    if let Some(metadata) = body.get("metadata").or_else(|| prompt.get("metadata")) {
+        message["metadata"] = metadata.clone();
+    }
+    record.messages.push(message.clone());
     record.info.time.updated = created;
     record.active = true;
+    let info = record.info.clone();
     let admitted_seq = record.messages.len() as i64;
     drop(stores);
+    state.persist_session(&info);
+    state.persist_message(&session_id, &message);
+    state
+        .enqueue_session_input(
+            &session_id,
+            id.clone(),
+            prompt.clone(),
+            admitted_seq as u64,
+            delivery.clone(),
+        )
+        .await;
+    let prompt_event = json!({
+        "timestamp": created,
+        "sessionID": session_id,
+        "messageID": id,
+        "prompt": prompt,
+        "delivery": delivery,
+    });
+    for event_type in ["session.next.prompted", "session.next.prompt.admitted"] {
+        state.emit_event(crate::event::Event {
+            id: crate::event::event_id(),
+            metadata: None,
+            r#type: event_type.into(),
+            durable: None,
+            location: None,
+            data: prompt_event.clone(),
+        });
+    }
+    if delivery == "steer" {
+        state.interrupt_session_for_steer(&session_id).await;
+    }
 
-    let text = prompt
-        .get("text")
-        .and_then(|t| t.as_str())
-        .unwrap_or("")
-        .to_string();
-    let _ = text;
+    if let Some(model) = body.get("model") {
+        let mut stores = state.stores.write().await;
+        if let Some(record) = stores.sessions.get_mut(&session_id) {
+            record.info.model = Some(model_from_value(model));
+            record.info.time.updated = created;
+            let info = record.info.clone();
+            drop(stores);
+            state.persist_session(&info);
+        }
+    }
+    crate::runner::schedule_session_run(state.clone(), session_id.clone());
     let _ = resume;
     let admitted = Admitted {
         admitted_seq,
@@ -440,6 +598,13 @@ pub async fn session_compact(
     if !stores.sessions.contains_key(&session_id) {
         return Err(session_not_found(&session_id));
     }
+    drop(stores);
+    let _ = crate::runner::compact_session(
+        &state,
+        &session_id,
+        oc_session_runner::session::message::CompactionReason::Manual,
+    )
+    .await;
     no_content()
 }
 
@@ -451,10 +616,29 @@ pub async fn session_wait(
         .get("sessionID")
         .cloned()
         .ok_or(ApiError::V1BadRequest)?;
-    let stores = state.stores.read().await;
-    if !stores.sessions.contains_key(&session_id) {
-        return Err(session_not_found(&session_id));
+    {
+        let stores = state.stores.read().await;
+        if !stores.sessions.contains_key(&session_id) {
+            return Err(session_not_found(&session_id));
+        }
     }
+    let wait = async {
+        loop {
+            let active = state
+                .stores
+                .read()
+                .await
+                .sessions
+                .get(&session_id)
+                .map(|record| record.active)
+                .unwrap_or(false);
+            if !active {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(25)).await;
+        }
+    };
+    let _ = tokio::time::timeout(std::time::Duration::from_secs(300), wait).await;
     no_content()
 }
 
@@ -489,11 +673,16 @@ pub async fn session_revert_stage(
         };
         return Err(not_found);
     }
-    let revert = json!({
-        "messageID": message_id,
-    });
+    let mut revert = serde_json::Map::new();
+    revert.insert("messageID".into(), Value::String(message_id));
+    if let Some(snapshot) = body.get("snapshot").and_then(Value::as_str) {
+        revert.insert("snapshot".into(), Value::String(snapshot.to_string()));
+    }
+    let revert = Value::Object(revert);
     record.info.revert = Some(revert.clone());
+    let persisted_info = record.info.clone();
     drop(stores);
+    state.persist_session(&persisted_info);
     json(&json!({ "data": revert }))
 }
 
@@ -511,7 +700,9 @@ pub async fn session_revert_clear(
         .get_mut(&session_id)
         .ok_or_else(|| session_not_found(&session_id))?;
     record.info.revert = None;
+    let persisted_info = record.info.clone();
     drop(stores);
+    state.persist_session(&persisted_info);
     no_content()
 }
 
@@ -523,13 +714,31 @@ pub async fn session_revert_commit(
         .get("sessionID")
         .cloned()
         .ok_or(ApiError::V1BadRequest)?;
+    let snapshot = {
+        let stores = state.stores.read().await;
+        stores
+            .sessions
+            .get(&session_id)
+            .ok_or_else(|| session_not_found(&session_id))?
+            .info
+            .revert
+            .as_ref()
+            .and_then(|revert| revert.get("snapshot"))
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    };
+    if let Some(snapshot) = snapshot {
+        crate::instance_handlers::restore_project_snapshot(&state, &snapshot).await?;
+    }
     let mut stores = state.stores.write().await;
     let record = stores
         .sessions
         .get_mut(&session_id)
         .ok_or_else(|| session_not_found(&session_id))?;
     record.info.revert = None;
+    let persisted_info = record.info.clone();
     drop(stores);
+    state.persist_session(&persisted_info);
     no_content()
 }
 
@@ -566,44 +775,34 @@ pub async fn session_history(
         .and_then(|v| v.parse::<usize>().ok())
         .unwrap_or(DEFAULT_SESSION_HISTORY_LIMIT);
 
-    let stores = state.stores.read().await;
-    let record = stores
-        .sessions
-        .get(&session_id)
-        .ok_or_else(|| session_not_found(&session_id))?;
-    let data: Vec<Value> = record
-        .messages
-        .iter()
-        .enumerate()
-        .filter(|(i, _)| after.map_or(true, |after| (*i as i64) > after))
-        .map(|(i, m)| {
-            json!({
-                "id": event_id(),
-                "type": "session.next.prompted",
-                "data": {
-                    "sessionID": session_id,
-                    "messageID": m.get("id").cloned().unwrap_or_default(),
-                    "prompt": m,
-                    "delivery": "steer",
-                    "timestamp": timestamp(),
-                },
-                "durable": {
-                    "aggregateID": session_id,
-                    "seq": i,
-                    "version": 1,
-                },
-            })
-        })
-        .take(limit)
+    {
+        let stores = state.stores.read().await;
+        if !stores.sessions.contains_key(&session_id) {
+            return Err(session_not_found(&session_id));
+        }
+    }
+    let manifest = oc_sync::sync::store::session_durable_definitions()
+        .into_iter()
+        .map(|definition| definition.storage_type())
+        .collect::<Vec<_>>();
+    let (events, has_more) = state
+        .sync_store
+        .read_aggregate(&session_id, after, limit, &manifest)
+        .map_err(|error| ApiError::Unknown {
+            message: format!("failed to read session history: {error}"),
+            reference: None,
+        })?;
+    let data = events
+        .into_iter()
+        .filter_map(|event| serde_json::to_value(event).ok())
         .collect();
-    let has_more = data.len() == limit;
-    drop(stores);
     json(&crate::schema::SessionHistory { data, has_more })
 }
 
 pub async fn session_events(
     State(state): State<crate::state::AppState>,
     Path(params): Path<HashMap<String, String>>,
+    Query(query): Query<HashMap<String, String>>,
 ) -> HandlerResult {
     // Mirrors `session.events` (SSE). The router-level handler wraps this as a stream;
     // this entrypoint just validates the session exists.
@@ -617,7 +816,10 @@ pub async fn session_events(
             return Err(session_not_found(&session_id));
         }
     }
-    Ok(crate::sse::session_event_stream(state))
+    let after = query
+        .get("after")
+        .and_then(|value| value.parse::<i64>().ok());
+    Ok(crate::sse::session_event_stream(state, session_id, after))
 }
 
 pub async fn session_interrupt(
@@ -635,6 +837,18 @@ pub async fn session_interrupt(
         return Err(session_not_found(&session_id));
     }
     drop(stores);
+    state.cancel_session_run(&session_id).await;
+    state.emit_event(crate::event::Event {
+        id: crate::event::event_id(),
+        metadata: None,
+        r#type: "session.status".into(),
+        durable: None,
+        location: None,
+        data: json!({
+            "sessionID": session_id,
+            "status": { "type": "idle" },
+        }),
+    });
     no_content()
 }
 

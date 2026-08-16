@@ -32,6 +32,10 @@ pub fn build(state: AppState) -> Router {
 
     let fallback_state = state.clone();
     let router = wire_v2(wire_v1(Router::new()))
+        .route("/", get(crate::web::index))
+        .route("/index.html", get(crate::web::index))
+        .route("/assets/app.js", get(crate::web::app_js))
+        .route("/assets/app.css", get(crate::web::app_css))
         .route("/doc", get(crate::instance_handlers::openapi_doc))
         .route("/openapi.json", get(crate::instance_handlers::openapi_json))
         .fallback(move |request: Request| {
@@ -49,8 +53,7 @@ pub fn build(state: AppState) -> Router {
 }
 
 /// Catch-all UI fallback. From reference/.../httpapi/server.ts (`uiRoute`):
-/// serves the embedded web UI or proxies `app.opencode.ai`. TODO(integration):
-/// embedded UI assets.
+/// serves the embedded web UI or proxies `app.opencode.ai`.
 async fn ui_fallback(request: Request, _state: AppState) -> Response {
     let path = request.uri().path().to_string();
     if path == "/site.webmanifest" || path.ends_with(".png") {
@@ -137,8 +140,14 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
         )
         .route("/experimental/session", get(h::experimental_session_list))
         .route(
+            "/experimental/session/background",
+            get(h::experimental_session_background_list),
+        )
+        .route(
             "/experimental/session/:sessionID/background",
-            post(h::experimental_session_background),
+            get(h::experimental_session_background_status)
+                .post(h::experimental_session_background)
+                .delete(h::experimental_session_background_cancel),
         )
         .route("/experimental/resource", get(h::experimental_resource))
         // file.ts
@@ -237,6 +246,7 @@ fn wire_v1(app: Router<AppState>) -> Router<AppState> {
             post(h::session_share).delete(h::session_unshare),
         )
         .route("/session/:sessionID/init", post(h::session_init))
+        .route("/session/:sessionID/compact", post(h::session_compact))
         .route("/session/:sessionID/summarize", post(h::session_summarize))
         .route(
             "/session/:sessionID/prompt_async",
@@ -312,6 +322,10 @@ fn wire_v2(app: Router<AppState>) -> Router<AppState> {
         .route(
             "/api/session/:sessionID/model",
             post(h::session::session_switch_model),
+        )
+        .route(
+            "/api/session/:sessionID/fork",
+            post(h::session::session_fork),
         )
         .route(
             "/api/session/:sessionID/prompt",

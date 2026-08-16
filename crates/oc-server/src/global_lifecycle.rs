@@ -6,7 +6,7 @@ use crate::state::AppState;
 /// Emit the `global.disposed` event. From reference/packages/opencode/src/server/
 /// global-lifecycle.ts (`emitGlobalDisposed`).
 pub fn emit_global_disposed(state: &AppState) {
-    state.events.emit(Event {
+    state.emit_event(Event {
         id: event_id(),
         metadata: None,
         r#type: "global.disposed".into(),

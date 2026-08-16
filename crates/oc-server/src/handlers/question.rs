@@ -52,7 +52,7 @@ pub async fn session_question_list(
 pub async fn session_question_reply(
     State(state): State<crate::state::AppState>,
     Path(params): Path<HashMap<String, String>>,
-    _body: axum::extract::Json<serde_json::Value>,
+    body: axum::extract::Json<serde_json::Value>,
 ) -> HandlerResult {
     let session_id = params
         .get("sessionID")
@@ -62,7 +62,7 @@ pub async fn session_question_reply(
         .get("requestID")
         .cloned()
         .ok_or(ApiError::V1BadRequest)?;
-    let mut stores = state.stores.write().await;
+    let stores = state.stores.read().await;
     let owned = stores
         .questions
         .get(&request_id)
@@ -71,8 +71,24 @@ pub async fn session_question_reply(
     if !owned {
         return Err(missing_request(&request_id));
     }
-    stores.questions.remove(&request_id);
+    let answers_value = body
+        .get("answers")
+        .cloned()
+        .unwrap_or_else(|| body.0.clone());
+    let answers: Vec<oc_command::question::Answer> = serde_json::from_value(answers_value)
+        .map_err(|error| ApiError::Unknown {
+            message: format!("invalid question answers: {error}"),
+            reference: None,
+        })?;
     drop(stores);
+    state
+        .question_service
+        .reply(
+            &oc_command::question::QuestionId::new(request_id.clone()),
+            answers,
+        )
+        .map_err(|error| missing_request_with_error(&request_id, error.to_string()))?;
+    state.stores.write().await.questions.remove(&request_id);
     no_content()
 }
 
@@ -88,7 +104,7 @@ pub async fn session_question_reject(
         .get("requestID")
         .cloned()
         .ok_or(ApiError::V1BadRequest)?;
-    let mut stores = state.stores.write().await;
+    let stores = state.stores.read().await;
     let owned = stores
         .questions
         .get(&request_id)
@@ -97,8 +113,12 @@ pub async fn session_question_reject(
     if !owned {
         return Err(missing_request(&request_id));
     }
-    stores.questions.remove(&request_id);
     drop(stores);
+    state
+        .question_service
+        .reject(&oc_command::question::QuestionId::new(request_id.clone()))
+        .map_err(|error| missing_request_with_error(&request_id, error.to_string()))?;
+    state.stores.write().await.questions.remove(&request_id);
     no_content()
 }
 
@@ -106,6 +126,13 @@ fn missing_request(id: &str) -> ApiError {
     ApiError::QuestionNotFound {
         request_id: id.to_string(),
         message: format!("Question request not found: {id}"),
+    }
+}
+
+fn missing_request_with_error(id: &str, message: String) -> ApiError {
+    ApiError::QuestionNotFound {
+        request_id: id.to_string(),
+        message,
     }
 }
 

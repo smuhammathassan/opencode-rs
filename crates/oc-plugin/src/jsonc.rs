@@ -63,7 +63,13 @@ pub struct ParsedJsonc {
 /// span tree.
 pub fn parse(text: &str) -> Result<ParsedJsonc, JsoncError> {
     let chars: Vec<char> = text.chars().collect();
-    let mut parser = Parser { chars, pos: 0 };
+    let mut byte_offsets: Vec<usize> = text.char_indices().map(|(offset, _)| offset).collect();
+    byte_offsets.push(text.len());
+    let mut parser = Parser {
+        chars,
+        byte_offsets,
+        pos: 0,
+    };
     let node = parser.parse_value()?;
     let value = json_node(&node);
     Ok(ParsedJsonc { value, root: node })
@@ -85,10 +91,15 @@ fn json_node(node: &Node) -> Value {
 
 struct Parser {
     chars: Vec<char>,
+    byte_offsets: Vec<usize>,
     pos: usize,
 }
 
 impl Parser {
+    fn byte_pos(&self, char_pos: usize) -> usize {
+        self.byte_offsets[char_pos]
+    }
+
     fn parse_value(&mut self) -> Result<Node, JsoncError> {
         self.skip_ws();
         let Some(&c) = self.chars.get(self.pos) else {
@@ -104,7 +115,10 @@ impl Parser {
                 let (s, start) = self.parse_string()?;
                 let end = self.pos;
                 Ok(Node::Value {
-                    span: Span { start, end },
+                    span: Span {
+                        start: self.byte_pos(start),
+                        end: self.byte_pos(end),
+                    },
                     value: Value::String(s),
                 })
             }
@@ -152,8 +166,8 @@ impl Parser {
         }
         Ok(Node::Object {
             span: Span {
-                start,
-                end: self.pos,
+                start: self.byte_pos(start),
+                end: self.byte_pos(self.pos),
             },
             members,
         })
@@ -184,8 +198,8 @@ impl Parser {
         }
         Ok(Node::Array {
             span: Span {
-                start,
-                end: self.pos,
+                start: self.byte_pos(start),
+                end: self.byte_pos(self.pos),
             },
             items,
         })
@@ -232,7 +246,10 @@ impl Parser {
                 })?
         };
         Ok(Node::Value {
-            span: Span { start, end },
+            span: Span {
+                start: self.byte_pos(start),
+                end: self.byte_pos(end),
+            },
             value,
         })
     }
@@ -317,6 +334,195 @@ pub enum PatchMode {
     Noop,
     Add,
     Replace,
+}
+
+#[derive(Debug)]
+struct TextEdit {
+    start: usize,
+    end: usize,
+    replacement: String,
+}
+
+/// Patch one property in a JSONC object while retaining the surrounding
+/// document text. `object_key` selects a nested object when present; `None`
+/// targets the document root. This is used by CLI config mutations that must
+/// not rewrite unrelated comments or trailing commas.
+pub fn patch_object_property(
+    text: &str,
+    object_key: Option<&str>,
+    key: &str,
+    value: &Value,
+) -> Result<(PatchMode, String), JsoncError> {
+    let parsed = parse(text)?;
+    let target = match object_key {
+        Some(parent) => parsed
+            .root
+            .member(parent)
+            .ok_or_else(|| JsoncError::Parse {
+                offset: parsed.root.span().start,
+                message: format!("object property not found: {parent}"),
+            })?,
+        None => &parsed.root,
+    };
+    let Node::Object { members, span } = target else {
+        return Err(JsoncError::Parse {
+            offset: target.span().start,
+            message: "target must be an object".into(),
+        });
+    };
+    if let Some((_, node)) = members.iter().find(|(member, _)| member == key) {
+        let (mut out, canonical_fallback) = if let Value::Object(object) = value {
+            match patch_object_node(text, node, object)? {
+                Some(edits) => (apply_text_edits(text, edits), false),
+                None => (text.to_string(), true),
+            }
+        } else {
+            (text.to_string(), true)
+        };
+
+        if canonical_fallback {
+            let value_text = serde_json::to_string(value).map_err(|error| JsoncError::Parse {
+                offset: 0,
+                message: error.to_string(),
+            })?;
+            out.replace_range(node.span().start..node.span().end, &value_text);
+        }
+        return Ok((PatchMode::Replace, out));
+    }
+    let value_text = serde_json::to_string(value).map_err(|error| JsoncError::Parse {
+        offset: 0,
+        message: error.to_string(),
+    })?;
+    let insert_at = span.end.saturating_sub(1);
+    let comma = if members.is_empty()
+        || has_trailing_comma(
+            text,
+            members.last().map(|(_, node)| node.span().end),
+            insert_at,
+        ) {
+        ""
+    } else {
+        ","
+    };
+    let snippet = format!("{comma}\"{key}\": {value_text}");
+    let mut out = text.to_string();
+    out.insert_str(insert_at, &snippet);
+    Ok((PatchMode::Add, out))
+}
+
+/// Collect leaf replacements and additions for an object update. Returning
+/// `None` is intentional: it means an existing key would be deleted, so the
+/// caller must use the canonical replacement fallback for that object.
+fn patch_object_node(
+    text: &str,
+    node: &Node,
+    desired: &serde_json::Map<String, Value>,
+) -> Result<Option<Vec<TextEdit>>, JsoncError> {
+    let Node::Object { members, span } = node else {
+        return Ok(None);
+    };
+
+    if members
+        .iter()
+        .any(|(member, _)| !desired.contains_key(member))
+    {
+        return Ok(None);
+    }
+
+    let mut edits = Vec::new();
+    for (member, current) in members {
+        let next = desired
+            .get(member)
+            .expect("existing JSONC member checked against desired object");
+        if let (Node::Object { .. }, Value::Object(next_object)) = (current, next) {
+            let Some(nested_edits) = patch_object_node(text, current, next_object)? else {
+                return Ok(None);
+            };
+            edits.extend(nested_edits);
+        } else if json_node(current) != *next {
+            edits.push(TextEdit {
+                start: current.span().start,
+                end: current.span().end,
+                replacement: serde_json::to_string(next).map_err(|error| JsoncError::Parse {
+                    offset: current.span().start,
+                    message: error.to_string(),
+                })?,
+            });
+        }
+    }
+
+    let additions: Vec<_> = desired
+        .iter()
+        .filter(|(member, _)| !members.iter().any(|(current, _)| current == *member))
+        .collect();
+    if !additions.is_empty() {
+        let insert_at = span.end.saturating_sub(1);
+        let comma = if members.is_empty()
+            || has_trailing_comma(
+                text,
+                members.last().map(|(_, current)| current.span().end),
+                insert_at,
+            ) {
+            ""
+        } else {
+            ","
+        };
+        let mut snippet = comma.to_string();
+        for (index, (member, value)) in additions.into_iter().enumerate() {
+            if index > 0 {
+                snippet.push(',');
+            }
+            let value_text = serde_json::to_string(value).map_err(|error| JsoncError::Parse {
+                offset: insert_at,
+                message: error.to_string(),
+            })?;
+            snippet.push_str(&format!("\"{member}\": {value_text}"));
+        }
+        edits.push(TextEdit {
+            start: insert_at,
+            end: insert_at,
+            replacement: snippet,
+        });
+    }
+
+    Ok(Some(edits))
+}
+
+fn apply_text_edits(text: &str, mut edits: Vec<TextEdit>) -> String {
+    edits.sort_by(|left, right| right.start.cmp(&left.start).then(right.end.cmp(&left.end)));
+    let mut out = text.to_string();
+    for edit in edits {
+        out.replace_range(edit.start..edit.end, &edit.replacement);
+    }
+    out
+}
+
+fn has_trailing_comma(text: &str, start: Option<usize>, end: usize) -> bool {
+    let Some(mut index) = start else {
+        return false;
+    };
+    let bytes = text.as_bytes();
+    while index < end {
+        match bytes[index] {
+            b' ' | b'\t' | b'\r' | b'\n' => index += 1,
+            b',' => return true,
+            b'/' if bytes.get(index + 1) == Some(&b'/') => {
+                index += 2;
+                while index < end && bytes[index] != b'\n' {
+                    index += 1;
+                }
+            }
+            b'/' if bytes.get(index + 1) == Some(&b'*') => {
+                index += 2;
+                while index + 1 < end && !(bytes[index] == b'*' && bytes[index + 1] == b'/') {
+                    index += 1;
+                }
+                index = (index + 2).min(end);
+            }
+            _ => return false,
+        }
+    }
+    false
 }
 
 /// Patch `spec` into the `plugin` array of a JSONC document.
@@ -476,5 +682,121 @@ mod tests {
         assert_eq!(mode, PatchMode::Replace);
         assert!(out.contains("my-plugin@2.0.0"));
         assert!(!out.contains("my-plugin@1.0.0"));
+    }
+
+    #[test]
+    fn spans_use_utf8_byte_offsets_after_unicode() {
+        let text = "{\"label\": \"café\", \"plugin\": [\"old\"]}";
+        let parsed = parse(text).unwrap();
+        let plugin = parsed.root.member("plugin").expect("plugin member");
+        let span = plugin.span();
+        assert_eq!(&text[span.start..span.end], "[\"old\"]");
+    }
+
+    #[test]
+    fn property_patch_preserves_root_comments_and_trailing_comma() {
+        let text = "{\n  // keep this comment\n  \"theme\": \"dark\",\n}";
+        let (mode, out) = patch_object_property(
+            text,
+            None,
+            "mcp",
+            &serde_json::json!({"demo": {"type": "remote"}}),
+        )
+        .unwrap();
+        assert_eq!(mode, PatchMode::Add);
+        assert!(out.contains("// keep this comment"));
+        assert!(out.contains("\"theme\": \"dark\",\n\"mcp\""));
+        assert!(!out.contains(",,\"mcp\""));
+        assert_eq!(parse(&out).unwrap().value["mcp"]["demo"]["type"], "remote");
+    }
+
+    #[test]
+    fn nested_object_patch_preserves_provider_comments_and_trailing_commas() {
+        let text = r#"{
+  "provider": {
+    // provider comment
+    "openai": {
+      // options comment
+      "options": {
+        // temperature comment
+        "temperature": 0.7,
+      },
+      // models comment
+      "models": {
+        // model comment
+        "gpt-4": {
+          "name": "GPT-4",
+        },
+      },
+    },
+  },
+}"#;
+        let (mode, out) = patch_object_property(
+            text,
+            None,
+            "provider",
+            &serde_json::json!({
+                "openai": {
+                    "options": {"temperature": 0.2, "timeout": 30},
+                    "models": {"gpt-4": {"name": "GPT-4o"}},
+                }
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(mode, PatchMode::Replace);
+        assert!(out.contains("// provider comment"));
+        assert!(out.contains("// options comment"));
+        assert!(out.contains("// temperature comment"));
+        assert!(out.contains("// models comment"));
+        assert!(out.contains("// model comment"));
+        assert!(out.contains("\"temperature\": 0.2,"));
+        assert!(out.contains("\"timeout\": 30"));
+        assert!(out.contains("\"name\": \"GPT-4o\","));
+        let parsed = parse(&out).unwrap();
+        assert_eq!(
+            parsed.value["provider"]["openai"]["options"]["temperature"],
+            0.2
+        );
+        assert_eq!(parsed.value["provider"]["openai"]["options"]["timeout"], 30);
+        assert_eq!(
+            parsed.value["provider"]["openai"]["models"]["gpt-4"]["name"],
+            "GPT-4o"
+        );
+    }
+
+    #[test]
+    fn nested_object_deletion_uses_canonical_replacement_fallback() {
+        let text = r#"{
+  // keep the outer comment
+  "provider": {
+    // this nested comment is removed by the fallback
+    "openai": {
+      "apiKey": "old",
+      "options": {
+        "temperature": 0.7,
+      },
+    },
+  },
+}"#;
+        let (mode, out) = patch_object_property(
+            text,
+            None,
+            "provider",
+            &serde_json::json!({
+                "openai": {"options": {"temperature": 0.7}}
+            }),
+        )
+        .unwrap();
+
+        assert_eq!(mode, PatchMode::Replace);
+        assert!(out.contains("// keep the outer comment"));
+        assert!(!out.contains("this nested comment is removed by the fallback"));
+        assert!(!out.contains("apiKey"));
+        assert!(out.contains("\"provider\": {\"openai\":{\"options\":{\"temperature\":0.7}}}"));
+        assert_eq!(
+            parse(&out).unwrap().value["provider"]["openai"]["options"]["temperature"],
+            0.7
+        );
     }
 }

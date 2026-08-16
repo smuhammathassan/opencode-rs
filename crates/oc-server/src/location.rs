@@ -53,21 +53,8 @@ impl Location {
     }
 }
 
-/// Stable project ID for a directory. Reference core derives it from the absolute
-/// path; this is a local stand-in. TODO(integration): use oc-core project detection.
 fn project_id(directory: &str) -> String {
-    let hash = fx_hash(directory);
-    format!("prj_{hash:016x}")
-}
-
-fn fx_hash(input: &str) -> u64 {
-    // FNV-1a, sufficient for a deterministic local project ID.
-    let mut hash: u64 = 0xcbf29ce484222325;
-    for byte in input.as_bytes() {
-        hash ^= *byte as u64;
-        hash = hash.wrapping_mul(0x100000001b3);
-    }
-    hash
+    oc_project::identity::project_id(std::path::Path::new(directory))
 }
 
 /// Resolve a location ref from request query/headers. From
@@ -152,5 +139,57 @@ mod tests {
         let location = resolve_location(None, &headers, &default);
         assert_eq!(location.directory, "/tmp proj");
         assert_eq!(location.workspace_id.as_deref(), Some("ws_2"));
+    }
+
+    #[test]
+    fn git_project_id_uses_normalized_origin_remote() {
+        let directory = std::env::temp_dir().join(format!(
+            "opencode-location-project-id-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let init = std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&directory)
+            .status()
+            .unwrap();
+        assert!(init.success());
+        let remote = std::process::Command::new("git")
+            .args(["remote", "add", "origin", "git@GitHub.com:Owner/Repo.git"])
+            .current_dir(&directory)
+            .status()
+            .unwrap();
+        assert!(remote.success());
+        let expected = oc_project::util::hash::Hash::fast(b"git-remote:github.com/Owner/Repo");
+        assert_eq!(project_id(&directory.to_string_lossy()), expected);
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn git_project_id_uses_repo_cache_when_origin_is_missing() {
+        let directory = std::env::temp_dir().join(format!(
+            "opencode-location-project-cache-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&directory).unwrap();
+        let init = std::process::Command::new("git")
+            .args(["init", "--quiet"])
+            .current_dir(&directory)
+            .status()
+            .unwrap();
+        assert!(init.success());
+        std::fs::write(directory.join(".git/opencode"), "cached-project\n").unwrap();
+
+        assert_eq!(project_id(&directory.to_string_lossy()), "cached-project");
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn non_git_project_uses_global_identity() {
+        let directory =
+            std::env::temp_dir().join(format!("opencode-location-global-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        assert_eq!(project_id(&directory.to_string_lossy()), "global");
+        let _ = std::fs::remove_dir_all(directory);
     }
 }

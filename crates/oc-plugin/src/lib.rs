@@ -41,16 +41,28 @@ pub mod install;
 pub mod js;
 pub mod jsonc;
 pub mod loader;
+pub mod manager;
 pub mod meta;
 pub mod npm;
 pub mod paths;
 pub mod polyfill;
+pub mod registration;
 pub mod shared;
 
-pub use host::{LoadedPlugin, LoadedSummary, NoopHost, PluginBuilder, PluginHost, ToolInfo};
+pub use host::{
+    LoadedPlugin, LoadedSummary, LocalHost, NoopHost, PluginAuthMethodSummary,
+    PluginAuthMethodType, PluginAuthOptionSummary, PluginAuthPromptSummary, PluginAuthSummary,
+    PluginAuthWhenSummary, PluginBuilder, PluginHost, PluginToolCancellation, ToolInfo,
+};
 pub use js::{JsError, JsValue};
 pub use loader::ModuleResolver;
+pub use manager::{
+    AuthAuthorizeRequest, AuthCallbackRequest, AuthValidateRequest, PluginLoadReport, PluginManager,
+};
 pub use paths::GlobalPaths;
+pub use registration::{
+    ClientRpcRequest, InMemoryRegistrationSink, PluginRegistration, PluginRegistrationSink,
+};
 
 /// The running opencode version, used for plugin compatibility checks.
 /// TODO(integration): share the version from the workspace package metadata.

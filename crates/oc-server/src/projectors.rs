@@ -66,9 +66,14 @@ impl Projector for ActiveSessionProjector {
         let Some(session_id) = session_id else { return };
         let active = event.r#type.ends_with(".started") || event.r#type.ends_with(".prompted");
         if active {
-            let mut stores = state.stores.blocking_write();
-            if let Some(record) = stores.sessions.get_mut(&session_id) {
-                record.active = true;
+            // Projectors run on the Tokio runtime. `blocking_write` would
+            // panic there (and did during a real CLI prompt), so keep this
+            // synchronous projection non-blocking. The runner also updates
+            // the same flag on turn completion/error.
+            if let Ok(mut stores) = state.stores.try_write() {
+                if let Some(record) = stores.sessions.get_mut(&session_id) {
+                    record.active = true;
+                }
             }
         }
     }

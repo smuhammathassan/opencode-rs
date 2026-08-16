@@ -1,0 +1,54 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background: #111318;
+  color: #f4f5f7;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: #111318; }
+button, textarea, select { font: inherit; }
+button { cursor: pointer; }
+
+.topbar {
+  align-items: center;
+  border-bottom: 1px solid #2b2f3a;
+  display: flex;
+  justify-content: space-between;
+  padding: 1.25rem 2rem;
+}
+.eyebrow { color: #8f98aa; font-size: .72rem; font-weight: 700; letter-spacing: .14em; margin: 0 0 .35rem; }
+h1, h2, p { margin-top: 0; }
+h1 { font-size: 1.35rem; margin-bottom: 0; }
+h2 { font-size: 1rem; margin-bottom: 0; }
+.health { color: #82e0a3; font-size: .85rem; }
+.layout { display: grid; grid-template-columns: 18rem minmax(0, 1fr); min-height: calc(100vh - 86px); }
+.sessions-panel { border-right: 1px solid #2b2f3a; padding: 1.25rem; }
+.panel-heading, .conversation-heading, .prompt-actions { align-items: center; display: flex; justify-content: space-between; gap: 1rem; }
+select { background: #171a21; border: 1px solid #363c4a; border-radius: .5rem; color: inherit; margin-top: 1rem; min-height: 16rem; padding: .25rem; width: 100%; }
+option { border-radius: .3rem; padding: .65rem .5rem; }
+.conversation { display: flex; flex-direction: column; max-width: 64rem; padding: 1.5rem 2rem 2rem; width: 100%; }
+.conversation-heading { border-bottom: 1px solid #2b2f3a; padding-bottom: 1rem; }
+.messages { display: flex; flex: 1; flex-direction: column; gap: .75rem; overflow: auto; padding: 1.25rem 0; }
+.message { background: #191d25; border: 1px solid #2b2f3a; border-radius: .7rem; padding: .85rem 1rem; white-space: pre-wrap; }
+.message.user { border-color: #405c82; }
+.message-role { color: #8f98aa; font-size: .72rem; font-weight: 700; letter-spacing: .08em; margin-bottom: .4rem; text-transform: uppercase; }
+.message-text { line-height: 1.5; overflow-wrap: anywhere; }
+.prompt-form { border-top: 1px solid #2b2f3a; padding-top: 1rem; }
+textarea { background: #171a21; border: 1px solid #485164; border-radius: .6rem; color: inherit; min-height: 6rem; padding: .8rem; resize: vertical; width: 100%; }
+textarea:focus, select:focus, button:focus { outline: 2px solid #78aefc; outline-offset: 2px; }
+.prompt-actions { margin-top: .75rem; }
+button { background: #78aefc; border: 0; border-radius: .45rem; color: #07111f; font-weight: 700; padding: .55rem .85rem; }
+button.secondary { background: #252b36; color: #f4f5f7; }
+button:disabled { cursor: wait; opacity: .55; }
+.muted { color: #8f98aa; font-size: .85rem; }
+.error { color: #ff9b9b; font-size: .85rem; }
+.sr-only { clip: rect(0, 0, 0, 0); clip-path: inset(50%); height: 1px; overflow: hidden; position: absolute; white-space: nowrap; width: 1px; }
+
+@media (max-width: 720px) {
+  .topbar { padding: 1rem; }
+  .layout { display: block; }
+  .sessions-panel { border-bottom: 1px solid #2b2f3a; border-right: 0; }
+  select { min-height: 5rem; }
+  .conversation { padding: 1rem; min-height: 70vh; }
+}

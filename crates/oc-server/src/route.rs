@@ -440,9 +440,24 @@ pub const EXPERIMENTAL_ROUTES: &[Route] = &[
     route(POST, "/experimental/worktree/reset", "worktree.reset"),
     route(GET, "/experimental/session", "experimental.session.list"),
     route(
+        GET,
+        "/experimental/session/background",
+        "experimental.session.background.list",
+    ),
+    route(
+        GET,
+        "/experimental/session/:sessionID/background",
+        "experimental.session.background.status",
+    ),
+    route(
         POST,
         "/experimental/session/:sessionID/background",
         "experimental.session.background",
+    ),
+    route(
+        DELETE,
+        "/experimental/session/:sessionID/background",
+        "experimental.session.background.cancel",
     ),
     route(GET, "/experimental/resource", "experimental.resource.list"),
 ];

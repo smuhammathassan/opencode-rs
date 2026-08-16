@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="dark light">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self'; style-src 'self'; script-src 'self'">
+    <title>OpenCode</title>
+    <link rel="stylesheet" href="/assets/app.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">OPENCODE</p>
+        <h1>Browser workspace</h1>
+      </div>
+      <div id="health" class="health" role="status">Connecting…</div>
+    </header>
+
+    <main class="layout">
+      <aside class="sessions-panel" aria-label="Sessions">
+        <div class="panel-heading">
+          <h2>Sessions</h2>
+          <button id="new-session" class="secondary" type="button">New</button>
+        </div>
+        <label class="sr-only" for="session-select">Select a session</label>
+        <select id="session-select" size="12"></select>
+        <p id="session-empty" class="muted">No sessions yet. Send a prompt to create one.</p>
+      </aside>
+
+      <section class="conversation" aria-label="Conversation">
+        <div class="conversation-heading">
+          <div>
+            <p class="eyebrow">SESSION</p>
+            <h2 id="session-title">No session selected</h2>
+          </div>
+          <button id="refresh" class="secondary" type="button">Refresh</button>
+        </div>
+        <div id="messages" class="messages" aria-live="polite">
+          <p class="muted">Choose a session or start a new conversation.</p>
+        </div>
+        <form id="prompt-form" class="prompt-form">
+          <label class="sr-only" for="prompt">Prompt</label>
+          <textarea id="prompt" rows="4" placeholder="Ask OpenCode something…" required></textarea>
+          <div class="prompt-actions">
+            <span id="error" class="error" role="alert"></span>
+            <button id="send" type="submit">Send prompt</button>
+          </div>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="/assets/app.js"></script>
+  </body>
+</html>

@@ -7,6 +7,7 @@
 //!   lifecycle, auth, mdns, proxy-util, shared/)
 
 pub mod auth;
+pub mod builtin_auth;
 pub mod cors;
 pub mod errors;
 pub mod event;
@@ -18,16 +19,21 @@ pub mod location;
 pub mod mdns;
 pub mod middleware;
 pub mod openapi;
+pub(crate) mod plugin_auth;
+pub(crate) mod plugin_registry;
 pub mod projectors;
 pub mod proxy_util;
 pub mod pty_environment;
 pub mod route;
 pub mod router;
+pub mod runner;
 pub mod schema;
 pub mod server;
+pub(crate) mod share;
 pub mod shared;
 pub mod sse;
 pub mod state;
+pub mod web;
 
 pub use state::AppState;
 

@@ -104,46 +104,60 @@ impl_callback! { A1 A2 }
 impl_callback! { A1 A2 A3 }
 
 type WrappedCallback = dyn Fn(c_int, *mut q::JSValue) -> q::JSValue;
-type CallbackRegistry = Vec<(Box<WrappedCallback>, Box<q::JSValue>)>;
+type CallbackRegistry = Vec<Arc<WrappedCallback>>;
+type CallbackRegistryHandle = Arc<Mutex<CallbackRegistry>>;
 
-/// Build a C trampoline for a Rust closure so QuickJS can call it.
-///
-/// The returned boxed closure and data must be kept alive by the caller (the
-/// callback registry on the [`Runtime`]).
-///
-/// # Safety
-/// Mirrors the approach in quick-js' bindings.rs; the closure pointer is
-/// stored in a JSValue and recovered inside the C trampoline.
-unsafe fn build_closure_trampoline<F>(
-    closure: F,
-) -> ((Box<WrappedCallback>, Box<q::JSValue>), q::JSCFunctionData)
-where
-    F: Fn(c_int, *mut q::JSValue) -> q::JSValue + 'static,
-{
-    unsafe extern "C" fn trampoline<F>(
-        _ctx: *mut q::JSContext,
-        _this: q::JSValue,
-        argc: c_int,
-        argv: *mut q::JSValue,
-        _magic: c_int,
-        data: *mut q::JSValue,
-    ) -> q::JSValue
-    where
-        F: Fn(c_int, *mut q::JSValue) -> q::JSValue,
-    {
-        let closure_ptr = (*data).u.ptr;
-        let closure: &mut F = &mut *(closure_ptr as *mut F);
-        (*closure)(argc, argv)
+/// The only payload stored in a QuickJS C-function value is a canonical
+/// integer callback index. The closure itself is kept in the context-owned
+/// Rust registry below; no Rust pointer is fabricated as a `JSValue`.
+unsafe extern "C" fn callback_trampoline(
+    ctx: *mut q::JSContext,
+    _this: q::JSValue,
+    argc: c_int,
+    argv: *mut q::JSValue,
+    _magic: c_int,
+    data: *mut q::JSValue,
+) -> q::JSValue {
+    if ctx.is_null() || data.is_null() || (*data).tag != TAG_INT {
+        return callback_exception(ctx, "invalid plugin callback handle");
     }
+    let index = (*data).u.int32;
+    if index < 0 {
+        return callback_exception(ctx, "invalid plugin callback index");
+    }
+    let opaque = q::JS_GetContextOpaque(ctx);
+    if opaque.is_null() {
+        return callback_exception(ctx, "plugin callback registry is unavailable");
+    }
+    let registry = &*(opaque as *const CallbackRegistryHandle);
+    let callback = match registry.lock() {
+        Ok(registry) => registry.get(index as usize).cloned(),
+        Err(_) => None,
+    };
+    match callback {
+        Some(callback) => callback(argc, argv),
+        None => callback_exception(ctx, "plugin callback handle is no longer registered"),
+    }
+}
 
-    let boxed_f = Box::new(closure);
-    let data = Box::new(q::JSValue {
-        u: q::JSValueUnion {
-            ptr: (&*boxed_f) as *const F as *mut c_void,
-        },
-        tag: TAG_NULL,
-    });
-    ((boxed_f, data), Some(trampoline::<F>))
+unsafe fn callback_exception(ctx: *mut q::JSContext, message: &str) -> q::JSValue {
+    if ctx.is_null() {
+        return q::JSValue {
+            u: q::JSValueUnion { int32: 0 },
+            tag: TAG_EXCEPTION,
+        };
+    }
+    let Ok(message) = CString::new(message) else {
+        return q::JSValue {
+            u: q::JSValueUnion { int32: 0 },
+            tag: TAG_EXCEPTION,
+        };
+    };
+    let value = q::JS_NewString(ctx, message.as_ptr());
+    if value.tag == TAG_EXCEPTION {
+        return value;
+    }
+    q::JS_Throw(ctx, value)
 }
 
 /// An owned handle to a JS value. Frees the value on drop.
@@ -211,7 +225,7 @@ impl OwnedObject {
 pub struct Runtime {
     rt: *mut q::JSRuntime,
     ctx: *mut q::JSContext,
-    callbacks: Arc<Mutex<CallbackRegistry>>,
+    callbacks: CallbackRegistryHandle,
 }
 
 impl Runtime {
@@ -225,13 +239,21 @@ impl Runtime {
             unsafe { q::JS_FreeRuntime(rt) };
             return Err(JsError::Internal("could not create JS context".into()));
         }
+        // The bundled QuickJS default is intentionally small and is easily
+        // exhausted by promise reactions plus the plugin bridge call frame.
+        // The runtime is confined to a dedicated host thread with matching
+        // native stack headroom (see PluginManager), so raise QuickJS's own
+        // guard as well.
+        unsafe { q::JS_SetMaxStackSize(ctx, 8 * 1024 * 1024) };
         // JS_NewContext already registers the standard intrinsics (including
         // Promise, Map/Set and TypedArrays) via js_standard_init.
-        let runtime = Self {
-            rt,
-            ctx,
-            callbacks: Arc::new(Mutex::new(Vec::new())),
-        };
+        let callbacks: CallbackRegistryHandle = Arc::new(Mutex::new(Vec::new()));
+        // QuickJS owns the context lifetime; keep one Arc handle reachable
+        // through its opaque slot so static C trampolines can safely resolve
+        // callback indices without embedding Rust pointers in JSValue data.
+        let callback_opaque = Box::into_raw(Box::new(Arc::clone(&callbacks))) as *mut c_void;
+        unsafe { q::JS_SetContextOpaque(ctx, callback_opaque) };
+        let runtime = Self { rt, ctx, callbacks };
         // This bundled QuickJS predates the `globalThis` standard; polyfill it
         // so the polyfill runtime and plugin code can rely on it.
         runtime.eval(
@@ -277,13 +299,24 @@ impl Runtime {
     /// `await` chains over already-resolved thenables progress even though the
     /// engine itself is synchronous.
     pub fn pump_jobs(&self) {
+        let _ = self.pump_jobs_with(|| Ok(()));
+    }
+
+    fn pump_jobs_with(
+        &self,
+        mut before_job: impl FnMut() -> Result<(), JsError>,
+    ) -> Result<(), JsError> {
         loop {
             let pending = unsafe { q::JS_IsJobPending(self.rt) };
             if pending == 0 {
-                return;
+                return Ok(());
             }
+            before_job()?;
             let mut ctx = self.ctx;
-            let _ = unsafe { q::JS_ExecutePendingJob(self.rt, &mut ctx) };
+            let result = unsafe { q::JS_ExecutePendingJob(self.rt, &mut ctx) };
+            if result < 0 {
+                return Ok(());
+            }
         }
     }
 
@@ -375,6 +408,68 @@ impl Runtime {
         to_value(self.ctx, &owned.value)
     }
 
+    /// Call a promise-producing global function and keep its returned promise
+    /// alive while QuickJS drains the job queue. Dropping that value before
+    /// the jobs settle can leave QuickJS with a dangling promise reference.
+    pub fn call_function_and_pump(
+        &self,
+        name: &str,
+        args: impl IntoIterator<Item = impl Into<JsValue>>,
+    ) -> Result<(), JsError> {
+        self.call_function_and_pump_with_probe(name, args, || Ok(()))
+    }
+
+    /// Call a promise-producing global function and run a probe before each
+    /// pending job. The probe runs on the QuickJS owner thread and may enqueue
+    /// additional promise work, which is useful for cooperative signals that
+    /// must notify JS listeners while an async tool is being pumped.
+    pub fn call_function_and_pump_with_probe(
+        &self,
+        name: &str,
+        args: impl IntoIterator<Item = impl Into<JsValue>>,
+        mut before_job: impl FnMut() -> Result<(), JsError>,
+    ) -> Result<(), JsError> {
+        let global = global_object(self.ctx)?;
+        let func = global.property(name)?;
+        if func.value.tag != TAG_OBJECT {
+            return Err(JsError::Internal(format!(
+                "could not find function '{name}' in global scope"
+            )));
+        }
+        let qargs = args
+            .into_iter()
+            .map(|arg| serialize_value(self.ctx, arg.into()))
+            .collect::<Result<Vec<_>, _>>()?;
+        let qargs = qargs.iter().map(|arg| arg.value).collect::<Vec<_>>();
+        let raw = unsafe {
+            q::JS_Call(
+                self.ctx,
+                func.value,
+                q::JSValue {
+                    u: q::JSValueUnion { int32: 0 },
+                    tag: TAG_UNDEFINED,
+                },
+                qargs.len() as c_int,
+                qargs.as_ptr() as *mut q::JSValue,
+            )
+        };
+        let owned = Owned {
+            ctx: self.ctx,
+            value: raw,
+        };
+        if owned.value.tag == TAG_EXCEPTION {
+            return Err(exception(self.ctx));
+        }
+        self.pump_jobs_with(&mut before_job)?;
+        // Keep the JS call frame and all argument values rooted until every
+        // promise reaction has run. Drop them explicitly only after the pump;
+        // otherwise their last use can be earlier than the async resumption.
+        drop(owned);
+        drop(qargs);
+        drop(func);
+        Ok(())
+    }
+
     /// Call a global JS function with a single JSON-string argument and read
     /// the result back. The JS helper is expected to return a string produced
     /// by `JSON.stringify`; the polyfill's `__oc_call_json` does this.
@@ -422,10 +517,27 @@ impl Runtime {
                 }
             }
         };
-        let (pair, trampoline) = unsafe { build_closure_trampoline(wrapper) };
-        let data = (&*pair.1) as *const q::JSValue as *mut q::JSValue;
-        self.callbacks.lock().unwrap().push(pair);
-        let cfunc = unsafe { q::JS_NewCFunctionData(self.ctx, trampoline, argcount, 0, 1, data) };
+        let index = {
+            let mut callbacks = self.callbacks.lock().unwrap();
+            let index = i32::try_from(callbacks.len())
+                .map_err(|_| JsError::Internal("too many plugin callbacks".into()))?;
+            callbacks.push(Arc::new(wrapper));
+            index
+        };
+        let mut data = q::JSValue {
+            u: q::JSValueUnion { int32: index },
+            tag: TAG_INT,
+        };
+        let cfunc = unsafe {
+            q::JS_NewCFunctionData(
+                self.ctx,
+                Some(callback_trampoline),
+                argcount,
+                0,
+                1,
+                &mut data,
+            )
+        };
         if cfunc.tag != TAG_OBJECT {
             return Err(JsError::Internal("could not create callback".into()));
         }
@@ -446,7 +558,14 @@ impl Drop for Runtime {
     fn drop(&mut self) {
         unsafe {
             let rt = q::JS_GetRuntime(self.ctx);
+            let callback_opaque = q::JS_GetContextOpaque(self.ctx);
+            q::JS_SetContextOpaque(self.ctx, std::ptr::null_mut());
             q::JS_FreeContext(self.ctx);
+            if !callback_opaque.is_null() {
+                drop(Box::from_raw(
+                    callback_opaque as *mut CallbackRegistryHandle,
+                ));
+            }
             q::JS_FreeRuntime(rt);
         }
     }
@@ -803,7 +922,7 @@ mod tests {
     #[test]
     fn callbacks_survive_runtime_move() {
         // Regression: the trampoline must not capture the Runtime's address.
-        let mut runtime = Runtime::new().unwrap();
+        let runtime = Runtime::new().unwrap();
         runtime
             .add_callback("echo", |payload: String| payload)
             .unwrap();

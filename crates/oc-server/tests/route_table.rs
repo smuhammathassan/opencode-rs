@@ -54,7 +54,10 @@ fn expected() -> Vec<(String, &'static str)> {
         route("DELETE", "/experimental/worktree"),
         route("POST", "/experimental/worktree/reset"),
         route("GET", "/experimental/session"),
+        route("GET", "/experimental/session/background"),
+        route("GET", "/experimental/session/:sessionID/background"),
         route("POST", "/experimental/session/:sessionID/background"),
+        route("DELETE", "/experimental/session/:sessionID/background"),
         route("GET", "/experimental/resource"),
         // file.ts
         route("GET", "/find"),

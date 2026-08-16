@@ -256,6 +256,9 @@ fn patch_one(
         )
     })?;
     if mode != jsonc::PatchMode::Noop {
+        if let Some(parent) = cfg.parent() {
+            std::fs::create_dir_all(parent).map_err(|e| (target.kind, e.to_string()))?;
+        }
         std::fs::write(&cfg, out).map_err(|e| (target.kind, e.to_string()))?;
     }
     let mode = match mode {

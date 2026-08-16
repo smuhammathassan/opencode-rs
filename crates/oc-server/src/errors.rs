@@ -66,6 +66,11 @@ pub enum ApiError {
     },
     /// Built-in `HttpApiError.BadRequest` (v1 instance surface).
     V1BadRequest,
+    /// Provider OAuth/auth flow failure on the v1 instance surface.
+    ProviderAuth {
+        provider_id: String,
+        message: String,
+    },
     /// `ApiNotFoundError` — `{ "name": "NotFoundError", "data": { "message" } }`.
     ApiNotFound {
         message: String,
@@ -77,7 +82,8 @@ impl ApiError {
         match self {
             ApiError::InvalidRequest { .. }
             | ApiError::InvalidCursor { .. }
-            | ApiError::V1BadRequest => StatusCode::BAD_REQUEST,
+            | ApiError::V1BadRequest
+            | ApiError::ProviderAuth { .. } => StatusCode::BAD_REQUEST,
             ApiError::Unauthorized { .. } => StatusCode::UNAUTHORIZED,
             ApiError::Conflict { .. } => StatusCode::CONFLICT,
             ApiError::ServiceUnavailable { .. } => StatusCode::SERVICE_UNAVAILABLE,
@@ -172,6 +178,13 @@ impl ApiError {
             ApiError::V1BadRequest => json!({
                 "name": "BadRequest",
                 "data": { "message": "Bad request" },
+            }),
+            ApiError::ProviderAuth {
+                provider_id,
+                message,
+            } => json!({
+                "name": "ProviderAuthError",
+                "data": { "providerID": provider_id, "message": message },
             }),
             ApiError::ApiNotFound { message } => json!({
                 "name": "NotFoundError",

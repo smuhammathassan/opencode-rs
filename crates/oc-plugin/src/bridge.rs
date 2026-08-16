@@ -10,6 +10,7 @@ use serde_json::Value;
 
 use crate::host::PluginHost;
 use crate::loader::ModuleResolver;
+use crate::registration::{ClientRpcRequest, PluginRegistration};
 
 /// Bridge entrypoint used by the runtime callback.
 pub fn dispatch(
@@ -72,12 +73,14 @@ pub fn dispatch(
         }
         "os" => {
             let name = payload.get("name").and_then(Value::as_str).unwrap_or("");
-            Ok(host.os(name).map(Value::String).unwrap_or(Value::Null))
+            Ok(serde_json::json!({
+                "value": host.os(name).map(Value::String).unwrap_or(Value::Null)
+            }))
         }
         "client" => {
             let method = payload.get("method").and_then(Value::as_str).unwrap_or("");
             let args = payload.get("args").cloned().unwrap_or(Value::Null);
-            host.client(method, &args)
+            host.client_rpc(&ClientRpcRequest::new(method, args))
         }
         "tool.metadata" => Ok(Value::Null),
         "tool.ask" => {
@@ -89,11 +92,33 @@ pub fn dispatch(
             let kind = payload.get("kind").and_then(Value::as_str).unwrap_or("");
             let input = payload.get("input").cloned().unwrap_or(Value::Null);
             host.register_v1(kind, &input);
+            if let Some(sink) = host.registration_sink() {
+                let plugin_id = payload
+                    .get("pluginId")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
+                sink.register(PluginRegistration {
+                    plugin_id,
+                    kind: kind.to_owned(),
+                    input,
+                })?;
+            }
             Ok(Value::Null)
         }
         "v2.transform" => {
             let domain = payload.get("domain").and_then(Value::as_str).unwrap_or("");
             host.v2_transform_registered(domain);
+            if let Some(sink) = host.registration_sink() {
+                let plugin_id = payload
+                    .get("pluginId")
+                    .and_then(Value::as_str)
+                    .map(str::to_owned);
+                sink.register(PluginRegistration::new(
+                    plugin_id,
+                    "v2.transform",
+                    serde_json::json!({ "domain": domain }),
+                ))?;
+            }
             Ok(Value::Null)
         }
         "v2.reload" => {

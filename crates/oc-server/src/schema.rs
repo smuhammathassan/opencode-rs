@@ -9,47 +9,10 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Model reference. From reference/packages/schema/src/model.ts (`Model.Ref`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ModelRef {
-    pub id: String,
-    #[serde(rename = "providerID")]
-    pub provider_id: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub variant: Option<String>,
-}
-
-/// Location reference. From reference/packages/schema/src/location.ts (`Location.Ref`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct LocationRef {
-    pub directory: String,
-    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none")]
-    pub workspace_id: Option<String>,
-}
-
-/// Location info. From reference/packages/schema/src/location.ts (`Location.Info`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct LocationInfo {
-    pub directory: String,
-    #[serde(rename = "workspaceID", skip_serializing_if = "Option::is_none")]
-    pub workspace_id: Option<String>,
-    pub project: ProjectRef,
-}
-
-/// Project reference inside `Location.Info`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct ProjectRef {
-    pub id: String,
-    pub directory: String,
-}
-
-/// The `{ location, data }` wrapper returned by location-scoped v2 endpoints.
-/// From reference/packages/schema/src/location.ts (`Location.response`).
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-pub struct LocationResponse<T> {
-    pub location: LocationInfo,
-    pub data: T,
-}
+// Canonical home: `oc_schema`.
+pub use oc_schema::location::Response as LocationResponse;
+pub use oc_schema::location::{Info as LocationInfo, Project as ProjectRef, Ref as LocationRef};
+pub use oc_schema::model::Ref as ModelRef;
 
 /// Token counts. From reference/packages/schema/src/session.ts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -188,7 +151,7 @@ pub struct PermissionEffect {
 /// Saved-permission list response. From reference/packages/protocol/src/groups/permission.ts.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct PermissionSavedData {
-    pub data: Vec<serde_json::Value>,
+    pub data: Vec<oc_schema::permission_saved::Info>,
 }
 
 /// PTY connect token. From reference/packages/schema/src/pty-ticket.ts.

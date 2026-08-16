@@ -136,39 +136,78 @@ pub mod tui_control {
         pub body: serde_json::Value,
     }
 
-    static REQUEST_TX: std::sync::LazyLock<
-        std::sync::Mutex<Option<mpsc::UnboundedSender<TuiRequest>>>,
-    > = std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
-    static RESPONSE_TX: std::sync::LazyLock<
-        std::sync::Mutex<Option<mpsc::UnboundedSender<serde_json::Value>>>,
-    > = std::sync::LazyLock::new(|| std::sync::Mutex::new(None));
-
-    fn request_tx() -> mpsc::UnboundedSender<TuiRequest> {
-        let mut guard = REQUEST_TX.lock().unwrap();
-        guard
-            .get_or_insert_with(|| {
-                let (tx, _rx) = mpsc::unbounded_channel();
-                tx
-            })
-            .clone()
+    struct RequestBus {
+        tx: mpsc::UnboundedSender<TuiRequest>,
+        rx: tokio::sync::Mutex<mpsc::UnboundedReceiver<TuiRequest>>,
     }
 
-    fn response_tx() -> mpsc::UnboundedSender<serde_json::Value> {
-        let mut guard = RESPONSE_TX.lock().unwrap();
-        guard
-            .get_or_insert_with(|| {
-                let (tx, _rx) = mpsc::unbounded_channel();
-                tx
-            })
-            .clone()
+    struct ResponseBus {
+        tx: mpsc::UnboundedSender<serde_json::Value>,
+        rx: tokio::sync::Mutex<mpsc::UnboundedReceiver<serde_json::Value>>,
+    }
+
+    static REQUEST_BUS: std::sync::OnceLock<RequestBus> = std::sync::OnceLock::new();
+    static RESPONSE_BUS: std::sync::OnceLock<ResponseBus> = std::sync::OnceLock::new();
+
+    fn request_bus() -> &'static RequestBus {
+        REQUEST_BUS.get_or_init(|| {
+            let (tx, rx) = mpsc::unbounded_channel();
+            RequestBus {
+                tx,
+                rx: tokio::sync::Mutex::new(rx),
+            }
+        })
+    }
+
+    fn response_bus() -> &'static ResponseBus {
+        RESPONSE_BUS.get_or_init(|| {
+            let (tx, rx) = mpsc::unbounded_channel();
+            ResponseBus {
+                tx,
+                rx: tokio::sync::Mutex::new(rx),
+            }
+        })
     }
 
     pub fn submit_tui_request(body: TuiRequest) {
-        let _ = request_tx().send(body);
+        let _ = request_bus().tx.send(body);
+    }
+
+    pub async fn next_tui_request() -> Option<TuiRequest> {
+        request_bus().rx.lock().await.recv().await
     }
 
     pub fn submit_tui_response(body: serde_json::Value) {
-        let _ = response_tx().send(body);
+        let _ = response_bus().tx.send(body);
+    }
+
+    pub async fn next_tui_response() -> Option<serde_json::Value> {
+        response_bus().rx.lock().await.recv().await
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+
+        #[tokio::test]
+        async fn request_and_response_round_trip_through_live_queues() {
+            submit_tui_request(TuiRequest {
+                path: "/tui/open-help".into(),
+                body: serde_json::json!({}),
+            });
+            assert_eq!(
+                next_tui_request()
+                    .await
+                    .map(|request| (request.path, request.body)),
+                Some(("/tui/open-help".into(), serde_json::json!({})))
+            );
+
+            submit_tui_response(serde_json::json!({ "accepted": true }));
+            assert_eq!(
+                next_tui_response().await,
+                Some(serde_json::json!({ "accepted": true }))
+            );
+        }
     }
 }
 

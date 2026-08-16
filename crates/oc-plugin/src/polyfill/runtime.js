@@ -44,13 +44,25 @@ function __oc_set_global(name, valueJson) {
   globalThis[name] = JSON.parse(valueJson);
 }
 
-// Async entrypoint: run an async JS function with a JSON payload; the host
-// pumps the job queue until this global holds a result.
-async function __oc_async_call(name, payload) {
+// Promise entrypoint: run a JS function with a JSON payload; the host pumps
+// the job queue until this global holds a result. Keep this dispatcher as an
+// ordinary function. QuickJS's embedded async-function implementation is
+// fragile when resumed across the Rust FFI boundary, while ordinary Promise
+// reactions provide the same completion semantics without retaining an
+// async-function activation record in the host call frame.
+function __oc_async_call(name, payload) {
   const fn = globalThis[name];
   try {
-    const result = await fn(JSON.parse(payload));
-    __oc_pending = JSON.stringify({ ok: true, value: result === undefined ? null : result });
+    const result = fn(JSON.parse(payload));
+    if (result && typeof result.then === "function") {
+      result.then(function (value) {
+        __oc_pending = JSON.stringify({ ok: true, value: value === undefined ? null : value });
+      }, function (err) {
+        __oc_pending = JSON.stringify({ ok: false, error: { message: errorMessage(err) } });
+      });
+    } else {
+      __oc_pending = JSON.stringify({ ok: true, value: result === undefined ? null : result });
+    }
   } catch (err) {
     __oc_pending = JSON.stringify({ ok: false, error: { message: errorMessage(err) } });
   }
@@ -60,6 +72,64 @@ async function __oc_async_call(name, payload) {
 function errorMessage(err) {
   if (err && typeof err === "object" && typeof err.message === "string") return err.message;
   return String(err);
+}
+
+// Streams keep their callbacks inside QuickJS. Rust only sends serialized
+// events back to the owner thread through `__oc_stream_emit`, which avoids
+// ever moving a JS function across the FFI boundary.
+const __oc_streams = Object.create(null);
+let __oc_stream_sequence = 0;
+
+function __oc_stream_matches(stream, event) {
+  if (!stream.path || stream.path === "/global/event") return true;
+  if (!event || typeof event !== "object") return false;
+  return event.type === stream.path || event.event === stream.path;
+}
+
+function __oc_stream_emit(event) {
+  const pending = [];
+  Object.keys(__oc_streams).forEach(function (id) {
+    const stream = __oc_streams[id];
+    if (!stream || stream.closed || !__oc_stream_matches(stream, event)) return;
+    stream.handlers.slice().forEach(function (handler) {
+      try {
+        pending.push(Promise.resolve().then(function () { return handler(event); }).catch(function () {
+          // A subscriber must not stop delivery to other plugin streams.
+          return undefined;
+        }));
+      } catch (_) {}
+    });
+  });
+  return Promise.all(pending).then(function () { return true; });
+}
+
+function __oc_make_sse_stream(path) {
+  const id = "sse_" + (++__oc_stream_sequence);
+  const stream = {
+    id: id,
+    path: typeof path === "string" ? path : "/global/event",
+    handlers: [],
+    closed: false,
+    on: function (eventOrHandler, maybeHandler) {
+      const handler = typeof eventOrHandler === "function" ? eventOrHandler : maybeHandler;
+      if (typeof handler !== "function") throw new TypeError("stream handler must be a function");
+      if (!stream.closed) stream.handlers.push(handler);
+      return stream;
+    },
+    off: function (eventOrHandler, maybeHandler) {
+      const handler = typeof eventOrHandler === "function" ? eventOrHandler : maybeHandler;
+      stream.handlers = stream.handlers.filter(function (candidate) { return candidate !== handler; });
+      return stream;
+    },
+    done: function () {
+      stream.closed = true;
+      stream.handlers = [];
+      delete __oc_streams[id];
+      return Promise.resolve(true);
+    },
+  };
+  __oc_streams[id] = stream;
+  return stream;
 }
 
 // ---------------------------------------------------------------------------
@@ -269,7 +339,11 @@ const __oc_plugin = {
   tools: Object.create(null),
   toolKeys: Object.create(null),
   workspaceAdapters: Object.create(null),
-  authMethods: [],
+  // Auth hook objects and returned OAuth callbacks stay in this QuickJS
+  // context. Only __oc_auth_summary() crosses the Rust boundary.
+  authHooks: [],
+  authPending: Object.create(null),
+  pluginId: null,
 };
 
 // Minimal zod subset producing JSON schema via __oc_schema_to_json_schema.
@@ -584,18 +658,37 @@ __oc_modules["opencode/plugin/tui"] = {
 function __oc_make_client() {
   const client = {};
   const methods = [
+    "pty.list", "pty.create", "pty.remove", "pty.get", "pty.update", "pty.connect",
     "session.list", "session.create", "session.get", "session.remove",
     "session.prompt", "session.messages", "session.count", "session.event",
+    "session.status",
+    "session.delete", "session.children", "session.todo", "session.init",
+    "session.fork", "session.abort", "session.unshare", "session.share",
+    "session.diff", "session.summarize", "session.message", "session.promptAsync",
+    "session.command", "session.shell", "session.revert", "session.unrevert",
     "message.create", "message.get", "message.update", "message.remove",
     "message.parts", "message.reasoning",
     "part.create", "part.get", "part.update", "part.remove", "part.meta",
     "session.data",
-    "config.get", "config.set", "config.update",
+    "config.get", "config.set", "config.update", "config.providers",
     "project.get", "project.update", "project.list",
-    "model.get", "model.list", "provider.list",
-    "tool.list", "tool.get",
-    "file.get", "file.list",
-    "app.version",
+    "model.get", "model.list", "provider.list", "provider.auth",
+    "provider.oauth.authorize", "provider.oauth.callback",
+    "tool.list", "tool.get", "tool.ids",
+    "instance.dispose", "path.get", "vcs.get",
+    "command.list",
+    "find.text", "find.files", "find.symbols",
+    "file.get", "file.list", "file.read", "file.status",
+    "app.version", "app.log", "app.agents",
+    "skill.list",
+    "mcp.status", "mcp.add", "mcp.connect", "mcp.disconnect",
+    "mcp.auth.remove", "mcp.auth.start", "mcp.auth.callback", "mcp.auth.authenticate",
+    "lsp.status", "formatter.status",
+    "global.event",
+    "tui.appendPrompt", "tui.openHelp", "tui.openSessions", "tui.openThemes",
+    "tui.openModels", "tui.submitPrompt", "tui.clearPrompt", "tui.executeCommand",
+    "tui.showToast", "tui.publish", "tui.control.next", "tui.control.response",
+    "auth.set",
     "user.get", "user.list",
     "help",
   ];
@@ -607,17 +700,32 @@ function __oc_make_client() {
       return acc[p];
     }, client);
     obj[method] = function (args) {
-      const result = __oc_bridge_sync("client", { method: path, args: args === undefined ? null : args });
-      if (result && result.ok === false) {
-        const err = new Error(result.error && result.error.message ? result.error.message : "client " + path + " failed");
-        err.status = result.error && result.error.status;
-        throw err;
-      }
-      return result && result.data !== undefined ? result.data : null;
+      // The official SDK methods are Promise-based. Keep the host callback
+      // synchronous internally, but expose the same rejection boundary to
+      // plugin code so `await client.session.get(...)` and `.catch(...)`
+      // behave like the reference client.
+      return __oc_client_call(path, args);
     };
   }
-  client.sse = { stream: function () { return { on: function () {}, done: function () {} }; } };
+  // The reference SDK exposes SSE through generated `get.sse` methods. Keep
+  // callbacks in QuickJS and let the owner-thread manager feed serialized
+  // events through `__oc_stream_emit`.
+  client.sse = { stream: __oc_make_sse_stream };
+  client.global.event = function (path) { return __oc_make_sse_stream(path || "/global/event"); };
+  client.session.event = function (path) { return __oc_make_sse_stream(path || "/global/event"); };
   return client;
+}
+
+function __oc_client_call(path, args) {
+  return Promise.resolve().then(function () {
+    const result = __oc_bridge_sync("client", { method: path, args: args === undefined ? null : args });
+    if (result && result.ok === false) {
+      const err = new Error(result.error && result.error.message ? result.error.message : "client " + path + " failed");
+      err.status = result.error && result.error.status;
+      throw err;
+    }
+    return result && result.data !== undefined ? result.data : null;
+  });
 }
 
 // The v1 PluginInput passed to plugin functions.
@@ -705,6 +813,84 @@ function __oc_register_hooks(hooks) {
       };
     }
   }
+  if (hooks.auth && typeof hooks.auth === "object") {
+    __oc_plugin.authHooks.push(hooks.auth);
+  }
+}
+
+function __oc_auth_when(value) {
+  if (!value || typeof value !== "object") return null;
+  if (typeof value.key !== "string" || typeof value.op !== "string" || typeof value.value !== "string") return null;
+  return { key: value.key, op: value.op, value: value.value };
+}
+
+function __oc_auth_prompt_summary(prompt) {
+  if (!prompt || typeof prompt !== "object" || typeof prompt.type !== "string") return null;
+  const when = __oc_auth_when(prompt.when);
+  if (prompt.type === "text") {
+    const result = {
+      type: "text",
+      key: String(prompt.key || ""),
+      message: String(prompt.message || ""),
+    };
+    if (prompt.placeholder !== undefined) result.placeholder = String(prompt.placeholder);
+    if (when) result.when = when;
+    return result;
+  }
+  if (prompt.type === "select") {
+    const options = Array.isArray(prompt.options) ? prompt.options.map(function (option) {
+      const result = {
+        label: String(option && option.label !== undefined ? option.label : ""),
+        value: String(option && option.value !== undefined ? option.value : ""),
+      };
+      if (option && option.hint !== undefined) result.hint = String(option.hint);
+      return result;
+    }) : [];
+    const result = {
+      type: "select",
+      key: String(prompt.key || ""),
+      message: String(prompt.message || ""),
+      options: options,
+    };
+    if (when) result.when = when;
+    return result;
+  }
+  return null;
+}
+
+function __oc_auth_method_summary(method) {
+  if (!method || typeof method !== "object") return null;
+  if (method.type !== "oauth" && method.type !== "api") return null;
+  const result = {
+    type: method.type,
+    label: String(method.label || ""),
+  };
+  if (Array.isArray(method.prompts)) {
+    result.prompts = method.prompts.map(__oc_auth_prompt_summary).filter(function (prompt) { return prompt !== null; });
+  }
+  return result;
+}
+
+function __oc_auth_summary(auth) {
+  if (!auth || typeof auth !== "object" || typeof auth.provider !== "string" || !Array.isArray(auth.methods)) return null;
+  return {
+    provider: auth.provider,
+    methods: auth.methods.map(__oc_auth_method_summary).filter(function (method) { return method !== null; }),
+  };
+}
+
+function __oc_auth_find(provider) {
+  for (const auth of __oc_plugin.authHooks) {
+    if (auth && auth.provider === provider) return auth;
+  }
+  return null;
+}
+
+function __oc_auth_key(provider, method) {
+  // Keep the key free of embedded NUL bytes. Older QuickJS builds can crash
+  // while hashing a NUL-containing property name even though modern engines
+  // accept it as a normal JavaScript string.
+  return String(provider) + ":" + String(method);
 }
 
 function __oc_hooks_summary() {
@@ -722,11 +908,12 @@ function __oc_hooks_summary() {
       description: __oc_plugin.toolKeys[name].description,
       schema: __oc_plugin.toolKeys[name].schema,
     })),
+    auth: __oc_plugin.authHooks.map(__oc_auth_summary).filter(function (auth) { return auth !== null; }),
   };
 }
 
-// Async entrypoint: load the current module as a plugin.
-async function __oc_load_plugin(payload) {
+// Promise entrypoint: load the current module as a plugin.
+function __oc_load_plugin(payload) {
   const exports = __oc_main_exports || __oc_modules;
   const input = __oc_make_input(payload.input || {});
   const options = payload.options;
@@ -734,26 +921,102 @@ async function __oc_load_plugin(payload) {
   if (!picked) {
     throw new TypeError("Plugin must default export an object with server() or a function");
   }
-  const hooks = picked.v2 ? await picked.fn(__oc_make_v2_context()) : await picked.fn(input, options);
-  if (hooks !== undefined && hooks !== null) {
-    __oc_register_hooks(hooks);
-  }
-  const summary = __oc_hooks_summary();
-  summary.pluginId = picked.id !== undefined ? picked.id : null;
-  return summary;
+  __oc_plugin.pluginId = picked.id !== undefined ? picked.id : null;
+  const hooks = picked.v2 ? picked.fn(__oc_make_v2_context()) : picked.fn(input, options);
+  return Promise.resolve(hooks).then(function (resolvedHooks) {
+    if (resolvedHooks !== undefined && resolvedHooks !== null) {
+      __oc_register_hooks(resolvedHooks);
+    }
+    const summary = __oc_hooks_summary();
+    summary.pluginId = picked.id !== undefined ? picked.id : null;
+    return summary;
+  });
 }
 
-// Async entrypoint: call a hook with (input, output), returning the output.
-async function __oc_trigger(payload) {
+// Promise entrypoint: call a hook with (input, output), returning the output.
+function __oc_trigger(payload) {
   const name = payload.name;
   let input = payload.input === undefined || payload.input === null ? {} : payload.input;
   let output = payload.output === undefined || payload.output === null ? {} : payload.output;
+  let chain = Promise.resolve();
   for (const hooks of __oc_plugin.hooks) {
     const fn = hooks[name];
     if (typeof fn !== "function") continue;
-    await fn(input, output);
+    chain = chain.then(function () {
+      return Promise.resolve(fn(input, output));
+    });
   }
-  return output;
+  return chain.then(function () { return output; });
+}
+
+// Promise auth entrypoints. The request contains only serializable identifiers
+// and inputs. Function-valued validators/authorize/callbacks never leave this
+// QuickJS context.
+function __oc_auth_validate(payload) {
+  return Promise.resolve().then(function () {
+    const auth = __oc_auth_find(payload.provider);
+    if (!auth || !Array.isArray(auth.methods)) throw new Error("No auth hook for provider '" + payload.provider + "'");
+    const method = auth.methods[payload.method];
+    if (!method) throw new Error("No auth method " + payload.method + " for provider '" + payload.provider + "'");
+    const prompts = Array.isArray(method.prompts) ? method.prompts : [];
+    const prompt = prompts.find(function (entry) { return entry && entry.key === payload.key; });
+    if (!prompt || typeof prompt.validate !== "function") return null;
+    return prompt.validate(String(payload.value === undefined || payload.value === null ? "" : payload.value));
+  }).then(function (resolved) {
+    return resolved === undefined || resolved === null ? null : String(resolved);
+  });
+}
+
+function __oc_auth_authorize(payload) {
+  return Promise.resolve().then(function () {
+    const auth = __oc_auth_find(payload.provider);
+    if (!auth || !Array.isArray(auth.methods)) throw new Error("No auth hook for provider '" + payload.provider + "'");
+    const method = auth.methods[payload.method];
+    if (!method || typeof method.authorize !== "function") throw new Error("Auth method " + payload.method + " has no authorize function");
+    return method.authorize(payload.inputs || {});
+  }).then(function (resolved) {
+    if (resolved === undefined || resolved === null || typeof resolved !== "object") throw new Error("Auth authorize returned no result");
+
+    const pendingKey = __oc_auth_key(payload.provider, payload.method);
+    delete __oc_plugin.authPending[pendingKey];
+    if (typeof resolved.callback === "function") {
+      __oc_plugin.authPending[pendingKey] = {
+        method: resolved.method,
+        callback: resolved.callback,
+      };
+      return {
+        url: String(resolved.url || ""),
+        method: String(resolved.method || "auto"),
+        instructions: String(resolved.instructions || ""),
+      };
+    }
+    // API authorize results are already serializable and have no callback.
+    return resolved;
+  });
+}
+
+function __oc_auth_callback(payload) {
+  const pendingKey = __oc_auth_key(payload.provider, payload.method);
+  const pending = __oc_plugin.authPending[pendingKey];
+  if (!pending || typeof pending.callback !== "function") {
+    throw new Error("No pending auth callback for provider '" + payload.provider + "'");
+  }
+  let result;
+  try {
+    result = pending.method === "code"
+      ? pending.callback(payload.code === undefined || payload.code === null ? "" : String(payload.code))
+      : pending.callback();
+  } catch (error) {
+    delete __oc_plugin.authPending[pendingKey];
+    throw error;
+  }
+  return Promise.resolve(result).then(function (resolved) {
+    delete __oc_plugin.authPending[pendingKey];
+    return resolved;
+  }, function (error) {
+    delete __oc_plugin.authPending[pendingKey];
+    throw error;
+  });
 }
 
 // Sync entrypoint: call the config hook.
@@ -765,17 +1028,21 @@ function __oc_config(payload) {
   return true;
 }
 
-// Sync entrypoint: deliver an event to the event hook.
+// Promise entrypoint: deliver an event to the event hook and wait for every
+// hook's promise before returning to the Rust host. The manager's server
+// fan-out relies on this completion boundary so event delivery is not lost
+// when a plugin hook is declared async.
 function __oc_event(payload) {
+  let chain = Promise.resolve();
   for (const hooks of __oc_plugin.hooks) {
     const fn = hooks.event;
     if (typeof fn === "function") {
-      Promise.resolve().then(function () {
-        fn({ event: payload.event });
+      chain = chain.then(function () {
+        return Promise.resolve(fn({ event: payload.event }));
       });
     }
   }
-  return true;
+  return chain.then(function () { return true; });
 }
 
 // Sync entrypoint: dispose hooks.
@@ -789,15 +1056,14 @@ function __oc_dispose() {
   return Promise.all(pending).then(function () { return true; });
 }
 
-// Async entrypoint: execute a tool.
-async function __oc_tool_execute(payload) {
+// Promise entrypoint: execute a tool.
+function __oc_tool_execute(payload) {
   const name = payload.name;
   const def = __oc_plugin.tools[name];
   if (!def) throw new Error("Tool '" + name + "' is not registered");
   if (typeof def.execute !== "function") throw new Error("Tool '" + name + "' has no execute function");
   const context = __oc_make_tool_context(payload.context || {});
-  const result = await def.execute(payload.args, context);
-  return result;
+  return def.execute(payload.args, context);
 }
 
 function __oc_make_tool_context(ctx) {
@@ -825,6 +1091,7 @@ function __oc_abort_signal() {
   const signal = {
     aborted: false,
     reason: null,
+    _abortNotified: false,
     addEventListener: function (type, listener) {
       if (type === "abort") {
         this._listeners = this._listeners || [];
@@ -834,12 +1101,25 @@ function __oc_abort_signal() {
     removeEventListener: function () {},
     dispatchEvent: function () { return true; },
   };
-  Object.defineProperty(signal, "aborted", { get: function () { return false; } });
+  Object.defineProperty(signal, "aborted", { get: function () { return __oc_tool_cancelled(); } });
+  globalThis.__oc_active_abort_signal = signal;
   return signal;
 }
 
-// Async entrypoint: run a workspace adapter method.
-async function __oc_workspace_adapter(payload) {
+function __oc_tool_abort_notify() {
+  const signal = globalThis.__oc_active_abort_signal;
+  if (!signal || signal._abortNotified || !__oc_tool_cancelled()) return false;
+  signal._abortNotified = true;
+  signal.reason = new Error("tool execution aborted");
+  const event = { type: "abort", target: signal };
+  (signal._listeners || []).slice().forEach(function (listener) {
+    try { listener.call(signal, event); } catch (_) {}
+  });
+  return true;
+}
+
+// Promise entrypoint: run a workspace adapter method.
+function __oc_workspace_adapter(payload) {
   const adapter = __oc_plugin.workspaceAdapters[payload.type];
   if (!adapter) throw new Error("No workspace adapter registered for '" + payload.type + "'");
   const fn = adapter[payload.method];
@@ -847,16 +1127,15 @@ async function __oc_workspace_adapter(payload) {
   return fn(payload.args);
 }
 
-// Async entrypoint: run a v2 domain transform callback with a mutable draft.
-async function __oc_v2_transform(payload) {
+// Promise entrypoint: run a v2 domain transform callback with a mutable draft.
+function __oc_v2_transform(payload) {
   const callbacks = (__oc_plugin.v2Callbacks = __oc_plugin.v2Callbacks || Object.create(null));
   const callback = callbacks[payload.domain];
   if (typeof callback !== "function") {
     throw new Error("No v2 transform callback registered for domain '" + payload.domain + "'");
   }
   const draft = payload.draft === undefined || payload.draft === null ? {} : payload.draft;
-  await callback(draft);
-  return draft;
+  return Promise.resolve(callback(draft)).then(function () { return draft; });
 }
 
 // ---------------------------------------------------------------------------
@@ -1154,7 +1433,7 @@ function __oc_register_v1_hook(name, hook) {
 function __oc_register_v1(kind, input) {
   // The legacy declarative registrations (agent/command/skill/...) are routed
   // to the host so the integrating application can consume them.
-  __oc_bridge_sync("v1.register", { kind: kind, input: input });
+  __oc_bridge_sync("v1.register", { kind: kind, input: input, pluginId: __oc_plugin.pluginId });
   return input;
 }
 

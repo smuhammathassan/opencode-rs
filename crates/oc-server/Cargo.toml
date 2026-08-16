@@ -5,6 +5,10 @@ edition.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[features]
+default = ["mdns"]
+mdns = []
+
 [dependencies]
 serde = { workspace = true }
 serde_json = { workspace = true }
@@ -13,27 +17,41 @@ thiserror = { workspace = true }
 tracing = { workspace = true }
 futures = { workspace = true }
 oc-schema = { version = "0.1", path = "../oc-schema" }
+oc-database = { version = "0.1", path = "../oc-database" }
 oc-session = { version = "0.1", path = "../oc-session" }
 oc-core = { version = "0.1", path = "../oc-core" }
 oc-util = { version = "0.1", path = "../oc-util" }
 oc-tool = { version = "0.1", path = "../oc-tool" }
 oc-plugin = { version = "0.1", path = "../oc-plugin" }
 oc-llm = { version = "0.1", path = "../oc-llm" }
+oc-session-runner = { version = "0.1", path = "../oc-session-runner" }
 oc-provider = { version = "0.1", path = "../oc-provider" }
 oc-acp = { version = "0.1", path = "../oc-acp" }
 oc-sync = { version = "0.1", path = "../oc-sync" }
+oc-command = { version = "0.1", path = "../oc-command" }
+oc-config = { version = "0.1", path = "../oc-config" }
+oc-mcp = { version = "0.1", path = "../oc-mcp" }
+oc-project = { version = "0.1", path = "../oc-project" }
 tokio = { workspace = true }
+tokio-util = { version = "0.7", features = ["rt"] }
 url = { workspace = true }
 uuid = { workspace = true }
 axum = { version = "0.7", features = ["ws", "macros"] }
 tower-http = { version = "0.6", features = ["cors"] }
 tokio-tungstenite = "0.24"
 base64 = "0.22"
+sha2 = "0.10"
 mime = "0.3"
 percent-encoding = "2.3"
 tokio-stream = { version = "0.1", features = ["sync"] }
 mime_guess = "2"
 regex = { workspace = true }
+indexmap = { workspace = true }
+reqwest = { workspace = true }
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
 
 [dev-dependencies]
+async-trait = "0.1"
 tower = "0.5"

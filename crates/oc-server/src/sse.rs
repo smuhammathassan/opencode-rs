@@ -75,7 +75,12 @@ pub fn v2_event_stream(bus: EventBus) -> Response {
 /// httpapi/handlers/event.ts: emits `server.connected`, then events shaped
 /// `{ id, type, properties }`, plus a 10s heartbeat.
 pub fn v1_event_stream(bus: EventBus) -> Response {
-    let connected = event_data(serde_json::to_value(server_connected()).unwrap());
+    let connected_event = server_connected();
+    let connected = event_data(serde_json::json!({
+        "id": connected_event.id,
+        "type": connected_event.r#type,
+        "properties": connected_event.data,
+    }));
     let receiver = BroadcastStream::new(bus.subscribe());
     let live = receiver
         .filter_map(move |result| match result {
@@ -94,8 +99,49 @@ pub fn v1_event_stream(bus: EventBus) -> Response {
 
 /// The v2 `/api/session/:sessionID/event` stream. From reference/packages/server/src/
 /// handlers/session.ts (`session.events`): continues with new durable events.
-pub fn session_event_stream(state: AppState) -> Response {
-    sse_of(SseEvent::default(), &state.events, 15)
+pub fn session_event_stream(state: AppState, session_id: String, after: Option<i64>) -> Response {
+    let initial = after
+        .and_then(|after| {
+            let manifest = oc_sync::sync::store::session_durable_definitions()
+                .into_iter()
+                .map(|definition| definition.storage_type())
+                .collect::<Vec<_>>();
+            state
+                .sync_store
+                .read_aggregate(&session_id, Some(after), 1_000, &manifest)
+                .ok()
+                .map(|(events, _)| events)
+        })
+        .unwrap_or_default()
+        .into_iter()
+        .map(|event| {
+            Ok::<SseEvent, std::convert::Infallible>(event_data(
+                serde_json::to_value(event).unwrap_or_default(),
+            ))
+        });
+    let receiver = BroadcastStream::new(state.events.subscribe());
+    let live = receiver
+        .filter_map(move |result| match result {
+            Ok(event) if event_belongs_to_session(&event, &session_id) => {
+                Some(event_data(serde_json::to_value(event).unwrap_or_default()))
+            }
+            _ => None,
+        })
+        .map(Ok::<SseEvent, std::convert::Infallible>);
+    let stream = tokio_stream::iter(initial).chain(live);
+    sse_response(stream, 15)
+}
+
+fn event_belongs_to_session(event: &Event, session_id: &str) -> bool {
+    event
+        .data
+        .get("sessionID")
+        .and_then(serde_json::Value::as_str)
+        == Some(session_id)
+        || event
+            .durable
+            .as_ref()
+            .is_some_and(|durable| durable.aggregate_id == session_id)
 }
 
 /// Build a stream of raw SSE frames for one published event (used by tests).
@@ -143,5 +189,27 @@ mod tests {
         assert_eq!(payload["type"], "server.connected");
         assert_eq!(payload["data"], serde_json::json!({}));
         assert!(payload["id"].as_str().unwrap().starts_with("evt_"));
+    }
+
+    #[test]
+    fn session_event_filter_matches_session_data_or_durable_aggregate() {
+        let mut event = Event {
+            id: event_id(),
+            metadata: None,
+            r#type: "session.next.prompted".into(),
+            durable: None,
+            location: None,
+            data: serde_json::json!({ "sessionID": "ses_data" }),
+        };
+        assert!(event_belongs_to_session(&event, "ses_data"));
+        assert!(!event_belongs_to_session(&event, "ses_other"));
+
+        event.data = serde_json::json!({});
+        event.durable = Some(crate::event::Durable {
+            aggregate_id: "ses_durable".into(),
+            seq: 1,
+            version: 1,
+        });
+        assert!(event_belongs_to_session(&event, "ses_durable"));
     }
 }
