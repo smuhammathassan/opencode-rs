@@ -167,7 +167,13 @@ pub fn json_request_parts(
         body: body_text.clone(),
         headers: headers_map,
     };
-    let headers = auth.apply(&auth_input)?;
+    let mut headers = auth.apply(&auth_input)?;
+
+    // `ProviderShared.jsonPost` always sets `content-type: application/json`
+    // after caller-supplied headers so routes never send JSON with a stale
+    // content type. The body is passed pre-encoded; force the same framing
+    // here so OpenAI-compatible endpoints do not reject the request.
+    headers.insert("content-type".to_string(), "application/json".to_string());
 
     let _ = json_body;
     Ok(JsonRequestParts {

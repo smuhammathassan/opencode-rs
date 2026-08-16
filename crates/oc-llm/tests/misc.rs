@@ -270,3 +270,31 @@ fn aws_event_stream_framing_decodes() {
         _ => unreachable!(),
     }
 }
+
+/// The transport always frames JSON bodies as `content-type: application/json`
+/// so OpenAI-compatible endpoints never reject the request as `text/plain`.
+/// From reference/packages/llm/src/protocols/shared.ts (`jsonPost`)
+#[test]
+fn json_transport_forces_application_json_content_type() {
+    let model = oc_llm::providers::openai_compatible::configure(
+        oc_llm::providers::openai_compatible::GenericModelOptions {
+            base_url: "https://opencode.ai/zen/v1".to_string(),
+            api_key: Some("public".to_string()),
+            ..Default::default()
+        },
+    )
+    .model("ling-3.0-flash-free");
+    let request = request_for_route(model);
+
+    let compiled = oc_llm::compile(&request).expect("request compiles");
+    assert_eq!(
+        compiled
+            .prepared
+            .request
+            .headers
+            .get("content-type")
+            .map(String::as_str),
+        Some("application/json"),
+        "json request parts must carry content-type: application/json"
+    );
+}
