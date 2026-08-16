@@ -198,7 +198,7 @@ mod tests {
             })
         });
         let mut registry = CoreToolRegistry::with_applications();
-        registry
+        let _ = registry
             .register(vec![(NAME.into(), def(false))])
             .expect("valid task registration");
         let materialization = registry.materialize(&[]);
@@ -242,7 +242,7 @@ mod tests {
     #[test]
     fn missing_callback_is_a_tool_error_not_success() {
         let mut registry = CoreToolRegistry::with_applications();
-        registry
+        let _ = registry
             .register(vec![(NAME.into(), def(false))])
             .expect("valid task registration");
         let materialization = registry.materialize(&[]);
@@ -282,7 +282,7 @@ mod tests {
             })
         });
         let mut registry = CoreToolRegistry::with_applications();
-        registry
+        let _ = registry
             .register(vec![(NAME.into(), def(false))])
             .expect("valid task registration");
         let materialization = registry.materialize(&[]);

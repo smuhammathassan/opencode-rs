@@ -67,6 +67,53 @@ pub async fn filepath() -> Result<PathBuf, Error> {
     Ok(path.clone())
 }
 
+/// Synchronous variant for callers that spawn `rg` from non-async tool paths
+/// (e.g. `oc-tool`'s glob/grep). Resolves PATH → cached binary → download,
+/// mirroring `filepath()` but through the blocking reqwest client.
+pub fn filepath_sync() -> Result<PathBuf, Error> {
+    if let Some(system) = crate::which::which(rg_exe()) {
+        if std::path::Path::new(&system).is_file() {
+            return Ok(system);
+        }
+    }
+
+    let bin_dir = crate::global::path::bin();
+    let target = bin_dir.join(rg_exe());
+    if target.is_file() {
+        return Ok(target);
+    }
+
+    let Some((platform, extension)) = platform_config() else {
+        return Err(Error(format!(
+            "unsupported platform for ripgrep: {}",
+            std::env::consts::OS
+        )));
+    };
+    let filename = format!("ripgrep-{VERSION}-{platform}.{extension}");
+    let url =
+        format!("https://github.com/BurntSushi/ripgrep/releases/download/{VERSION}/{filename}");
+    let archive = bin_dir.join(&filename);
+
+    tracing::info!("downloading ripgrep: {url}");
+    std::fs::create_dir_all(&bin_dir)?;
+    let response = reqwest::blocking::get(&url)
+        .map_err(|e| Error(format!("failed to download ripgrep: {e}")))?;
+    let bytes = response
+        .bytes()
+        .map_err(|e| Error(format!("failed to download ripgrep: {e}")))?;
+    if bytes.is_empty() {
+        return Err(Error(format!("failed to download ripgrep from {url}")));
+    }
+    std::fs::write(&archive, &bytes)?;
+
+    if let Err(e) = extract_blocking(&archive, &bin_dir, platform, extension) {
+        let _ = std::fs::remove_file(&archive);
+        return Err(e);
+    }
+    let _ = std::fs::remove_file(&archive);
+    Ok(target)
+}
+
 async fn resolve_filepath() -> Result<PathBuf, Error> {
     if let Some(system) = crate::which::which(rg_exe()) {
         if crate::fs_util::is_file(&system.to_string_lossy()).await {
@@ -202,6 +249,93 @@ async fn extract(
         .join(format!("ripgrep-{VERSION}-{platform}"))
         .join(rg_exe());
     if !crate::fs_util::is_file(&extracted.to_string_lossy()).await {
+        return Err(Error(format!(
+            "ripgrep archive did not contain executable: {}",
+            extracted.to_string_lossy()
+        )));
+    }
+    std::fs::copy(&extracted, bin_dir.join(rg_exe()))?;
+    #[cfg(not(windows))]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = std::fs::metadata(bin_dir.join(rg_exe()))?.permissions();
+        permissions.set_mode(0o755);
+        std::fs::set_permissions(bin_dir.join(rg_exe()), permissions)?;
+    }
+    Ok(())
+}
+
+/// Blocking extraction for the synchronous resolver. Mirrors `extract()` but
+/// runs the archive via `std::process::Command` so no async runtime is needed.
+fn extract_blocking(
+    archive: &std::path::Path,
+    bin_dir: &std::path::Path,
+    platform: &str,
+    extension: &str,
+) -> Result<(), Error> {
+    if extension == "zip" {
+        #[cfg(windows)]
+        {
+            let cmd = format!(
+                "$global:ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '{}' -DestinationPath '{}' -Force",
+                archive.to_string_lossy().replace('\'', "''"),
+                bin_dir.to_string_lossy().replace('\'', "''")
+            );
+            let output = std::process::Command::new("powershell.exe")
+                .args(["-NoProfile", "-NonInteractive", "-Command", cmd.as_str()])
+                .output();
+            let out = match output {
+                Ok(out) => out,
+                Err(_) => {
+                    return Err(Error(
+                        "ripgrep extraction failed to spawn powershell".into(),
+                    ))
+                }
+            };
+            if !out.status.success() {
+                let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+                let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                return Err(Error(if !stderr.is_empty() {
+                    stderr
+                } else if !stdout.is_empty() {
+                    stdout
+                } else {
+                    format!("ripgrep extraction failed with code {}", out.status)
+                }));
+            }
+        }
+    }
+
+    if extension == "tar.gz" {
+        let output = std::process::Command::new("tar")
+            .args([
+                "-xzf".as_ref(),
+                archive.to_string_lossy().as_ref(),
+                "-C".as_ref(),
+                bin_dir.to_string_lossy().as_ref(),
+            ])
+            .output();
+        let out = match output {
+            Ok(out) => out,
+            Err(_) => return Err(Error("ripgrep extraction failed to spawn tar".into())),
+        };
+        if !out.status.success() {
+            let stderr = String::from_utf8_lossy(&out.stderr).trim().to_string();
+            let stdout = String::from_utf8_lossy(&out.stdout).trim().to_string();
+            return Err(Error(if !stderr.is_empty() {
+                stderr
+            } else if !stdout.is_empty() {
+                stdout
+            } else {
+                format!("ripgrep extraction failed with code {}", out.status)
+            }));
+        }
+    }
+
+    let extracted = bin_dir
+        .join(format!("ripgrep-{VERSION}-{platform}"))
+        .join(rg_exe());
+    if !extracted.is_file() {
         return Err(Error(format!(
             "ripgrep archive did not contain executable: {}",
             extracted.to_string_lossy()

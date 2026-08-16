@@ -116,7 +116,13 @@ struct RgOutput {
 }
 
 fn run_rg(args: &[&str], cwd: &str) -> Result<RgOutput, ToolError> {
-    let output = Command::new("rg")
+    // Resolve `rg` exactly like the reference's `RipgrepBinary.service`: the
+    // system binary first, then the cached `Global.Path.bin` binary, then a
+    // pinned-release download. Direct `Command::new("rg")` fails wherever the
+    // executable is not preinstalled on PATH.
+    let binary = oc_util::ripgrep::binary::filepath_sync()
+        .map_err(|e| ToolError::Other(format!("failed to resolve ripgrep: {e}")))?;
+    let output = Command::new(binary)
         .args(args)
         .current_dir(cwd)
         .stdin(Stdio::null())

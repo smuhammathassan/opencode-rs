@@ -317,9 +317,7 @@ where
     }
 
     let code = match child.wait().await {
-        Ok(status) => status
-            .code()
-            .unwrap_or(if status.signal().is_some() { 1 } else { 0 }),
+        Ok(status) => status.code().unwrap_or(if cfg!(unix) { 1 } else { 0 }),
         Err(e) => {
             return Err(RipgrepError::Error(Error {
                 message: e.to_string(),

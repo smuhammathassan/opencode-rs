@@ -218,7 +218,6 @@ fn build_command(
     child.stderr(to_stdio(opts.stderr));
     #[cfg(windows)]
     {
-        use std::os::windows::process::CommandExt;
         child.creation_flags(0x08000000); // CREATE_NO_WINDOW
     }
     Ok(child)
@@ -293,9 +292,15 @@ pub async fn wait(child: &mut Child) -> std::io::Result<i32> {
     #[cfg(unix)]
     use std::os::unix::process::ExitStatusExt;
     let status = child.wait().await?;
-    Ok(status
-        .code()
-        .unwrap_or(if status.signal().is_some() { 1 } else { 0 }))
+    Ok(status.code().unwrap_or_else(|| {
+        // Unix: a signal-terminated child has no exit code; report 1 like the
+        // shell convention. Windows `ExitStatus` has no `signal` accessor.
+        if cfg!(unix) {
+            1
+        } else {
+            0
+        }
+    }))
 }
 
 pub async fn run(cmd: &[String], opts: &RunOptions) -> std::result::Result<Result, RunError> {
