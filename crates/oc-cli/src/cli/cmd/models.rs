@@ -107,16 +107,14 @@ fn build_provider_catalog(
     let providers = provider_values
         .iter()
         .filter_map(|(id, value)| {
-            serde_json::from_value::<oc_provider::provider::registry::ConfigProvider>(
-                value.clone(),
-            )
-            .ok()
-            .map(|mut provider| {
-                if provider.id.is_none() {
-                    provider.id = Some(id.clone());
-                }
-                (id.clone(), provider)
-            })
+            serde_json::from_value::<oc_provider::provider::registry::ConfigProvider>(value.clone())
+                .ok()
+                .map(|mut provider| {
+                    if provider.id.is_none() {
+                        provider.id = Some(id.clone());
+                    }
+                    (id.clone(), provider)
+                })
         })
         .collect::<indexmap::IndexMap<_, _>>();
     let disabled = string_list(config.get("disabled_providers"));
@@ -144,13 +142,11 @@ fn build_provider_catalog(
 }
 
 fn string_list(value: Option<&serde_json::Value>) -> Option<Vec<String>> {
-    value
-        .and_then(serde_json::Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(serde_json::Value::as_str)
-                .map(str::to_string)
-                .collect()
-        })
+    value.and_then(serde_json::Value::as_array).map(|values| {
+        values
+            .iter()
+            .filter_map(serde_json::Value::as_str)
+            .map(str::to_string)
+            .collect()
+    })
 }
