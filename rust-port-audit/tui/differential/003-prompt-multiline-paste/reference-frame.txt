@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 003-prompt-multiline-paste - Prompt Bracketed Multiline Paste
+Input: \x1b[200~line1\nline2\x1b[201~
+Output:
+Bracketed paste payload received intact over PTY without newline split

@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 023-clipboard-native-unavailable - Clipboard Native Unavailable Returns None
+Input: Lookup clipboard command with no clipboard binaries present
+Output:
+None

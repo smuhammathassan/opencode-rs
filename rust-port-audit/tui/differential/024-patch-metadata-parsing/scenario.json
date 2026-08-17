@@ -1,0 +1,8 @@
+{
+  "scenario_id": "024-patch-metadata-parsing",
+  "name": "Patch Metadata Hunk Line Counting",
+  "area": "Display Utils",
+  "reference_source": "reference/packages/session-ui/src/components/apply-patch-file.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_parses_patch_metadata_from_server",
+  "input": "Parse patch unified diff with 2 additions, 1 deletion"
+}

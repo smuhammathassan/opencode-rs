@@ -1,0 +1,9 @@
+{
+  "scenario_id": "012-theme-light-dark-toggle",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "dark.mode == Mode::Dark, light.mode == Mode::Light",
+  "rust_behavior": "dark.mode == Mode::Dark, light.mode == Mode::Light",
+  "diff": null,
+  "verified_in_ci": true
+}

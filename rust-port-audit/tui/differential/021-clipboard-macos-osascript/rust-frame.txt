@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 021-clipboard-macos-osascript - Clipboard macOS osascript
+Input: Lookup clipboard command with osascript present on Darwin
+Output:
+['osascript', '-e', 'set the clipboard to (read (POSIX file "...") as «class utf8»)...']

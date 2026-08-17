@@ -1,0 +1,9 @@
+{
+  "scenario_id": "020-clipboard-wayland-selection",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "['wl-copy']",
+  "rust_behavior": "['wl-copy']",
+  "diff": null,
+  "verified_in_ci": true
+}

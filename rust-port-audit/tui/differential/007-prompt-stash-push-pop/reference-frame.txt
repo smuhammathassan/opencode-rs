@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 007-prompt-stash-push-pop - Prompt Stash Stack Push and Pop
+Input: Push multiple draft prompts to stash and pop in LIFO order
+Output:
+LIFO ordering preserved with maximum stash depth capping

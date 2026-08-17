@@ -1,0 +1,8 @@
+{
+  "scenario_id": "023-clipboard-native-unavailable",
+  "name": "Clipboard Native Unavailable Returns None",
+  "area": "Clipboard",
+  "reference_source": "reference/packages/tui/test/clipboard.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_returns_none_when_native_clipboard_unavailable",
+  "input": "Lookup clipboard command with no clipboard binaries present"
+}

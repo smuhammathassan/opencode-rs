@@ -1,0 +1,9 @@
+{
+  "scenario_id": "010-theme-33-presets-registration",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Includes opencode, tokyonight, dracula, nord, catppuccin, gruvbox (>=30 themes)",
+  "rust_behavior": "Includes opencode, tokyonight, dracula, nord, catppuccin, gruvbox (>=30 themes)",
+  "diff": null,
+  "verified_in_ci": true
+}

@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 005-prompt-history-dedup - Prompt History Consecutive Deduplication
+Input: Append identical prompt 'build project' consecutively
+Output:
+History retains 1 entry; prompts with different attachments retained

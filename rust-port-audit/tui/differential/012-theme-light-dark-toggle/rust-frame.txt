@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 012-theme-light-dark-toggle - Theme Light and Dark Mode Selection
+Input: Instantiate Theme::dark() and Theme::light()
+Output:
+dark.mode == Mode::Dark, light.mode == Mode::Light

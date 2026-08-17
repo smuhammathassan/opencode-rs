@@ -1,0 +1,8 @@
+{
+  "scenario_id": "001-prompt-backspace",
+  "name": "Prompt Grapheme Backspace Deletion",
+  "area": "Prompt Editor",
+  "reference_source": "reference/packages/tui/test/editor.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/property.rs::prompt_editor_buffer_invariants_never_panic",
+  "input": "Type 'Hello \u4f60\u597d \ud83d\udc4b\ud83c\udffd \u0645\u0631\u062d\u0628\u0627' then backspace to empty"
+}

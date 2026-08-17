@@ -1,0 +1,9 @@
+{
+  "scenario_id": "006-prompt-history-corrupt-recovery",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Skips corrupted lines and successfully parses valid prompt records",
+  "rust_behavior": "Skips corrupted lines and successfully parses valid prompt records",
+  "diff": null,
+  "verified_in_ci": true
+}

@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 025-toast-notification-lifecycle - Toast Notification Store Lifecycle
+Input: Push toast notification with 5000ms duration, then dismiss
+Output:
+Toast added with unique ID and removed upon dismissal

@@ -1,0 +1,8 @@
+{
+  "scenario_id": "003-prompt-multiline-paste",
+  "name": "Prompt Bracketed Multiline Paste",
+  "area": "Prompt Editor",
+  "reference_source": "reference/packages/tui/test/prompt/input.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/terminal_e2e.rs::real_pty_bracketed_paste_transmission",
+  "input": "\\x1b[200~line1\\nline2\\x1b[201~"
+}

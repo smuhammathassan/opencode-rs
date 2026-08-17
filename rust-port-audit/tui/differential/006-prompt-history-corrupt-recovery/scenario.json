@@ -1,0 +1,8 @@
+{
+  "scenario_id": "006-prompt-history-corrupt-recovery",
+  "name": "Prompt History Corrupt JSONL Line Recovery",
+  "area": "Prompt History",
+  "reference_source": "reference/packages/tui/test/prompt/history.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_recovers_valid_jsonl_entries_around_corruption",
+  "input": "JSONL stream containing invalid syntax lines between valid records"
+}

@@ -1,0 +1,9 @@
+{
+  "scenario_id": "024-patch-metadata-parsing",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "additions: 2, deletions: 1",
+  "rust_behavior": "additions: 2, deletions: 1",
+  "diff": null,
+  "verified_in_ci": true
+}

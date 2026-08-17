@@ -1,0 +1,9 @@
+{
+  "scenario_id": "003-prompt-multiline-paste",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Bracketed paste payload received intact over PTY without newline split",
+  "rust_behavior": "Bracketed paste payload received intact over PTY without newline split",
+  "diff": null,
+  "verified_in_ci": true
+}

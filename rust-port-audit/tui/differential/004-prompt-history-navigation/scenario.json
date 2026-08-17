@@ -1,0 +1,8 @@
+{
+  "scenario_id": "004-prompt-history-navigation",
+  "name": "Prompt History Navigation and Draft Restore",
+  "area": "Prompt History",
+  "reference_source": "reference/packages/tui/test/prompt/history.test.ts",
+  "rust_implementation": "crates/oc-tui/src/prompt/history.rs::tests::move_previous_walks_history",
+  "input": "Navigate history Up then Down back to draft"
+}

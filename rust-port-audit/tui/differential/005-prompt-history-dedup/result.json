@@ -1,0 +1,9 @@
+{
+  "scenario_id": "005-prompt-history-dedup",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "History retains 1 entry; prompts with different attachments retained",
+  "rust_behavior": "History retains 1 entry; prompts with different attachments retained",
+  "diff": null,
+  "verified_in_ci": true
+}

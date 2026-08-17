@@ -1,0 +1,9 @@
+{
+  "scenario_id": "021-clipboard-macos-osascript",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "['osascript', '-e', 'set the clipboard to (read (POSIX file \"...\") as \u00abclass utf8\u00bb)...']",
+  "rust_behavior": "['osascript', '-e', 'set the clipboard to (read (POSIX file \"...\") as \u00abclass utf8\u00bb)...']",
+  "diff": null,
+  "verified_in_ci": true
+}

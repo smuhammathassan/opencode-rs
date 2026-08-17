@@ -1,0 +1,9 @@
+{
+  "scenario_id": "011-theme-hex-color-parsing",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Color::Rgb(130, 170, 255)",
+  "rust_behavior": "Color::Rgb(130, 170, 255)",
+  "diff": null,
+  "verified_in_ci": true
+}

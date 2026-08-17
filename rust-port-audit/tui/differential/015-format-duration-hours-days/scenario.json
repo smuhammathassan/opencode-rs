@@ -1,0 +1,8 @@
+{
+  "scenario_id": "015-format-duration-hours-days",
+  "name": "Format Duration Hours Under Day",
+  "area": "Formatting",
+  "reference_source": "reference/packages/tui/test/util/format.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_hours_under_day",
+  "input": "format_duration(7_320_000)"
+}

@@ -1,0 +1,8 @@
+{
+  "scenario_id": "016-format-duration-days-weeks",
+  "name": "Format Duration Days Under Week",
+  "area": "Formatting",
+  "reference_source": "reference/packages/tui/test/util/format.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_days_under_week",
+  "input": "format_duration(172_800_000)"
+}

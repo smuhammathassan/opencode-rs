@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 004-prompt-history-navigation - Prompt History Navigation and Draft Restore
+Input: Navigate history Up then Down back to draft
+Output:
+Restores original unsubmitted draft text upon returning to bottom index

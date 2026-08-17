@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 014-format-duration-minutes-hours - Format Duration Minutes Under Hour
+Input: format_duration(125_000)
+Output:
+2m 5s

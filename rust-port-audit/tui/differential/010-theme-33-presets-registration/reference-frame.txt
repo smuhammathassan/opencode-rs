@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 010-theme-33-presets-registration - Theme All 33 Built-in Palettes Registered
+Input: Enumerate available theme names in Theme store
+Output:
+Includes opencode, tokyonight, dracula, nord, catppuccin, gruvbox (>=30 themes)

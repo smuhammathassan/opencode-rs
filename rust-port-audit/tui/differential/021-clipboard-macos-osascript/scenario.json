@@ -1,0 +1,8 @@
+{
+  "scenario_id": "021-clipboard-macos-osascript",
+  "name": "Clipboard macOS osascript",
+  "area": "Clipboard",
+  "reference_source": "reference/packages/tui/test/clipboard.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_uses_osascript_on_macos",
+  "input": "Lookup clipboard command with osascript present on Darwin"
+}

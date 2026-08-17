@@ -1,0 +1,8 @@
+{
+  "scenario_id": "019-format-collapse-long-output",
+  "name": "Format Tool Output Long Text Truncated with Ellipsis",
+  "area": "Formatting",
+  "reference_source": "reference/packages/tui/test/util/format.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_collapse_tool_output_long_collapsed_with_ellipsis",
+  "input": "collapse_tool_output(20 lines, max 5 lines)"
+}

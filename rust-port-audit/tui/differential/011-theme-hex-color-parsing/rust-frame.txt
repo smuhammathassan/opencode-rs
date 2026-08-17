@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 011-theme-hex-color-parsing - Theme Hex Color String Parsing
+Input: Parse hex '#82aaff' to RGB color primitive
+Output:
+Color::Rgb(130, 170, 255)

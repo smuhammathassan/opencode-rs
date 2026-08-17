@@ -1,0 +1,8 @@
+{
+  "scenario_id": "005-prompt-history-dedup",
+  "name": "Prompt History Consecutive Deduplication",
+  "area": "Prompt History",
+  "reference_source": "reference/packages/tui/test/prompt/history.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_dedupes_only_identical_consecutive_entries",
+  "input": "Append identical prompt 'build project' consecutively"
+}

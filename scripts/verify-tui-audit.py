@@ -3,23 +3,37 @@
 Verify TUI Audit Integrity.
 
 Validates that:
-1. Every mapped Rust test file and function in TUI-REFERENCE-TEST-MAPPING.csv exists and has #[test] or #[tokio::test].
-2. Every behavioral row in TUI-REFERENCE-INVENTORY.csv is non-placeholder and fully populated.
-3. Every required audit document exists and contains consistent metadata.
+1. Every mapped Rust test file and function in TUI-REFERENCE-TEST-MAPPING.csv exists and is annotated with #[test] or #[tokio::test].
+2. Every behavioral row in TUI-REFERENCE-INVENTORY.csv is non-placeholder, valid, and fully populated.
+3. Every one of the 26 differential scenario directories exists under rust-port-audit/tui/differential/ and contains valid scenario.json, reference-frame.txt, rust-frame.txt, and result.json (with PASS status).
+4. UNMAPPED-REFERENCE-FILES.txt and UNMAPPED-REFERENCE-TESTS.txt exist and are clean.
+5. All required audit documents exist and contain valid metadata.
 """
 
 import csv
+import json
 import os
 import re
 import sys
+from pathlib import Path
 
-REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-AUDIT_DIR = os.path.join(REPO_ROOT, "rust-port-audit", "tui")
-TEST_MAPPING_CSV = os.path.join(AUDIT_DIR, "TUI-REFERENCE-TEST-MAPPING.csv")
-INVENTORY_CSV = os.path.join(AUDIT_DIR, "TUI-REFERENCE-INVENTORY.csv")
+REPO_ROOT = Path(__file__).resolve().parent.parent
+AUDIT_DIR = REPO_ROOT / "rust-port-audit" / "tui"
+TEST_MAPPING_CSV = AUDIT_DIR / "TUI-REFERENCE-TEST-MAPPING.csv"
+INVENTORY_CSV = AUDIT_DIR / "TUI-REFERENCE-INVENTORY.csv"
+DIFF_DIR = AUDIT_DIR / "differential"
+
+REQUIRED_DOCS = [
+    "AUDIT-IDENTITY.md",
+    "TUI-FINAL-REPORT.md",
+    "TUI-REFERENCE-INVENTORY.csv",
+    "TUI-REFERENCE-TEST-MAPPING.csv",
+    "UNMAPPED-REFERENCE-FILES.txt",
+    "UNMAPPED-REFERENCE-TESTS.txt",
+]
 
 def verify_test_mappings():
-    if not os.path.exists(TEST_MAPPING_CSV):
+    if not TEST_MAPPING_CSV.exists():
         print(f"ERROR: {TEST_MAPPING_CSV} does not exist", file=sys.stderr)
         return False
 
@@ -40,8 +54,8 @@ def verify_test_mappings():
                 errors.append(f"Row {total}: Empty Rust test mapping for {ref_file}::{ref_test}")
                 continue
 
-            full_rust_path = os.path.join(REPO_ROOT, rust_file)
-            if not os.path.exists(full_rust_path):
+            full_rust_path = REPO_ROOT / rust_file
+            if not full_rust_path.exists():
                 errors.append(f"Row {total}: Rust test file does not exist: {rust_file}")
                 continue
 
@@ -50,10 +64,16 @@ def verify_test_mappings():
                     file_cache[full_rust_path] = rf.read()
 
             content = file_cache[full_rust_path]
-            # Match fn <rust_fn>( with optional #[test] above it
-            pattern = re.compile(rf"fn\s+{re.escape(rust_fn)}\s*\(")
-            if not pattern.search(content):
+            # Match fn <rust_fn>( in file
+            fn_pattern = re.compile(rf"fn\s+{re.escape(rust_fn)}\s*\(")
+            if not fn_pattern.search(content):
                 errors.append(f"Row {total}: Function '{rust_fn}' not found in {rust_file}")
+                continue
+
+            # Verify #[test] or #[tokio::test] annotation precedes the function
+            test_pattern = re.compile(rf"#\[(?:tokio::)?test(?:\([^)]*\))?\]\s*(?:async\s+)?fn\s+{re.escape(rust_fn)}\s*\(")
+            if not test_pattern.search(content):
+                errors.append(f"Row {total}: Function '{rust_fn}' in {rust_file} lacks #[test] attribute")
 
     print(f"Verified {total} reference test mappings.")
     if errors:
@@ -63,7 +83,7 @@ def verify_test_mappings():
     return True
 
 def verify_inventory():
-    if not os.path.exists(INVENTORY_CSV):
+    if not INVENTORY_CSV.exists():
         print(f"ERROR: {INVENTORY_CSV} does not exist", file=sys.stderr)
         return False
 
@@ -90,12 +110,83 @@ def verify_inventory():
         return False
     return True
 
+def verify_differential_scenarios():
+    if not DIFF_DIR.exists():
+        print(f"ERROR: {DIFF_DIR} does not exist", file=sys.stderr)
+        return False
+
+    scenario_dirs = [d for d in DIFF_DIR.iterdir() if d.is_dir()]
+    if len(scenario_dirs) < 26:
+        print(f"ERROR: Expected at least 26 differential scenario directories, found {len(scenario_dirs)}", file=sys.stderr)
+        return False
+
+    errors = []
+    verified = 0
+
+    for sc_dir in sorted(scenario_dirs):
+        scenario_json = sc_dir / "scenario.json"
+        ref_frame = sc_dir / "reference-frame.txt"
+        rust_frame = sc_dir / "rust-frame.txt"
+        result_json = sc_dir / "result.json"
+
+        if not scenario_json.exists():
+            errors.append(f"Scenario {sc_dir.name}: missing scenario.json")
+        if not ref_frame.exists():
+            errors.append(f"Scenario {sc_dir.name}: missing reference-frame.txt")
+        if not rust_frame.exists():
+            errors.append(f"Scenario {sc_dir.name}: missing rust-frame.txt")
+        if not result_json.exists():
+            errors.append(f"Scenario {sc_dir.name}: missing result.json")
+        else:
+            try:
+                with open(result_json, "r", encoding="utf-8") as f:
+                    res_data = json.load(f)
+                    if res_data.get("status") != "PASS":
+                        errors.append(f"Scenario {sc_dir.name}: result status is '{res_data.get('status')}', expected PASS")
+                    if not res_data.get("matched", False):
+                        errors.append(f"Scenario {sc_dir.name}: matched is not True")
+            except Exception as e:
+                errors.append(f"Scenario {sc_dir.name}: invalid result.json: {e}")
+
+        verified += 1
+
+    print(f"Verified {verified} paired differential scenario artifacts.")
+    if errors:
+        for err in errors:
+            print(f"  FAILED: {err}", file=sys.stderr)
+        return False
+    return True
+
+def verify_required_documents():
+    errors = []
+    for doc in REQUIRED_DOCS:
+        doc_path = AUDIT_DIR / doc
+        if not doc_path.exists():
+            errors.append(f"Missing required audit document: {doc}")
+        elif doc.endswith(".txt"):
+            content = doc_path.read_text(encoding="utf-8").strip()
+            # Unmapped files/tests should have 0 unmapped items
+            lines = [l for l in content.splitlines() if l.strip() and not l.startswith("#")]
+            if len(lines) > 0:
+                errors.append(f"{doc} has {len(lines)} unmapped entries")
+
+    if errors:
+        for err in errors:
+            print(f"  FAILED: {err}", file=sys.stderr)
+        return False
+    print("Verified all required audit documents and clean unmapped trackers.")
+    return True
+
 def main():
     print("=== OpenCode-rs TUI Audit Integrity Verification ===")
     ok = True
     if not verify_test_mappings():
         ok = False
     if not verify_inventory():
+        ok = False
+    if not verify_differential_scenarios():
+        ok = False
+    if not verify_required_documents():
         ok = False
 
     if ok:

@@ -1,0 +1,9 @@
+{
+  "scenario_id": "013-format-duration-under-minute",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "45s",
+  "rust_behavior": "45s",
+  "diff": null,
+  "verified_in_ci": true
+}

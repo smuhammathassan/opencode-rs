@@ -1,0 +1,8 @@
+{
+  "scenario_id": "007-prompt-stash-push-pop",
+  "name": "Prompt Stash Stack Push and Pop",
+  "area": "Prompt Stash",
+  "reference_source": "reference/packages/tui/test/prompt/stash.test.ts",
+  "rust_implementation": "crates/oc-tui/src/prompt/stash.rs::tests::push_pop_trim",
+  "input": "Push multiple draft prompts to stash and pop in LIFO order"
+}

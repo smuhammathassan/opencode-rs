@@ -1,0 +1,8 @@
+{
+  "scenario_id": "017-format-duration-weeks-large",
+  "name": "Format Duration Weeks",
+  "area": "Formatting",
+  "reference_source": "reference/packages/tui/test/util/format.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_weeks",
+  "input": "format_duration(1_209_600_000)"
+}

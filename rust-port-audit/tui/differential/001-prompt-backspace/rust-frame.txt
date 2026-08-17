@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 001-prompt-backspace - Prompt Grapheme Backspace Deletion
+Input: Type 'Hello 你好 👋🏽 مرحبا' then backspace to empty
+Output:
+Buffer successfully reduced to 0 graphemes without panic, cursor == 0

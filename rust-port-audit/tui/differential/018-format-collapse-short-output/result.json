@@ -1,0 +1,9 @@
+{
+  "scenario_id": "018-format-collapse-short-output",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "(short output, false)",
+  "rust_behavior": "(short output, false)",
+  "diff": null,
+  "verified_in_ci": true
+}

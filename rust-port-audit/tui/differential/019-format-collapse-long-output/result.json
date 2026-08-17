@@ -1,0 +1,9 @@
+{
+  "scenario_id": "019-format-collapse-long-output",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "5 lines truncated with trailing ellipsis line indicator, collapsed=true",
+  "rust_behavior": "5 lines truncated with trailing ellipsis line indicator, collapsed=true",
+  "diff": null,
+  "verified_in_ci": true
+}

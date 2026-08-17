@@ -1,0 +1,8 @@
+{
+  "scenario_id": "002-prompt-cursor-movement",
+  "name": "Prompt Multi-line Cursor Movement",
+  "area": "Prompt Editor",
+  "reference_source": "reference/packages/tui/test/prompt/input.test.ts",
+  "rust_implementation": "crates/oc-tui/src/prompt/input.rs::tests::movement_across_lines",
+  "input": "Buffer 'line1\\nline2', move Up, Down, Left, Right"
+}

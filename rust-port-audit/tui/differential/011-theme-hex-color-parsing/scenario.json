@@ -1,0 +1,8 @@
+{
+  "scenario_id": "011-theme-hex-color-parsing",
+  "name": "Theme Hex Color String Parsing",
+  "area": "Themes",
+  "reference_source": "reference/packages/tui/test/theme.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_hex_color_parsing",
+  "input": "Parse hex '#82aaff' to RGB color primitive"
+}

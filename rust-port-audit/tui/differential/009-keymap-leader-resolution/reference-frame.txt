@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 009-keymap-leader-resolution - Keymap Default Leader Key Binding
+Input: Query default leader key name
+Output:
+ctrl+x

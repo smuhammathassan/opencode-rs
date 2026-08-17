@@ -1,0 +1,9 @@
+{
+  "scenario_id": "026-editor-trailing-newline-normalization",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "'single line prompt' (trailing newline stripped from single-line edit)",
+  "rust_behavior": "'single line prompt' (trailing newline stripped from single-line edit)",
+  "diff": null,
+  "verified_in_ci": true
+}

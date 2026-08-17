@@ -1,0 +1,8 @@
+{
+  "scenario_id": "025-toast-notification-lifecycle",
+  "name": "Toast Notification Store Lifecycle",
+  "area": "Components",
+  "reference_source": "reference/packages/tui/test/cli/cmd/tui/notifications.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_notifications_toast_store_lifecycle",
+  "input": "Push toast notification with 5000ms duration, then dismiss"
+}

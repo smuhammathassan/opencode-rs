@@ -1,0 +1,9 @@
+{
+  "scenario_id": "025-toast-notification-lifecycle",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Toast added with unique ID and removed upon dismissal",
+  "rust_behavior": "Toast added with unique ID and removed upon dismissal",
+  "diff": null,
+  "verified_in_ci": true
+}

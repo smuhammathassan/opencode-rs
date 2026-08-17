@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 008-keymap-chord-timeout - Keymap Leader Chord Window Timeout
+Input: Press leader 'ctrl+x' with 2000ms chord window
+Output:
+Leader key active; cancels on chord timeout expiration

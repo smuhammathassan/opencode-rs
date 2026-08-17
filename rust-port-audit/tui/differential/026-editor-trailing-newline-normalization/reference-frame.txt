@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 026-editor-trailing-newline-normalization - External Editor Trailing Newline Normalization
+Input: normalize_prompt_content('single line prompt\n')
+Output:
+'single line prompt' (trailing newline stripped from single-line edit)

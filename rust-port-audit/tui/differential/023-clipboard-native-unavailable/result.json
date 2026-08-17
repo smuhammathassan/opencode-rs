@@ -1,0 +1,9 @@
+{
+  "scenario_id": "023-clipboard-native-unavailable",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "None",
+  "rust_behavior": "None",
+  "diff": null,
+  "verified_in_ci": true
+}

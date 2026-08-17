@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 019-format-collapse-long-output - Format Tool Output Long Text Truncated with Ellipsis
+Input: collapse_tool_output(20 lines, max 5 lines)
+Output:
+5 lines truncated with trailing ellipsis line indicator, collapsed=true

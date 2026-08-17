@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 006-prompt-history-corrupt-recovery - Prompt History Corrupt JSONL Line Recovery
+Input: JSONL stream containing invalid syntax lines between valid records
+Output:
+Skips corrupted lines and successfully parses valid prompt records

@@ -1,0 +1,8 @@
+{
+  "scenario_id": "022-clipboard-x11-fallback",
+  "name": "Clipboard X11 Fallback Sequence",
+  "area": "Clipboard",
+  "reference_source": "reference/packages/tui/test/clipboard.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_falls_back_through_x11_clipboard_commands",
+  "input": "Lookup clipboard command on X11 with xclip missing and xsel present"
+}

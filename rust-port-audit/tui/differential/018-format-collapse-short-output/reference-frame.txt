@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 018-format-collapse-short-output - Format Tool Output Short Text Preserved
+Input: collapse_tool_output('short output', 10, 80)
+Output:
+(short output, false)

@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 002-prompt-cursor-movement - Prompt Multi-line Cursor Movement
+Input: Buffer 'line1\nline2', move Up, Down, Left, Right
+Output:
+Cursor preserves column index clamped to target line length

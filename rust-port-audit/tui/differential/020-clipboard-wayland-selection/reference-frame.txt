@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 020-clipboard-wayland-selection - Clipboard Wayland Selection
+Input: Lookup clipboard command with WAYLAND_DISPLAY set and wl-copy present
+Output:
+['wl-copy']

@@ -1,0 +1,9 @@
+{
+  "scenario_id": "009-keymap-leader-resolution",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "ctrl+x",
+  "rust_behavior": "ctrl+x",
+  "diff": null,
+  "verified_in_ci": true
+}

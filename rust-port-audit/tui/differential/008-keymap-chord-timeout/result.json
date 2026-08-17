@@ -1,0 +1,9 @@
+{
+  "scenario_id": "008-keymap-chord-timeout",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Leader key active; cancels on chord timeout expiration",
+  "rust_behavior": "Leader key active; cancels on chord timeout expiration",
+  "diff": null,
+  "verified_in_ci": true
+}

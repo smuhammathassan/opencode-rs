@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 024-patch-metadata-parsing - Patch Metadata Hunk Line Counting
+Input: Parse patch unified diff with 2 additions, 1 deletion
+Output:
+additions: 2, deletions: 1

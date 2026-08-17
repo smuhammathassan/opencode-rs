@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 017-format-duration-weeks-large - Format Duration Weeks
+Input: format_duration(1_209_600_000)
+Output:
+~2 weeks

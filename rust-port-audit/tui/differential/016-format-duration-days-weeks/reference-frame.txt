@@ -1,0 +1,5 @@
+=== OpenCode v1.18.13 Reference Frame ===
+Scenario: 016-format-duration-days-weeks - Format Duration Days Under Week
+Input: format_duration(172_800_000)
+Output:
+~2 days

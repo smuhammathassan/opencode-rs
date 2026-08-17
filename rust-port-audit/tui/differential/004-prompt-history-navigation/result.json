@@ -1,0 +1,9 @@
+{
+  "scenario_id": "004-prompt-history-navigation",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "Restores original unsubmitted draft text upon returning to bottom index",
+  "rust_behavior": "Restores original unsubmitted draft text upon returning to bottom index",
+  "diff": null,
+  "verified_in_ci": true
+}

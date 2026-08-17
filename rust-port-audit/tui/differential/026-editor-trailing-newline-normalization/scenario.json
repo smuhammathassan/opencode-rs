@@ -1,0 +1,8 @@
+{
+  "scenario_id": "026-editor-trailing-newline-normalization",
+  "name": "External Editor Trailing Newline Normalization",
+  "area": "Editor Integration",
+  "reference_source": "reference/packages/tui/test/editor.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_normalizes_single_trailing_editor_newline",
+  "input": "normalize_prompt_content('single line prompt\\n')"
+}

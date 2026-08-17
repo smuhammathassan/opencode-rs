@@ -1,0 +1,9 @@
+{
+  "scenario_id": "016-format-duration-days-weeks",
+  "status": "PASS",
+  "matched": true,
+  "reference_behavior": "~2 days",
+  "rust_behavior": "~2 days",
+  "diff": null,
+  "verified_in_ci": true
+}

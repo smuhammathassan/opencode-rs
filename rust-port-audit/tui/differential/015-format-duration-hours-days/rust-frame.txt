@@ -1,0 +1,5 @@
+=== opencode-rs Rust Execution Frame ===
+Scenario: 015-format-duration-hours-days - Format Duration Hours Under Day
+Input: format_duration(7_320_000)
+Output:
+2h 2m

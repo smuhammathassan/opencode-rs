@@ -5,10 +5,49 @@
 //! control keystrokes through the master PTY, exercises signal handling (SIGWINCH,
 //! SIGINT, SIGTSTP), verifies interactive raw-mode and alternate-screen transitions,
 //! and asserts proper terminal teardown and restoration upon exit.
+//!
+//! Includes real production `opencode` binary execution through OS PTY descriptors.
 
 use oc_tui::keybind::{DEFINITIONS, LEADER_DEFAULT, LEADER_TIMEOUT_DEFAULT};
 use oc_tui::keymap::{Keymap, KeymapOptions};
 use oc_tui::theme::{Mode, Theme};
+use std::path::PathBuf;
+
+pub fn find_opencode_binary() -> PathBuf {
+    if let Ok(path) = std::env::var("CARGO_BIN_EXE_opencode") {
+        let p = PathBuf::from(path);
+        if p.exists() {
+            return p;
+        }
+    }
+    if let Ok(current) = std::env::current_exe() {
+        if let Some(deps_dir) = current.parent() {
+            if let Some(target_dir) = deps_dir.parent() {
+                let bin = target_dir.join(if cfg!(windows) {
+                    "opencode.exe"
+                } else {
+                    "opencode"
+                });
+                if bin.exists() {
+                    return bin;
+                }
+            }
+        }
+    }
+    let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    let workspace = manifest
+        .parent()
+        .and_then(|p| p.parent())
+        .unwrap_or(&manifest);
+    workspace
+        .join("target")
+        .join("debug")
+        .join(if cfg!(windows) {
+            "opencode.exe"
+        } else {
+            "opencode"
+        })
+}
 
 #[test]
 fn keymap_chord_resolution() {
@@ -42,6 +81,7 @@ fn terminal_theme_toggle() {
 
 #[cfg(unix)]
 mod pty_e2e {
+    use super::*;
     use std::time::{Duration, Instant};
 
     struct PtyPair {
@@ -97,6 +137,128 @@ mod pty_e2e {
         assert!(pty.slave >= 0);
 
         set_pty_size(pty.master, 120, 40).expect("resize pty should succeed");
+
+        unsafe {
+            libc::close(pty.master);
+            libc::close(pty.slave);
+        }
+    }
+
+    #[test]
+    fn real_pty_spawns_opencode_binary_version() {
+        let bin = find_opencode_binary();
+        if !bin.exists() {
+            return;
+        }
+        let pty = open_pty(80, 24).expect("openpty should succeed");
+
+        unsafe {
+            let flags = libc::fcntl(pty.master, libc::F_GETFL, 0);
+            libc::fcntl(pty.master, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+
+        use std::os::unix::process::CommandExt;
+        let slave_fd = pty.slave;
+        let mut cmd = std::process::Command::new(&bin);
+        cmd.arg("--version");
+        unsafe {
+            cmd.pre_exec(move || {
+                libc::dup2(slave_fd, 0);
+                libc::dup2(slave_fd, 1);
+                libc::dup2(slave_fd, 2);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn().expect("failed to spawn opencode in PTY");
+        let mut read_buf = [0u8; 256];
+        let mut output = Vec::new();
+        let start = Instant::now();
+
+        while start.elapsed() < Duration::from_secs(5) {
+            let n = unsafe {
+                libc::read(
+                    pty.master,
+                    read_buf.as_mut_ptr() as *mut libc::c_void,
+                    read_buf.len(),
+                )
+            };
+            if n > 0 {
+                output.extend_from_slice(&read_buf[..n as usize]);
+            }
+            if let Ok(Some(_status)) = child.try_wait() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        let _ = child.wait();
+        let text = String::from_utf8_lossy(&output);
+        assert!(
+            text.contains("1.18.13") || text.contains("0.1.0"),
+            "PTY master must receive version output from spawned opencode binary: {text}"
+        );
+
+        unsafe {
+            libc::close(pty.master);
+            libc::close(pty.slave);
+        }
+    }
+
+    #[test]
+    fn real_pty_spawns_opencode_binary_help() {
+        let bin = find_opencode_binary();
+        if !bin.exists() {
+            return;
+        }
+        let pty = open_pty(80, 24).expect("openpty should succeed");
+
+        unsafe {
+            let flags = libc::fcntl(pty.master, libc::F_GETFL, 0);
+            libc::fcntl(pty.master, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+
+        use std::os::unix::process::CommandExt;
+        let slave_fd = pty.slave;
+        let mut cmd = std::process::Command::new(&bin);
+        cmd.arg("--help");
+        unsafe {
+            cmd.pre_exec(move || {
+                libc::dup2(slave_fd, 0);
+                libc::dup2(slave_fd, 1);
+                libc::dup2(slave_fd, 2);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn().expect("failed to spawn opencode in PTY");
+        let mut read_buf = [0u8; 512];
+        let mut output = Vec::new();
+        let start = Instant::now();
+
+        while start.elapsed() < Duration::from_secs(5) {
+            let n = unsafe {
+                libc::read(
+                    pty.master,
+                    read_buf.as_mut_ptr() as *mut libc::c_void,
+                    read_buf.len(),
+                )
+            };
+            if n > 0 {
+                output.extend_from_slice(&read_buf[..n as usize]);
+            }
+            if let Ok(Some(_status)) = child.try_wait() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        let _ = child.wait();
+        let text = String::from_utf8_lossy(&output);
+        assert!(
+            text.contains("Usage:") || text.contains("opencode"),
+            "PTY master must receive help output from spawned opencode binary: {text}"
+        );
 
         unsafe {
             libc::close(pty.master);

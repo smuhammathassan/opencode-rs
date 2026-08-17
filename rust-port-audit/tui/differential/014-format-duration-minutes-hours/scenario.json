@@ -1,0 +1,8 @@
+{
+  "scenario_id": "014-format-duration-minutes-hours",
+  "name": "Format Duration Minutes Under Hour",
+  "area": "Formatting",
+  "reference_source": "reference/packages/tui/test/util/format.test.ts",
+  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_minutes_under_hour",
+  "input": "format_duration(125_000)"
+}
