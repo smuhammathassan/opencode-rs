@@ -1,0 +1,26 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 018-locale-titlecase - Locale Titlecase
+Reference Source File: reference/packages/tui/src/util/locale.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/util/locale.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { titlecase } from "./reference/packages/tui/src/util/locale.ts";
+const cases = ["patch metadata hunk","hello WORLD","MiXeD case Words"];
+console.log(canon(cases.map(titlecase)));
+
+Exit Code: 0
+Duration: 147 ms
+Timestamp: 2026-08-17T09:31:38Z
+SHA-256 Output Hash: a386f949202fde3779a677c450fce009cb9aa1d4ef5748b05e9972680c4f260f
+Output:
+["Patch Metadata Hunk","Hello WORLD","MiXeD Case Words"]

@@ -1,0 +1,26 @@
+{
+  "scenario_id": "016-prompt-interaction",
+  "name": "Prompt Input Interaction State Machine",
+  "area": "Prompt Interaction",
+  "behavior": "transitionPromptInputV2 state transitions for mode/popover/input triggers",
+  "reference_source": "reference/packages/session-ui/src/v2/components/prompt-input/machine.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "016-prompt-interaction"
+  ]
+}

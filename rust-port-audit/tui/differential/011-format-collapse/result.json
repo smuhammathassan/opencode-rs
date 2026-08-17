@@ -1,0 +1,47 @@
+{
+  "scenario_id": "011-format-collapse",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/util/collapse-tool-output.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": {
+    "long": {
+      "output": "line 1\nline 2\nline 3\nline 4\nline 5\n\u2026",
+      "overflow": true
+    },
+    "short": {
+      "output": "hello\nworld",
+      "overflow": false
+    },
+    "wide": {
+      "output": "abcd\u2026",
+      "overflow": true
+    }
+  },
+  "rust_output": {
+    "scenario": "011-format-collapse",
+    "result": {
+      "short": {
+        "output": "hello\nworld",
+        "overflow": false
+      },
+      "long": {
+        "output": "line 1\nline 2\nline 3\nline 4\nline 5\n\u2026",
+        "overflow": true
+      },
+      "wide": {
+        "output": "abcd\u2026",
+        "overflow": true
+      }
+    }
+  },
+  "input_sha256": "7b1a855bc10f1af217d59626b8dd1c197ce6b2688e83e30dca75a6db33a16db0",
+  "reference_output_sha256": "7d95da60150e14cd6bd96428abf84a269d72c5153c8ce3bbe511168f03981284",
+  "rust_output_sha256": "7d95da60150e14cd6bd96428abf84a269d72c5153c8ce3bbe511168f03981284",
+  "hashes_equal": true,
+  "reference_duration_ms": 146,
+  "rust_duration_ms": 559,
+  "executed_at": "2026-08-17T09:31:33Z"
+}

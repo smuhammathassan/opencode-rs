@@ -1,0 +1,29 @@
+{
+  "scenario_id": "019-locale-truncate",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/util/locale.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "a very lo\u2026",
+    "short",
+    "abcd\u2026nop"
+  ],
+  "rust_output": {
+    "scenario": "019-locale-truncate",
+    "result": [
+      "a very lo\u2026",
+      "short",
+      "abcd\u2026nop"
+    ]
+  },
+  "input_sha256": "e524550267ff977765cd57815d6933f5ccb669eaa36c48a7c829b958b3dca4d8",
+  "reference_output_sha256": "ec66a70311a67ee42ad19f7d158171083b3be7f15935d047c8a8f87250eee55a",
+  "rust_output_sha256": "ec66a70311a67ee42ad19f7d158171083b3be7f15935d047c8a8f87250eee55a",
+  "hashes_equal": true,
+  "reference_duration_ms": 154,
+  "rust_duration_ms": 535,
+  "executed_at": "2026-08-17T09:31:39Z"
+}

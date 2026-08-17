@@ -1,0 +1,26 @@
+{
+  "scenario_id": "003-prompt-paste-placeholders",
+  "name": "Pasted Text Placeholder Expansion",
+  "area": "Prompt Parts",
+  "behavior": "expandPastedTextPlaceholders replaces placeholder text with pasted content",
+  "reference_source": "reference/packages/tui/src/prompt/part.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "003-prompt-paste-placeholders"
+  ]
+}

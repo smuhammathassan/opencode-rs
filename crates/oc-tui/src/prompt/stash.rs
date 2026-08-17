@@ -14,6 +14,7 @@ pub struct StashEntry {
     pub parts: Vec<serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub mode: Option<String>,
+    #[serde(default)]
     pub timestamp: i64,
 }
 

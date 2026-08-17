@@ -1,0 +1,26 @@
+{
+  "scenario_id": "011-format-collapse",
+  "name": "Tool Output Collapse",
+  "area": "Formatting",
+  "behavior": "collapseToolOutput short/long/wide-truncation cases",
+  "reference_source": "reference/packages/tui/src/util/collapse-tool-output.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "011-format-collapse"
+  ]
+}

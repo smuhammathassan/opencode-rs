@@ -1,0 +1,31 @@
+{
+  "scenario_id": "017-logo",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/logo.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "                   ",
+    "\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584",
+    "\u2588__\u2588 \u2588__\u2588 \u2588^^^ \u2588__\u2588",
+    "\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580~~\u2580"
+  ],
+  "rust_output": {
+    "scenario": "017-logo",
+    "result": [
+      "                   ",
+      "\u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2588 \u2588\u2580\u2580\u2584",
+      "\u2588__\u2588 \u2588__\u2588 \u2588^^^ \u2588__\u2588",
+      "\u2580\u2580\u2580\u2580 \u2588\u2580\u2580\u2580 \u2580\u2580\u2580\u2580 \u2580~~\u2580"
+    ]
+  },
+  "input_sha256": "73c8b6a1be3078b2974d5dfb48f8b7b685646aa677e474b9e85973b0044bc0bd",
+  "reference_output_sha256": "b7f935318607a6b14245628deb98eecee6e63f393baf94709397c3c6fb374080",
+  "rust_output_sha256": "b7f935318607a6b14245628deb98eecee6e63f393baf94709397c3c6fb374080",
+  "hashes_equal": true,
+  "reference_duration_ms": 140,
+  "rust_duration_ms": 563,
+  "executed_at": "2026-08-17T09:31:38Z"
+}

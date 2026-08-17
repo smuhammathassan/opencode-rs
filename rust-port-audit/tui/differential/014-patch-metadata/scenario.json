@@ -1,0 +1,26 @@
+{
+  "scenario_id": "014-patch-metadata",
+  "name": "Apply-Patch File Metadata Parsing",
+  "area": "Display Utils",
+  "behavior": "patchFile extracts relativePath/additions/deletions from server metadata",
+  "reference_source": "reference/packages/session-ui/src/components/apply-patch-file.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "014-patch-metadata"
+  ]
+}

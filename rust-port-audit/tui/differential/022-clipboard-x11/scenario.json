@@ -1,0 +1,26 @@
+{
+  "scenario_id": "022-clipboard-x11",
+  "name": "Clipboard X11 Fallback",
+  "area": "Clipboard",
+  "behavior": "xclip then xsel fallback on X11",
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "022-clipboard-x11"
+  ]
+}

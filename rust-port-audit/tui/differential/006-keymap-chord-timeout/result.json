@@ -1,0 +1,25 @@
+{
+  "scenario_id": "006-keymap-chord-timeout",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/config/keybind.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": {
+    "leader_default": "ctrl+x"
+  },
+  "rust_output": {
+    "scenario": "006-keymap-chord-timeout",
+    "result": {
+      "leader_default": "ctrl+x"
+    }
+  },
+  "input_sha256": "1f30f420387d38dec154f2f114664a558302c68ac22b7cc6bef93e09b132142c",
+  "reference_output_sha256": "f7eeabb003f1dddd579b3e9edee7315bdcb923766db88e67db87b0d9323ba30d",
+  "rust_output_sha256": "f7eeabb003f1dddd579b3e9edee7315bdcb923766db88e67db87b0d9323ba30d",
+  "hashes_equal": true,
+  "reference_duration_ms": 162,
+  "rust_duration_ms": 556,
+  "executed_at": "2026-08-17T09:31:30Z"
+}

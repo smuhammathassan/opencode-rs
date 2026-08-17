@@ -1,0 +1,26 @@
+{
+  "scenario_id": "007-theme-presets",
+  "name": "Registered Theme Preset Names",
+  "area": "Themes",
+  "behavior": "DEFAULT_THEMES registers the full preset name set",
+  "reference_source": "reference/packages/tui/src/theme/index.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "007-theme-presets"
+  ]
+}

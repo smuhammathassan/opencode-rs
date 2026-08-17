@@ -1,0 +1,26 @@
+{
+  "scenario_id": "012-clipboard-lookup",
+  "name": "Clipboard Command Lookup Matrix",
+  "area": "Clipboard",
+  "behavior": "copyCommand selects the right binary per OS/Wayland/availability",
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "012-clipboard-lookup"
+  ]
+}

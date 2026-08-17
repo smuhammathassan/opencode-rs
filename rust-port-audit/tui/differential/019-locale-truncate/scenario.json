@@ -1,0 +1,26 @@
+{
+  "scenario_id": "019-locale-truncate",
+  "name": "Locale Truncation",
+  "area": "Locale",
+  "behavior": "truncate and truncateMiddle boundaries",
+  "reference_source": "reference/packages/tui/src/util/locale.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "019-locale-truncate"
+  ]
+}

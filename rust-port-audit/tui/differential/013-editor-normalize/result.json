@@ -1,0 +1,33 @@
+{
+  "scenario_id": "013-editor-normalize",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/editor.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "hello",
+    "hello",
+    "a\nb\n",
+    "a\nb",
+    ""
+  ],
+  "rust_output": {
+    "scenario": "013-editor-normalize",
+    "result": [
+      "hello",
+      "hello",
+      "a\nb\n",
+      "a\nb",
+      ""
+    ]
+  },
+  "input_sha256": "eec17084130ee0e8041eff472a9c36e44cdb80d5bbf49f33610b2c7cf2d513bb",
+  "reference_output_sha256": "8091b8b6fa2469763fc461886fa0d1687b48ff62f7cf33730fbac5936f18ac5d",
+  "rust_output_sha256": "8091b8b6fa2469763fc461886fa0d1687b48ff62f7cf33730fbac5936f18ac5d",
+  "hashes_equal": true,
+  "reference_duration_ms": 173,
+  "rust_duration_ms": 547,
+  "executed_at": "2026-08-17T09:31:35Z"
+}

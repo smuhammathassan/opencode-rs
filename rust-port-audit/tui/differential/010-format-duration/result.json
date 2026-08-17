@@ -1,0 +1,49 @@
+{
+  "scenario_id": "010-format-duration",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/util/format.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "",
+    "1s",
+    "45s",
+    "59s",
+    "1m",
+    "1m 1s",
+    "59m 59s",
+    "1h",
+    "23h 59m",
+    "~1 day",
+    "~6 days",
+    "~1 week",
+    "~2 weeks"
+  ],
+  "rust_output": {
+    "scenario": "010-format-duration",
+    "result": [
+      "",
+      "1s",
+      "45s",
+      "59s",
+      "1m",
+      "1m 1s",
+      "59m 59s",
+      "1h",
+      "23h 59m",
+      "~1 day",
+      "~6 days",
+      "~1 week",
+      "~2 weeks"
+    ]
+  },
+  "input_sha256": "ed995f9766f1b6426ce3575dc7f44fc9e3ccfbf5d5bf81fe8b0eb0df6ea79ff8",
+  "reference_output_sha256": "20ec90410cec73526569957b06e8a12158683f968bed4138835dd109348c8765",
+  "rust_output_sha256": "20ec90410cec73526569957b06e8a12158683f968bed4138835dd109348c8765",
+  "hashes_equal": true,
+  "reference_duration_ms": 139,
+  "rust_duration_ms": 552,
+  "executed_at": "2026-08-17T09:31:33Z"
+}

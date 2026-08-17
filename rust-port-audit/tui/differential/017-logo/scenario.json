@@ -1,0 +1,26 @@
+{
+  "scenario_id": "017-logo",
+  "name": "Home Logo Left Column",
+  "area": "Home Screen",
+  "behavior": "logo.left rows match the reference banner",
+  "reference_source": "reference/packages/tui/src/logo.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "017-logo"
+  ]
+}

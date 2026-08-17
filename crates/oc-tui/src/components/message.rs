@@ -1225,7 +1225,9 @@ fn render_apply_patch(
         spans.push((title, render.fg(theme.text_muted)));
         out.push(MessageLine::new(spans));
         if file.type_ != "delete" {
-            render_diff(render, &file.patch, out);
+            if let Some(patch) = &file.patch {
+                render_diff(render, patch, out);
+            }
         } else {
             out.push(MessageLine::new(styled(
                 format!(

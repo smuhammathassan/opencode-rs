@@ -1,0 +1,26 @@
+{
+  "scenario_id": "010-format-duration",
+  "name": "Duration Formatting Boundaries",
+  "area": "Formatting",
+  "behavior": "formatDuration thresholds for s/m/h/d/weeks",
+  "reference_source": "reference/packages/tui/src/util/format.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "010-format-duration"
+  ]
+}

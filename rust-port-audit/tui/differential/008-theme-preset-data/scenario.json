@@ -1,0 +1,26 @@
+{
+  "scenario_id": "008-theme-preset-data",
+  "name": "Theme Preset Raw Definitions (opencode/dracula/nord)",
+  "area": "Themes",
+  "behavior": "Preset defs/theme tables match the reference asset JSON",
+  "reference_source": "reference/packages/tui/src/theme/assets/*.json",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "008-theme-preset-data"
+  ]
+}

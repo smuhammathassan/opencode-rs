@@ -1,0 +1,26 @@
+{
+  "scenario_id": "024-patch-metadata-multi",
+  "name": "Apply-Patch Multi-File Parsing",
+  "area": "Display Utils",
+  "behavior": "patchFiles parses multiple file entries",
+  "reference_source": "reference/packages/session-ui/src/components/apply-patch-file.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "024-patch-metadata-multi"
+  ]
+}

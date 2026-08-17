@@ -12,6 +12,9 @@ export class RGBA {
     const c = parseInt(hex.replace('#', ''), 16);
     return new RGBA((c >> 16) & 255, (c >> 8) & 255, c & 255, 1);
   }
+  static fromInts(r, g, b, a = 1) {
+    return new RGBA(r, g, b, a);
+  }
 }
 export class SyntaxStyle {}
 export class InputRenderable {}
@@ -42,7 +45,7 @@ export async function resolve(specifier, context, defaultResolve) {
     return { url: 'data:text/javascript,' + encodeURIComponent(keymapShim), shortCircuit: true };
   }
   if (specifier === 'effect' || specifier.startsWith('effect/')) {
-    const effectShim = 'const makeSchema = (val) => new Proxy(Object.assign({ value: val }, { annotate: () => makeSchema(val), check: () => makeSchema(val) }), { get(target, prop) { if (prop in target) return target[prop]; return (...args) => makeSchema(args); } }); export const Effect = { gen: (fn) => fn(), succeed: (x) => x, void: undefined }; export const Context = { Service: () => () => class {} }; export const Layer = { effect: () => ({}) }; export const Schema = new Proxy({ optional: (s) => makeSchema(s), Boolean: makeSchema("boolean"), String: makeSchema("string"), Number: makeSchema("number"), Int: makeSchema("int"), Array: (s) => makeSchema(s), Tuple: (...args) => makeSchema(args), mutable: (s) => s, Struct: (s) => makeSchema(s), StructWithRest: (s) => makeSchema(s), Union: (...args) => makeSchema(args), Record: () => makeSchema({}), Literal: (...args) => makeSchema(args), Literals: (...args) => makeSchema(args), decodeUnknownSync: () => (x) => x, Class: () => class {} }, { get(target, prop) { if (prop in target) return target[prop]; return (...args) => makeSchema(args); } }); export default {};';
+    const effectShim = 'const makeSchema = (val) => new Proxy(Object.assign({ value: val }, { annotate: () => makeSchema(val), check: () => makeSchema(val) }), { get(target, prop) { if (prop in target) return target[prop]; return (...args) => makeSchema(args); } }); export const Option = { none: () => null, some: (x) => x, isNone: (x) => x == null, isSome: (x) => x != null }; export const Effect = { gen: (fn) => fn(), succeed: (x) => x, void: undefined }; export const Context = { Service: () => () => class {} }; export const Layer = { effect: () => ({}) }; export const Schema = new Proxy({ optional: (s) => makeSchema(s), Boolean: makeSchema("boolean"), String: makeSchema("string"), Number: makeSchema("number"), Int: makeSchema("int"), Array: (s) => makeSchema(s), Tuple: (...args) => makeSchema(args), mutable: (s) => s, Struct: (s) => makeSchema(s), StructWithRest: (s) => makeSchema(s), Union: (...args) => makeSchema(args), Record: () => makeSchema({}), Literal: (...args) => makeSchema(args), Literals: (...args) => makeSchema(args), decodeUnknownSync: () => (x) => x, Class: () => class {} }, { get(target, prop) { if (prop in target) return target[prop]; return (...args) => makeSchema(args); } }); export default {};';
     return {
       url: 'data:text/javascript,' + encodeURIComponent(effectShim),
       shortCircuit: true,
@@ -53,6 +56,22 @@ export async function resolve(specifier, context, defaultResolve) {
   }
   if (specifier.startsWith('@opencode-ai/')) {
     return { url: 'data:text/javascript,export default {};', shortCircuit: true };
+  }
+  // Bun runtime API — not available under node; shimmed (semantics-preserving stub).
+  if (specifier === 'bun:sqlite') {
+    const shim = 'export class Database { constructor() {} prepare() { return { get: () => null, all: () => [], run: () => null }; } close() {} } export default { Database };';
+    return { url: 'data:text/javascript,' + encodeURIComponent(shim), shortCircuit: true };
+  }
+  // Diff-view dependencies of session-ui: only their types and view-shaping helpers
+  // are consumed by the scenarios we execute; the fields we compare are computed
+  // before these are consulted. Shimmed to no-op implementations.
+  if (specifier === '@pierre/diffs') {
+    const shim = 'export function parseDiffFromFile() { return null; } export function parsePatchFiles() { return []; } export default {};';
+    return { url: 'data:text/javascript,' + encodeURIComponent(shim), shortCircuit: true };
+  }
+  if (specifier === 'diff') {
+    const shim = 'export function parsePatch() { return []; } export function applyPatch() { return ""; } export default {};';
+    return { url: 'data:text/javascript,' + encodeURIComponent(shim), shortCircuit: true };
   }
 
   const { parentURL } = context;

@@ -1,0 +1,26 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 015-locale-duration - Locale Duration Formatting
+Reference Source File: reference/packages/tui/src/util/locale.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/util/locale.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { duration } from "./reference/packages/tui/src/util/locale.ts";
+const cases = [0,5000,65000,3723000,86400000];
+console.log(canon(cases.map(duration)));
+
+Exit Code: 0
+Duration: 148 ms
+Timestamp: 2026-08-17T09:31:36Z
+SHA-256 Output Hash: b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c
+Output:
+["0ms","5.0s","1m 5s","1h 2m","1d 0h"]

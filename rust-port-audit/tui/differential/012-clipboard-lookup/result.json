@@ -1,0 +1,71 @@
+{
+  "scenario_id": "012-clipboard-lookup",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    [
+      "osascript"
+    ],
+    [
+      "wl-copy"
+    ],
+    [
+      "xclip",
+      "-selection",
+      "clipboard"
+    ],
+    [
+      "xsel",
+      "--clipboard",
+      "--input"
+    ],
+    [
+      "powershell.exe",
+      "-NonInteractive",
+      "-NoProfile",
+      "-Command",
+      "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())"
+    ],
+    null
+  ],
+  "rust_output": {
+    "scenario": "012-clipboard-lookup",
+    "result": [
+      [
+        "osascript"
+      ],
+      [
+        "wl-copy"
+      ],
+      [
+        "xclip",
+        "-selection",
+        "clipboard"
+      ],
+      [
+        "xsel",
+        "--clipboard",
+        "--input"
+      ],
+      [
+        "powershell.exe",
+        "-NonInteractive",
+        "-NoProfile",
+        "-Command",
+        "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())"
+      ],
+      null
+    ]
+  },
+  "input_sha256": "c108cf63fdeee230313d17c519144aa75ff0dab3038a2b06ec42f243e05fc3ae",
+  "reference_output_sha256": "87c4639a70aba675aae19a3e8f69f53bc1af821c663a848db1b45a3c3427ea24",
+  "rust_output_sha256": "87c4639a70aba675aae19a3e8f69f53bc1af821c663a848db1b45a3c3427ea24",
+  "hashes_equal": true,
+  "reference_duration_ms": 153,
+  "rust_duration_ms": 541,
+  "executed_at": "2026-08-17T09:31:34Z"
+}

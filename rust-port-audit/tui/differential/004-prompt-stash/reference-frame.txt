@@ -1,0 +1,27 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 004-prompt-stash - Prompt Stash Parse with Cap
+Reference Source File: reference/packages/tui/src/prompt/stash.tsx
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/prompt/stash.tsx — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { parsePromptStash, MAX_STASH_ENTRIES } from "./reference/packages/tui/src/prompt/stash.tsx";
+const text = '{"input":"one"}\nbad\n{"input":"two"}\n' + Array.from({length:MAX_STASH_ENTRIES+3},(_,i)=>`{"input":"overflow${i}"}`).join("\n") + "\n";
+const parsed = parsePromptStash(text);
+console.log(canon({len:parsed.length, first:parsed[0]?.input ?? null, max:MAX_STASH_ENTRIES}));
+
+Exit Code: 0
+Duration: 156 ms
+Timestamp: 2026-08-17T09:31:28Z
+SHA-256 Output Hash: e42b97389b5426f7975bc0435768b0aa373448e50f42617d2a11825bcdb47f29
+Output:
+{"first":"overflow3","len":50,"max":50}

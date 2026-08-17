@@ -1,0 +1,26 @@
+{
+  "scenario_id": "004-prompt-stash",
+  "name": "Prompt Stash Parse with Cap",
+  "area": "Prompt Stash",
+  "behavior": "parsePromptStash skips corrupt lines and keeps newest MAX_STASH_ENTRIES",
+  "reference_source": "reference/packages/tui/src/prompt/stash.tsx",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "004-prompt-stash"
+  ]
+}

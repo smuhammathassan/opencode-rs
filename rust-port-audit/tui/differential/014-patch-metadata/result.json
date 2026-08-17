@@ -1,0 +1,33 @@
+{
+  "scenario_id": "014-patch-metadata",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/session-ui/src/components/apply-patch-file.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    {
+      "additions": 1,
+      "deletions": 1,
+      "relativePath": "a.ts"
+    }
+  ],
+  "rust_output": {
+    "scenario": "014-patch-metadata",
+    "result": [
+      {
+        "relativePath": "a.ts",
+        "additions": 1,
+        "deletions": 1
+      }
+    ]
+  },
+  "input_sha256": "2615aaa7abee7f84489b7a8eef6aebbe1317fcdf7b98ff70278f525975be39a0",
+  "reference_output_sha256": "aae36690d9c6e6b5025ff528cb9683471c5b277006739d26c154cdb4744c2661",
+  "rust_output_sha256": "aae36690d9c6e6b5025ff528cb9683471c5b277006739d26c154cdb4744c2661",
+  "hashes_equal": true,
+  "reference_duration_ms": 152,
+  "rust_duration_ms": 549,
+  "executed_at": "2026-08-17T09:31:36Z"
+}

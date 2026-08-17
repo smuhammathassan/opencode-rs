@@ -1,0 +1,21 @@
+{
+  "scenario_id": "023-clipboard-none",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": null,
+  "rust_output": {
+    "scenario": "023-clipboard-none",
+    "result": null
+  },
+  "input_sha256": "8cada702ed68d2660968b2b1e63bbc5cd0acbb2751c9b9f76ba4ef5168d9ff38",
+  "reference_output_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "rust_output_sha256": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+  "hashes_equal": true,
+  "reference_duration_ms": 151,
+  "rust_duration_ms": 554,
+  "executed_at": "2026-08-17T09:31:42Z"
+}

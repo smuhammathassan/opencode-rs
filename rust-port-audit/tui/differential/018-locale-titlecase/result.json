@@ -1,0 +1,29 @@
+{
+  "scenario_id": "018-locale-titlecase",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/util/locale.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "Patch Metadata Hunk",
+    "Hello WORLD",
+    "MiXeD Case Words"
+  ],
+  "rust_output": {
+    "scenario": "018-locale-titlecase",
+    "result": [
+      "Patch Metadata Hunk",
+      "Hello WORLD",
+      "MiXeD Case Words"
+    ]
+  },
+  "input_sha256": "75e4eb6710e9c611f6b3bf7a4b1b036f2d7710672e16047f5a6e2caeb56a1b6a",
+  "reference_output_sha256": "a386f949202fde3779a677c450fce009cb9aa1d4ef5748b05e9972680c4f260f",
+  "rust_output_sha256": "a386f949202fde3779a677c450fce009cb9aa1d4ef5748b05e9972680c4f260f",
+  "hashes_equal": true,
+  "reference_duration_ms": 147,
+  "rust_duration_ms": 580,
+  "executed_at": "2026-08-17T09:31:38Z"
+}

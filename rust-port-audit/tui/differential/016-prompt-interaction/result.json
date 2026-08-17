@@ -1,0 +1,385 @@
+{
+  "scenario_id": "016-prompt-interaction",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/session-ui/src/v2/components/prompt-input/machine.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    {
+      "commands": [],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "external",
+        "historyIndex": -1,
+        "mode": "shell",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    },
+    {
+      "commands": [],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "external",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    },
+    {
+      "commands": [],
+      "handled": false,
+      "state": {
+        "drag": "active",
+        "focus": "external",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    },
+    {
+      "commands": [],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "editor",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "type": "draft.setText",
+          "value": ""
+        }
+      ],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "editor",
+        "historyIndex": -1,
+        "mode": "shell",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "type": "draft.setText",
+          "value": "fix @par"
+        },
+        {
+          "popover": "context",
+          "query": "par",
+          "type": "popover.filter"
+        }
+      ],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "editor",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "query": "par",
+          "type": "context"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "type": "draft.setText",
+          "value": "/fix"
+        },
+        {
+          "popover": "command",
+          "query": "fix",
+          "type": "popover.filter"
+        }
+      ],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "editor",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "query": "fix",
+          "type": "command-inline"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "popover": "command",
+          "query": "",
+          "type": "popover.filter"
+        },
+        {
+          "type": "focus.command-search"
+        }
+      ],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "command-search",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "query": "",
+          "type": "command-menu"
+        }
+      }
+    },
+    {
+      "commands": [
+        {
+          "type": "draft.setText",
+          "value": "/"
+        },
+        {
+          "popover": "command",
+          "query": "",
+          "type": "popover.filter"
+        },
+        {
+          "type": "focus.editor"
+        }
+      ],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "editor",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "query": "",
+          "type": "command-inline"
+        }
+      }
+    },
+    {
+      "commands": [],
+      "handled": false,
+      "state": {
+        "drag": "idle",
+        "focus": "external",
+        "historyIndex": -1,
+        "mode": "normal",
+        "popover": {
+          "type": "closed"
+        }
+      }
+    }
+  ],
+  "rust_output": {
+    "scenario": "016-prompt-interaction",
+    "result": [
+      {
+        "state": {
+          "mode": "shell",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "idle",
+          "focus": "external",
+          "historyIndex": -1
+        },
+        "commands": [],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "idle",
+          "focus": "external",
+          "historyIndex": -1
+        },
+        "commands": [],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "active",
+          "focus": "external",
+          "historyIndex": -1
+        },
+        "commands": [],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "idle",
+          "focus": "editor",
+          "historyIndex": -1
+        },
+        "commands": [],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "shell",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "idle",
+          "focus": "editor",
+          "historyIndex": -1
+        },
+        "commands": [
+          {
+            "type": "draft.setText",
+            "value": ""
+          }
+        ],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "context",
+            "query": "par"
+          },
+          "drag": "idle",
+          "focus": "editor",
+          "historyIndex": -1
+        },
+        "commands": [
+          {
+            "type": "draft.setText",
+            "value": "fix @par"
+          },
+          {
+            "type": "popover.filter",
+            "popover": "context",
+            "query": "par"
+          }
+        ],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "command-inline",
+            "query": "fix"
+          },
+          "drag": "idle",
+          "focus": "editor",
+          "historyIndex": -1
+        },
+        "commands": [
+          {
+            "type": "draft.setText",
+            "value": "/fix"
+          },
+          {
+            "type": "popover.filter",
+            "popover": "command",
+            "query": "fix"
+          }
+        ],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "command-menu",
+            "query": ""
+          },
+          "drag": "idle",
+          "focus": "command-search",
+          "historyIndex": -1
+        },
+        "commands": [
+          {
+            "type": "popover.filter",
+            "popover": "command",
+            "query": ""
+          },
+          {
+            "type": "focus.command-search"
+          }
+        ],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "command-inline",
+            "query": ""
+          },
+          "drag": "idle",
+          "focus": "editor",
+          "historyIndex": -1
+        },
+        "commands": [
+          {
+            "type": "draft.setText",
+            "value": "/"
+          },
+          {
+            "type": "popover.filter",
+            "popover": "command",
+            "query": ""
+          },
+          {
+            "type": "focus.editor"
+          }
+        ],
+        "handled": false
+      },
+      {
+        "state": {
+          "mode": "normal",
+          "popover": {
+            "type": "closed"
+          },
+          "drag": "idle",
+          "focus": "external",
+          "historyIndex": -1
+        },
+        "commands": [],
+        "handled": false
+      }
+    ]
+  },
+  "input_sha256": "cd09a611bc77ff4285524c1a4665888e1fadd41c184d2fef2cee6075d1449664",
+  "reference_output_sha256": "30dc5098f6c113197410d6e017ff0c5d8b9a52ab5da7b6833bbba9e3584eccac",
+  "rust_output_sha256": "30dc5098f6c113197410d6e017ff0c5d8b9a52ab5da7b6833bbba9e3584eccac",
+  "hashes_equal": true,
+  "reference_duration_ms": 149,
+  "rust_duration_ms": 563,
+  "executed_at": "2026-08-17T09:31:37Z"
+}

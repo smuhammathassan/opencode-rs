@@ -12,6 +12,11 @@ use crossterm::event::{KeyCode as CKeyCode, KeyEvent, KeyModifiers};
 
 use crate::keybind::{LEADER_DEFAULT, LEADER_TIMEOUT_DEFAULT};
 
+/// From reference/packages/tui/src/keymap.tsx (`LEADER_TOKEN`)
+pub const LEADER_TOKEN: &str = "leader";
+/// From reference/packages/tui/src/keymap.tsx (`OPENCODE_BASE_MODE`)
+pub const OPENCODE_BASE_MODE: &str = "base";
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum KeyCode {
     Char(char),

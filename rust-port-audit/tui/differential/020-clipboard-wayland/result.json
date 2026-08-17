@@ -1,0 +1,25 @@
+{
+  "scenario_id": "020-clipboard-wayland",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "wl-copy"
+  ],
+  "rust_output": {
+    "scenario": "020-clipboard-wayland",
+    "result": [
+      "wl-copy"
+    ]
+  },
+  "input_sha256": "07cb7c8f65f4057ad091e6e264f4b5d20ce37d3671700b37bc480ba7f8ccae42",
+  "reference_output_sha256": "ad22d89fe5bf112ec4840b79daa2baddaf04ee812fe6f8c9df59c6abded88736",
+  "rust_output_sha256": "ad22d89fe5bf112ec4840b79daa2baddaf04ee812fe6f8c9df59c6abded88736",
+  "hashes_equal": true,
+  "reference_duration_ms": 143,
+  "rust_duration_ms": 558,
+  "executed_at": "2026-08-17T09:31:40Z"
+}

@@ -1,0 +1,29 @@
+{
+  "scenario_id": "004-prompt-stash",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/prompt/stash.tsx",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": {
+    "first": "overflow3",
+    "len": 50,
+    "max": 50
+  },
+  "rust_output": {
+    "scenario": "004-prompt-stash",
+    "result": {
+      "len": 50,
+      "first": "overflow3",
+      "max": 50
+    }
+  },
+  "input_sha256": "612b03588c924cc8c2bca8dbd7f9050ac6fe94b85e1d371332e554e0277a11ae",
+  "reference_output_sha256": "e42b97389b5426f7975bc0435768b0aa373448e50f42617d2a11825bcdb47f29",
+  "rust_output_sha256": "e42b97389b5426f7975bc0435768b0aa373448e50f42617d2a11825bcdb47f29",
+  "hashes_equal": true,
+  "reference_duration_ms": 156,
+  "rust_duration_ms": 548,
+  "executed_at": "2026-08-17T09:31:28Z"
+}

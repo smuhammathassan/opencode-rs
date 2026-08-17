@@ -1,0 +1,26 @@
+{
+  "scenario_id": "009-theme-resolve",
+  "name": "Theme Resolution Anchor Colors (dark)",
+  "area": "Themes",
+  "behavior": "resolveTheme resolves preset anchors identically",
+  "reference_source": "reference/packages/tui/src/theme/index.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "009-theme-resolve"
+  ]
+}

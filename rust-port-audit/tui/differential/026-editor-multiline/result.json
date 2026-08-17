@@ -1,0 +1,29 @@
+{
+  "scenario_id": "026-editor-multiline",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/editor.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "first\nsecond\nthird\n",
+    "single",
+    "trailing\n\n\n"
+  ],
+  "rust_output": {
+    "scenario": "026-editor-multiline",
+    "result": [
+      "first\nsecond\nthird\n",
+      "single",
+      "trailing\n\n\n"
+    ]
+  },
+  "input_sha256": "5210785f684388e8fa17018d93d772374d486d936aeb20e9d39acccd8aa013d4",
+  "reference_output_sha256": "7037727fea9f0dcdd5227a14a192201e2fe0367fda7911d44849a056aad2a876",
+  "rust_output_sha256": "7037727fea9f0dcdd5227a14a192201e2fe0367fda7911d44849a056aad2a876",
+  "hashes_equal": true,
+  "reference_duration_ms": 159,
+  "rust_duration_ms": 555,
+  "executed_at": "2026-08-17T09:31:44Z"
+}

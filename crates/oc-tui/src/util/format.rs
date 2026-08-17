@@ -72,7 +72,7 @@ pub fn collapse_tool_output(output: &str, max_lines: usize, max_chars: usize) ->
     }
 
     let mut out = preview;
-    out.push_str("…");
+    out.push_str("\n…");
     CollapsedOutput {
         output: out,
         overflow: true,
@@ -104,7 +104,7 @@ mod tests {
         let input = "a\nb\nc\nd\ne";
         let r = collapse_tool_output(input, 3, 1000);
         assert!(r.overflow);
-        assert_eq!(r.output, "a\nb\nc…");
+        assert_eq!(r.output, "a\nb\nc\n…");
     }
 
     #[test]

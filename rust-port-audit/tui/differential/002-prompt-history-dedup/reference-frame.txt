@@ -1,0 +1,30 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 002-prompt-history-dedup - Prompt History Consecutive Deduplication
+Reference Source File: reference/packages/tui/src/prompt/history.tsx
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/prompt/history.tsx — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { isDuplicateEntry } from "./reference/packages/tui/src/prompt/history.tsx";
+const h1 = {input:"hello",parts:[]};
+const h2 = {input:"hello",parts:[]};
+const h3 = {input:"world",parts:[]};
+const a = {input:"describe this",parts:[{type:"file",mime:"image/png",filename:"a.png"}]};
+const b = {input:"describe this",parts:[{type:"file",mime:"image/png",filename:"b.png"}]};
+console.log(canon([isDuplicateEntry(undefined,h1),isDuplicateEntry(h1,h2),isDuplicateEntry(h1,h3),isDuplicateEntry(a,b)]));
+
+Exit Code: 0
+Duration: 158 ms
+Timestamp: 2026-08-17T09:31:26Z
+SHA-256 Output Hash: c1480cda61a1a2b79ccc4ff81910cf1cac7f556849de92e717132bf3846e8c19
+Output:
+[false,true,false,false]

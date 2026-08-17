@@ -86,13 +86,14 @@ pub struct ApplyPatchFile {
     pub type_: String,
     pub relative_path: String,
     pub file_path: String,
-    pub patch: String,
+    pub patch: Option<String>,
+    pub additions: i64,
     pub deletions: i64,
     pub move_path: Option<String>,
 }
 
 /// Parse the `files` metadata of an apply_patch tool.
-/// From reference/packages/tui/src/routes/session/index.tsx (`parseApplyPatchFiles`)
+/// From reference/packages/session-ui/src/components/apply-patch-file.ts (`patchFile`/`patchFiles`)
 pub fn parse_apply_patch_files(value: &Value) -> Vec<ApplyPatchFile> {
     let Some(items) = value.as_array() else {
         return Vec::new();
@@ -102,16 +103,25 @@ pub fn parse_apply_patch_files(value: &Value) -> Vec<ApplyPatchFile> {
         .filter_map(|item| {
             let map = record_value(item)?;
             let type_ = string_value(map.get("type"))?;
-            let relative_path = string_value(map.get("relativePath"))?;
+            if !matches!(type_.as_str(), "add" | "update" | "delete" | "move") {
+                return None;
+            }
             let file_path = string_value(map.get("filePath"))?;
-            let patch = string_value(map.get("patch"))?;
-            let deletions = number_value(map.get("deletions"))?;
+            let relative_path = string_value(map.get("relativePath")).unwrap_or_else(|| file_path.clone());
+            let patch = string_value(map.get("patch"))
+                .or_else(|| string_value(map.get("diff")));
+            if patch.is_none() {
+                return None;
+            }
+            let additions = number_value(map.get("additions")).unwrap_or(0);
+            let deletions = number_value(map.get("deletions")).unwrap_or(0);
             let move_path = map.get("movePath").and_then(|v| string_value(Some(v)));
             Some(ApplyPatchFile {
                 type_,
                 relative_path,
                 file_path,
                 patch,
+                additions,
                 deletions,
                 move_path,
             })

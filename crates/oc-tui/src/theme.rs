@@ -102,177 +102,22 @@ impl Theme {
         let mut t = Self::default();
         t.name = name.to_string();
         t.mode = mode;
-
-        match (name, mode) {
-            ("tokyonight", Mode::Dark) => {
-                t.primary = from_hex("#82aaff");
-                t.secondary = from_hex("#c099ff");
-                t.accent = from_hex("#ff966c");
-                t.error = from_hex("#ff757f");
-                t.warning = from_hex("#ff966c");
-                t.success = from_hex("#c3e88d");
-                t.info = from_hex("#82aaff");
-                t.text = from_hex("#c8d3f5");
-                t.text_muted = from_hex("#828bb8");
-                t.background = from_hex("#1a1b26");
-                t.background_panel = from_hex("#1e2030");
-                t.background_element = from_hex("#222436");
-                t.border = from_hex("#737aa2");
-                t.border_active = from_hex("#9099b2");
-                t.border_subtle = from_hex("#545c7e");
-            }
-            ("dracula", Mode::Dark) => {
-                t.primary = from_hex("#bd93f9");
-                t.secondary = from_hex("#8be9fd");
-                t.accent = from_hex("#ff79c6");
-                t.error = from_hex("#ff5555");
-                t.warning = from_hex("#ffb86c");
-                t.success = from_hex("#50fa7b");
-                t.info = from_hex("#8be9fd");
-                t.text = from_hex("#f8f8f2");
-                t.text_muted = from_hex("#6272a4");
-                t.background = from_hex("#282a36");
-                t.background_panel = from_hex("#21222c");
-                t.background_element = from_hex("#343746");
-                t.border = from_hex("#6272a4");
-                t.border_active = from_hex("#bd93f9");
-                t.border_subtle = from_hex("#44475a");
-            }
-            ("nord", Mode::Dark) => {
-                t.primary = from_hex("#88c0d0");
-                t.secondary = from_hex("#81a1c1");
-                t.accent = from_hex("#b48ead");
-                t.error = from_hex("#bf616a");
-                t.warning = from_hex("#ebcb8b");
-                t.success = from_hex("#a3be8c");
-                t.info = from_hex("#8fbcbb");
-                t.text = from_hex("#eceff4");
-                t.text_muted = from_hex("#4c566a");
-                t.background = from_hex("#2e3440");
-                t.background_panel = from_hex("#242933");
-                t.background_element = from_hex("#3b4252");
-                t.border = from_hex("#434c5e");
-                t.border_active = from_hex("#88c0d0");
-                t.border_subtle = from_hex("#3b4252");
-            }
-            ("catppuccin" | "catppuccin-macchiato", Mode::Dark) => {
-                t.primary = from_hex("#cba6f7");
-                t.secondary = from_hex("#89b4fa");
-                t.accent = from_hex("#f38ba8");
-                t.error = from_hex("#f38ba8");
-                t.warning = from_hex("#fab387");
-                t.success = from_hex("#a6e3a1");
-                t.info = from_hex("#89dceb");
-                t.text = from_hex("#cdd6f4");
-                t.text_muted = from_hex("#6c7086");
-                t.background = from_hex("#1e1e2e");
-                t.background_panel = from_hex("#181825");
-                t.background_element = from_hex("#313244");
-                t.border = from_hex("#585b70");
-                t.border_active = from_hex("#cba6f7");
-                t.border_subtle = from_hex("#45475a");
-            }
-            ("gruvbox", Mode::Dark) => {
-                t.primary = from_hex("#fe8019");
-                t.secondary = from_hex("#83a598");
-                t.accent = from_hex("#fabd2f");
-                t.error = from_hex("#fb4934");
-                t.warning = from_hex("#fe8019");
-                t.success = from_hex("#b8bb26");
-                t.info = from_hex("#8ec07c");
-                t.text = from_hex("#ebdbb2");
-                t.text_muted = from_hex("#928374");
-                t.background = from_hex("#282828");
-                t.background_panel = from_hex("#1d2021");
-                t.background_element = from_hex("#3c3836");
-                t.border = from_hex("#504945");
-                t.border_active = from_hex("#fe8019");
-                t.border_subtle = from_hex("#3c3836");
-            }
-            ("one-dark", Mode::Dark) => {
-                t.primary = from_hex("#61afef");
-                t.secondary = from_hex("#c678dd");
-                t.accent = from_hex("#e5c07b");
-                t.error = from_hex("#e06c75");
-                t.warning = from_hex("#d19a66");
-                t.success = from_hex("#98c379");
-                t.info = from_hex("#56b6c2");
-                t.text = from_hex("#abb2bf");
-                t.text_muted = from_hex("#5c6370");
-                t.background = from_hex("#282c34");
-                t.background_panel = from_hex("#21252b");
-                t.background_element = from_hex("#2c313a");
-                t.border = from_hex("#4b5263");
-                t.border_active = from_hex("#61afef");
-                t.border_subtle = from_hex("#3e4451");
-            }
-            ("github", Mode::Dark) => {
-                t.primary = from_hex("#58a6ff");
-                t.secondary = from_hex("#bc8cff");
-                t.accent = from_hex("#d29922");
-                t.error = from_hex("#f85149");
-                t.warning = from_hex("#d29922");
-                t.success = from_hex("#3fb950");
-                t.info = from_hex("#58a6ff");
-                t.text = from_hex("#c9d1d9");
-                t.text_muted = from_hex("#8b949e");
-                t.background = from_hex("#0d1117");
-                t.background_panel = from_hex("#161b22");
-                t.background_element = from_hex("#21262d");
-                t.border = from_hex("#30363d");
-                t.border_active = from_hex("#58a6ff");
-                t.border_subtle = from_hex("#21262d");
-            }
-            ("matrix", Mode::Dark) => {
-                t.primary = from_hex("#00ff41");
-                t.secondary = from_hex("#008f11");
-                t.accent = from_hex("#00ff41");
-                t.error = from_hex("#ff0033");
-                t.warning = from_hex("#00ff41");
-                t.success = from_hex("#00ff41");
-                t.info = from_hex("#008f11");
-                t.text = from_hex("#00ff41");
-                t.text_muted = from_hex("#008f11");
-                t.background = from_hex("#0d0208");
-                t.background_panel = from_hex("#001100");
-                t.background_element = from_hex("#002200");
-                t.border = from_hex("#008f11");
-                t.border_active = from_hex("#00ff41");
-                t.border_subtle = from_hex("#003b00");
-            }
-            ("vesper", Mode::Dark) => {
-                t.primary = from_hex("#ffc799");
-                t.secondary = from_hex("#99ffe4");
-                t.accent = from_hex("#ff99aa");
-                t.error = from_hex("#ff8080");
-                t.warning = from_hex("#ffc799");
-                t.success = from_hex("#99ffe4");
-                t.info = from_hex("#acd1f0");
-                t.text = from_hex("#ffffff");
-                t.text_muted = from_hex("#505050");
-                t.background = from_hex("#101010");
-                t.background_panel = from_hex("#161616");
-                t.background_element = from_hex("#232323");
-                t.border = from_hex("#282828");
-                t.border_active = from_hex("#ffc799");
-                t.border_subtle = from_hex("#1c1c1c");
-            }
-            _ if mode == Mode::Light => {
-                t.text = from_hex("#202020");
-                t.text_muted = from_hex("#707070");
-                t.background = from_hex("#f8f9fa");
-                t.background_panel = from_hex("#ffffff");
-                t.background_element = from_hex("#e9ecef");
-                t.background_menu = from_hex("#e9ecef");
-                t.border = from_hex("#ced4da");
-                t.border_active = from_hex("#adb5bd");
-                t.border_subtle = from_hex("#dee2e6");
-                t.diff_added_bg = from_hex("#d4edda");
-                t.diff_removed_bg = from_hex("#f8d7da");
-                t.diff_context_bg = from_hex("#ffffff");
-                t.markdown_text = from_hex("#202020");
-            }
-            _ => {}
+        if let Some(asset) = preset_asset(name) {
+            resolve_preset_into(&mut t, asset, mode);
+        } else if mode == Mode::Light {
+            t.text = from_hex("#202020");
+            t.text_muted = from_hex("#707070");
+            t.background = from_hex("#f8f9fa");
+            t.background_panel = from_hex("#ffffff");
+            t.background_element = from_hex("#e9ecef");
+            t.background_menu = from_hex("#e9ecef");
+            t.border = from_hex("#ced4da");
+            t.border_active = from_hex("#adb5bd");
+            t.border_subtle = from_hex("#dee2e6");
+            t.diff_added_bg = from_hex("#d4edda");
+            t.diff_removed_bg = from_hex("#f8d7da");
+            t.diff_context_bg = from_hex("#ffffff");
+            t.markdown_text = from_hex("#202020");
         }
         t
     }
@@ -378,12 +223,13 @@ impl Default for Theme {
 }
 
 pub fn from_hex(hex: &str) -> Color {
+    // Mirrors reference RGBA.fromHex arithmetic exactly:
+    // parseInt(hex.replace('#',''), 16) then shifts — non-6-digit input (e.g.
+    // "#FFF") is NOT expanded as CSS shorthand; it yields parseInt's value.
     let hex = hex.trim_start_matches('#');
-    let parse = |start: usize| u8::from_str_radix(&hex[start..start + 2], 16).unwrap_or(0);
-    if hex.len() == 6 {
-        Color::Rgb(parse(0), parse(2), parse(4))
-    } else {
-        Color::White
+    match u32::from_str_radix(hex, 16) {
+        Ok(c) => Color::Rgb(((c >> 16) & 255) as u8, ((c >> 8) & 255) as u8, (c & 255) as u8),
+        Err(_) => Color::White,
     }
 }
 
@@ -493,4 +339,255 @@ mod tests {
         assert_eq!(theme.mode, Mode::Dark);
         assert_eq!(theme.primary, Theme::dark().primary);
     }
+}
+
+/// Raw preset data parity: the vendored reference theme asset JSON
+/// (`reference/packages/tui/src/theme/assets/<file>.json`) embedded at compile
+/// time, so the Rust port consumes byte-identical preset definitions to the
+/// reference implementation.
+pub fn preset_raw_data(name: &str) -> Option<serde_json::Value> {
+    let raw = match name {
+        "opencode" => include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json"),
+        "dracula" => include_str!("../../../reference/packages/tui/src/theme/assets/dracula.json"),
+        "nord" => include_str!("../../../reference/packages/tui/src/theme/assets/nord.json"),
+        "catppuccin" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json"),
+        "gruvbox" => include_str!("../../../reference/packages/tui/src/theme/assets/gruvbox.json"),
+        "tokyonight" => include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json"),
+        _ => return None,
+    };
+    serde_json::from_str(raw).ok()
+}
+
+/// Vendored preset assets (`reference/packages/tui/src/theme/assets/*.json`),
+/// the single source of truth shared with the reference implementation.
+fn preset_asset(name: &str) -> Option<&'static str> {
+    Some(match name {
+        "aura" => include_str!("../../../reference/packages/tui/src/theme/assets/aura.json"),
+        "ayu" => include_str!("../../../reference/packages/tui/src/theme/assets/ayu.json"),
+        "carbonfox" => include_str!("../../../reference/packages/tui/src/theme/assets/carbonfox.json"),
+        "catppuccin-frappe" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin-frappe.json"),
+        "catppuccin-macchiato" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin-macchiato.json"),
+        "catppuccin" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json"),
+        "cobalt2" => include_str!("../../../reference/packages/tui/src/theme/assets/cobalt2.json"),
+        "cursor" => include_str!("../../../reference/packages/tui/src/theme/assets/cursor.json"),
+        "dracula" => include_str!("../../../reference/packages/tui/src/theme/assets/dracula.json"),
+        "everforest" => include_str!("../../../reference/packages/tui/src/theme/assets/everforest.json"),
+        "flexoki" => include_str!("../../../reference/packages/tui/src/theme/assets/flexoki.json"),
+        "github" => include_str!("../../../reference/packages/tui/src/theme/assets/github.json"),
+        "gruvbox" => include_str!("../../../reference/packages/tui/src/theme/assets/gruvbox.json"),
+        "kanagawa" => include_str!("../../../reference/packages/tui/src/theme/assets/kanagawa.json"),
+        "lucent-orng" => include_str!("../../../reference/packages/tui/src/theme/assets/lucent-orng.json"),
+        "material" => include_str!("../../../reference/packages/tui/src/theme/assets/material.json"),
+        "matrix" => include_str!("../../../reference/packages/tui/src/theme/assets/matrix.json"),
+        "mercury" => include_str!("../../../reference/packages/tui/src/theme/assets/mercury.json"),
+        "monokai" => include_str!("../../../reference/packages/tui/src/theme/assets/monokai.json"),
+        "nightowl" => include_str!("../../../reference/packages/tui/src/theme/assets/nightowl.json"),
+        "nord" => include_str!("../../../reference/packages/tui/src/theme/assets/nord.json"),
+        "one-dark" => include_str!("../../../reference/packages/tui/src/theme/assets/one-dark.json"),
+        "opencode" => include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json"),
+        "orng" => include_str!("../../../reference/packages/tui/src/theme/assets/orng.json"),
+        "osaka-jade" => include_str!("../../../reference/packages/tui/src/theme/assets/osaka-jade.json"),
+        "palenight" => include_str!("../../../reference/packages/tui/src/theme/assets/palenight.json"),
+        "rosepine" => include_str!("../../../reference/packages/tui/src/theme/assets/rosepine.json"),
+        "solarized" => include_str!("../../../reference/packages/tui/src/theme/assets/solarized.json"),
+        "synthwave84" => include_str!("../../../reference/packages/tui/src/theme/assets/synthwave84.json"),
+        "tokyonight" => include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json"),
+        "vercel" => include_str!("../../../reference/packages/tui/src/theme/assets/vercel.json"),
+        "vesper" => include_str!("../../../reference/packages/tui/src/theme/assets/vesper.json"),
+        "zenburn" => include_str!("../../../reference/packages/tui/src/theme/assets/zenburn.json"),
+        _ => return None,
+    })
+}
+
+/// Port of `resolveTheme` from `reference/packages/tui/src/theme/index.ts`:
+/// resolves the preset's `defs` + `theme` tables into concrete colors for the
+/// requested mode. Fields absent from a preset keep the Rust default palette,
+/// mirroring how the reference falls back for optional keys
+/// (selectedListItemText -> background, backgroundMenu -> backgroundElement,
+/// thinkingOpacity -> 0.6).
+fn resolve_preset_into(t: &mut Theme, asset: &str, mode: Mode) {
+    let Ok(v) = serde_json::from_str::<serde_json::Value>(asset) else {
+        return;
+    };
+    let empty = serde_json::Map::new();
+    let defs = v.get("defs").and_then(|d| d.as_object()).unwrap_or(&empty);
+    let table = match v.get("theme").and_then(|t| t.as_object()) {
+        Some(t) => t.clone(),
+        None => return,
+    };
+    let mode_key = match mode {
+        Mode::Dark => "dark",
+        Mode::Light => "light",
+    };
+    let resolve_color = |color: &serde_json::Value,
+                         defs: &serde_json::Map<String, serde_json::Value>,
+                         table: &serde_json::Map<String, serde_json::Value>|
+     -> Option<Color> {
+        resolve_color(color, defs, table, mode_key, &mut Vec::new())
+    };
+    if let Some(c) = table.get("primary").and_then(|c| resolve_color(c, defs, &table)) {
+        t.primary = c;
+    }
+    if let Some(c) = table.get("secondary").and_then(|c| resolve_color(c, defs, &table)) {
+        t.secondary = c;
+    }
+    if let Some(c) = table.get("accent").and_then(|c| resolve_color(c, defs, &table)) {
+        t.accent = c;
+    }
+    if let Some(c) = table.get("error").and_then(|c| resolve_color(c, defs, &table)) {
+        t.error = c;
+    }
+    if let Some(c) = table.get("warning").and_then(|c| resolve_color(c, defs, &table)) {
+        t.warning = c;
+    }
+    if let Some(c) = table.get("success").and_then(|c| resolve_color(c, defs, &table)) {
+        t.success = c;
+    }
+    if let Some(c) = table.get("info").and_then(|c| resolve_color(c, defs, &table)) {
+        t.info = c;
+    }
+    if let Some(c) = table.get("text").and_then(|c| resolve_color(c, defs, &table)) {
+        t.text = c;
+    }
+    if let Some(c) = table.get("textMuted").and_then(|c| resolve_color(c, defs, &table)) {
+        t.text_muted = c;
+    }
+    let background = table
+        .get("background")
+        .and_then(|c| resolve_color(c, defs, &table));
+    if let Some(c) = background {
+        t.background = c;
+    }
+    if let Some(c) = table.get("backgroundPanel").and_then(|c| resolve_color(c, defs, &table)) {
+        t.background_panel = c;
+    }
+    let background_element = table
+        .get("backgroundElement")
+        .and_then(|c| resolve_color(c, defs, &table));
+    if let Some(c) = background_element {
+        t.background_element = c;
+    }
+    t.background_menu = table
+        .get("backgroundMenu")
+        .and_then(|c| resolve_color(c, defs, &table))
+        .or(background_element)
+        .unwrap_or(t.background_menu);
+    if let Some(c) = table.get("border").and_then(|c| resolve_color(c, defs, &table)) {
+        t.border = c;
+    }
+    if let Some(c) = table.get("borderActive").and_then(|c| resolve_color(c, defs, &table)) {
+        t.border_active = c;
+    }
+    if let Some(c) = table.get("borderSubtle").and_then(|c| resolve_color(c, defs, &table)) {
+        t.border_subtle = c;
+    }
+    if let Some(c) = table.get("diffAdded").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_added = c;
+    }
+    if let Some(c) = table.get("diffRemoved").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_removed = c;
+    }
+    if let Some(c) = table.get("diffContext").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_context = c;
+    }
+    if let Some(c) = table.get("diffHighlightAdded").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_highlight_added = c;
+    }
+    if let Some(c) = table.get("diffHighlightRemoved").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_highlight_removed = c;
+    }
+    if let Some(c) = table.get("diffAddedBg").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_added_bg = c;
+    }
+    if let Some(c) = table.get("diffRemovedBg").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_removed_bg = c;
+    }
+    if let Some(c) = table.get("diffContextBg").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_context_bg = c;
+    }
+    if let Some(c) = table.get("diffLineNumber").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_line_number = c;
+    }
+    if let Some(c) = table.get("diffAddedLineNumberBg").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_added_line_number_bg = c;
+    }
+    if let Some(c) = table.get("diffRemovedLineNumberBg").and_then(|c| resolve_color(c, defs, &table)) {
+        t.diff_removed_line_number_bg = c;
+    }
+    if let Some(c) = table.get("markdownText").and_then(|c| resolve_color(c, defs, &table)) {
+        t.markdown_text = c;
+    }
+    if let Some(c) = table.get("markdownHeading").and_then(|c| resolve_color(c, defs, &table)) {
+        t.markdown_heading = c;
+    }
+    if let Some(c) = table.get("markdownCode").and_then(|c| resolve_color(c, defs, &table)) {
+        t.markdown_code = c;
+    }
+    if let Some(n) = table.get("thinkingOpacity").and_then(|n| n.as_f64()) {
+        t.thinking_opacity = (n * 255.0) as u8;
+    }
+}
+
+/// Port of `resolveColor` (recursive def-name resolution with cycle detection).
+fn resolve_color(
+    color: &serde_json::Value,
+    defs: &serde_json::Map<String, serde_json::Value>,
+    table: &serde_json::Map<String, serde_json::Value>,
+    mode_key: &str,
+    chain: &mut Vec<String>,
+) -> Option<Color> {
+    match color {
+        serde_json::Value::String(s) => {
+            if s == "transparent" || s == "none" {
+                return Some(Color::Rgb(0, 0, 0));
+            }
+            if s.starts_with('#') {
+                return Some(from_hex(s));
+            }
+            if chain.iter().any(|c| c == s) {
+                return None;
+            }
+            let next = defs
+                .get(s)
+                .or_else(|| table.get(s))?
+                .clone();
+            chain.push(s.clone());
+            let resolved = resolve_color(&next, defs, table, mode_key, chain);
+            chain.pop();
+            resolved
+        }
+        serde_json::Value::Number(n) => {
+            let code = n.as_u64()? as u16;
+            Some(ansi_to_color(code))
+        }
+        serde_json::Value::Object(o) => {
+            let next = o.get(mode_key)?;
+            resolve_color(next, defs, table, mode_key, chain)
+        }
+        _ => None,
+    }
+}
+
+/// Port of `ansiToRgba` (ANSI 16 + 6x6x6 cube + grayscale ramp).
+fn ansi_to_color(code: u16) -> Color {
+    if code < 16 {
+        const ANSI: [&str; 16] = [
+            "#000000", "#800000", "#008000", "#808000", "#000080", "#800080", "#008080", "#c0c0c0",
+            "#808080", "#ff0000", "#00ff00", "#ffff00", "#0000ff", "#ff00ff", "#00ffff", "#ffffff",
+        ];
+        return from_hex(ANSI[code as usize]);
+    }
+    if code < 232 {
+        let index = code - 16;
+        let b = index % 6;
+        let g = (index / 6) % 6;
+        let r = index / 36;
+        let val = |x: u16| if x == 0 { 0u8 } else { (x * 40 + 55) as u8 };
+        return Color::Rgb(val(r), val(g), val(b));
+    }
+    if code < 256 {
+        let gray = ((code - 232) * 10 + 8) as u8;
+        return Color::Rgb(gray, gray, gray);
+    }
+    Color::Rgb(0, 0, 0)
 }

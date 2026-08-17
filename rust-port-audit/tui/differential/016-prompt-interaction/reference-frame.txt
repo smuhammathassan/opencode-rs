@@ -1,0 +1,41 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 016-prompt-interaction - Prompt Input Interaction State Machine
+Reference Source File: reference/packages/session-ui/src/v2/components/prompt-input/machine.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/session-ui/src/v2/components/prompt-input/machine.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { createPromptInputV2InteractionState, transitionPromptInputV2 } from "./reference/packages/session-ui/src/v2/components/prompt-input/machine.ts";
+const empty = {prompt:[],context:{items:[]},cursor:undefined};
+const persisted = {prompt:[{type:"text",content:"fix the bug"}],context:{items:[]},cursor:undefined};
+const s = () => createPromptInputV2InteractionState();
+const t = (e,p) => transitionPromptInputV2(s(),e,p);
+const out = [
+  t({type:"mode.shell"},empty),
+  t({type:"mode.normal"},empty),
+  t({type:"drag.enter"},empty),
+  t({type:"focus.editor"},empty),
+  t({type:"input.changed",value:"!"},empty),
+  t({type:"input.changed",value:"fix @par"},empty),
+  t({type:"input.changed",value:"/fix"},empty),
+  t({type:"commands.open"},persisted),
+  t({type:"commands.open"},empty),
+  t({type:"popover.query",value:"re"},empty),
+];
+console.log(canon(out.map(x=>({state:x.state,commands:x.commands,handled:x.handled}))));
+
+Exit Code: 0
+Duration: 149 ms
+Timestamp: 2026-08-17T09:31:36Z
+SHA-256 Output Hash: 30dc5098f6c113197410d6e017ff0c5d8b9a52ab5da7b6833bbba9e3584eccac
+Output:
+[{"commands":[],"handled":false,"state":{"drag":"idle","focus":"external","historyIndex":-1,"mode":"shell","popover":{"type":"closed"}}},{"commands":[],"handled":false,"state":{"drag":"idle","focus":"external","historyIndex":-1,"mode":"normal","popover":{"type":"closed"}}},{"commands":[],"handled":false,"state":{"drag":"active","focus":"external","historyIndex":-1,"mode":"normal","popover":{"type":"closed"}}},{"commands":[],"handled":false,"state":{"drag":"idle","focus":"editor","historyIndex":-1,"mode":"normal","popover":{"type":"closed"}}},{"commands":[{"type":"draft.setText","value":""}],"handled":false,"state":{"drag":"idle","focus":"editor","historyIndex":-1,"mode":"shell","popover":{"type":"closed"}}},{"commands":[{"type":"draft.setText","value":"fix @par"},{"popover":"context","query":"par","type":"popover.filter"}],"handled":false,"state":{"drag":"idle","focus":"editor","historyIndex":-1,"mode":"normal","popover":{"query":"par","type":"context"}}},{"commands":[{"type":"draft.setText","value":"/fix"},{"popover":"command","query":"fix","type":"popover.filter"}],"handled":false,"state":{"drag":"idle","focus":"editor","historyIndex":-1,"mode":"normal","popover":{"query":"fix","type":"command-inline"}}},{"commands":[{"popover":"command","query":"","type":"popover.filter"},{"type":"focus.command-search"}],"handled":false,"state":{"drag":"idle","focus":"command-search","historyIndex":-1,"mode":"normal","popover":{"query":"","type":"command-menu"}}},{"commands":[{"type":"draft.setText","value":"/"},{"popover":"command","query":"","type":"popover.filter"},{"type":"focus.editor"}],"handled":false,"state":{"drag":"idle","focus":"editor","historyIndex":-1,"mode":"normal","popover":{"query":"","type":"command-inline"}}},{"commands":[],"handled":false,"state":{"drag":"idle","focus":"external","historyIndex":-1,"mode":"normal","popover":{"type":"closed"}}}]

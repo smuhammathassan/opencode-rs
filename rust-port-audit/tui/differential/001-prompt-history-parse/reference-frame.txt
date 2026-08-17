@@ -1,0 +1,29 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 001-prompt-history-parse - Prompt History JSONL Parse and Corruption Recovery
+Reference Source File: reference/packages/tui/src/prompt/history.tsx
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/prompt/history.tsx — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { parsePromptHistory } from "./reference/packages/tui/src/prompt/history.tsx";
+const corrupt = '{"input":"one","parts":[]}\nnot-json\n{"input":"two","parts":[]}\n';
+const overflow = Array.from({length:55},(_,i)=>`{"input":"${i}","parts":[]}`).join("\n")+"\n";
+const parsed = parsePromptHistory(corrupt).map(e=>({input:e.input,parts:e.parts??[]}));
+const over = parsePromptHistory(overflow);
+console.log(canon({corrupt:parsed, overflow_len:over.length, overflow_first:over[0]?.input ?? null, empty_len:parsePromptHistory("").length}));
+
+Exit Code: 0
+Duration: 161 ms
+Timestamp: 2026-08-17T09:31:24Z
+SHA-256 Output Hash: 28f96abb29a66c73d6c71b5245bb03cbff2e9ce0e210c401a43af0cc3cd9ccdd
+Output:
+{"corrupt":[{"input":"one","parts":[]},{"input":"two","parts":[]}],"empty_len":0,"overflow_first":"5","overflow_len":50}

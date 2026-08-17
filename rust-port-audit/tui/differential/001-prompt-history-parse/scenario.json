@@ -1,0 +1,26 @@
+{
+  "scenario_id": "001-prompt-history-parse",
+  "name": "Prompt History JSONL Parse and Corruption Recovery",
+  "area": "Prompt History",
+  "behavior": "parsePromptHistory recovers valid entries around corruption, caps at MAX_HISTORY_ENTRIES",
+  "reference_source": "reference/packages/tui/src/prompt/history.tsx",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "001-prompt-history-parse"
+  ]
+}

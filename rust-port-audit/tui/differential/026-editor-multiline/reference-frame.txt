@@ -1,0 +1,26 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 026-editor-multiline - Editor Multiline Normalization
+Reference Source File: reference/packages/tui/src/editor.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/editor.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { normalizePromptContent } from "./reference/packages/tui/src/editor.ts";
+const cases = ["first\nsecond\nthird\n","single\n","trailing\n\n\n"];
+console.log(canon(cases.map(normalizePromptContent)));
+
+Exit Code: 0
+Duration: 159 ms
+Timestamp: 2026-08-17T09:31:43Z
+SHA-256 Output Hash: 7037727fea9f0dcdd5227a14a192201e2fe0367fda7911d44849a056aad2a876
+Output:
+["first\nsecond\nthird\n","single","trailing\n\n\n"]

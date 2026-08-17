@@ -1,0 +1,49 @@
+{
+  "scenario_id": "001-prompt-history-parse",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/prompt/history.tsx",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": {
+    "corrupt": [
+      {
+        "input": "one",
+        "parts": []
+      },
+      {
+        "input": "two",
+        "parts": []
+      }
+    ],
+    "empty_len": 0,
+    "overflow_first": "5",
+    "overflow_len": 50
+  },
+  "rust_output": {
+    "scenario": "001-prompt-history-parse",
+    "result": {
+      "corrupt": [
+        {
+          "input": "one",
+          "parts": []
+        },
+        {
+          "input": "two",
+          "parts": []
+        }
+      ],
+      "overflow_len": 50,
+      "overflow_first": "5",
+      "empty_len": 0
+    }
+  },
+  "input_sha256": "ed66833570e950c5e3c16a8e8a2d0054ca7df358f8162c6e8e81f321ac476c97",
+  "reference_output_sha256": "28f96abb29a66c73d6c71b5245bb03cbff2e9ce0e210c401a43af0cc3cd9ccdd",
+  "rust_output_sha256": "28f96abb29a66c73d6c71b5245bb03cbff2e9ce0e210c401a43af0cc3cd9ccdd",
+  "hashes_equal": true,
+  "reference_duration_ms": 161,
+  "rust_duration_ms": 1368,
+  "executed_at": "2026-08-17T09:31:26Z"
+}

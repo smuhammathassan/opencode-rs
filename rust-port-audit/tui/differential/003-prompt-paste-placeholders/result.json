@@ -1,0 +1,27 @@
+{
+  "scenario_id": "003-prompt-paste-placeholders",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/prompt/part.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "line1\nline2 tail",
+    "plain tail"
+  ],
+  "rust_output": {
+    "scenario": "003-prompt-paste-placeholders",
+    "result": [
+      "line1\nline2 tail",
+      "plain tail"
+    ]
+  },
+  "input_sha256": "73138156789d4d196a0b674c3d4ec8de88d38555d3ef57a4021a5f95cda67f17",
+  "reference_output_sha256": "80e848236ef1f2f62b19319f9cb72495d019c961eb4a596b222fd6f5b5fcd715",
+  "rust_output_sha256": "80e848236ef1f2f62b19319f9cb72495d019c961eb4a596b222fd6f5b5fcd715",
+  "hashes_equal": true,
+  "reference_duration_ms": 166,
+  "rust_duration_ms": 554,
+  "executed_at": "2026-08-17T09:31:28Z"
+}

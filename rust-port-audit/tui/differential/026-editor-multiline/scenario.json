@@ -1,0 +1,26 @@
+{
+  "scenario_id": "026-editor-multiline",
+  "name": "Editor Multiline Normalization",
+  "area": "Editor Integration",
+  "behavior": "normalizePromptContent preserves multiline endings",
+  "reference_source": "reference/packages/tui/src/editor.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "026-editor-multiline"
+  ]
+}

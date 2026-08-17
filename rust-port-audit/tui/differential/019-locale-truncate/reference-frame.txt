@@ -1,0 +1,25 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 019-locale-truncate - Locale Truncation
+Reference Source File: reference/packages/tui/src/util/locale.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/util/locale.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { truncate, truncateMiddle } from "./reference/packages/tui/src/util/locale.ts";
+console.log(canon([truncate("a very long line of text",10), truncate("short",10), truncateMiddle("abcdefghijklmnop",8)]));
+
+Exit Code: 0
+Duration: 154 ms
+Timestamp: 2026-08-17T09:31:38Z
+SHA-256 Output Hash: ec66a70311a67ee42ad19f7d158171083b3be7f15935d047c8a8f87250eee55a
+Output:
+["a very lo…","short","abcd…nop"]

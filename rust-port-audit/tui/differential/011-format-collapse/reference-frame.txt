@@ -1,0 +1,29 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 011-format-collapse - Tool Output Collapse
+Reference Source File: reference/packages/tui/src/util/collapse-tool-output.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/util/collapse-tool-output.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { collapseToolOutput } from "./reference/packages/tui/src/util/collapse-tool-output.ts";
+const long = Array.from({length:20},(_,i)=>`line ${i+1}`).join("\n");
+const short = collapseToolOutput("hello\nworld",10,100);
+const l = collapseToolOutput(long+"\n",5,80);
+const wide = collapseToolOutput("abcdefghij",10,5);
+console.log(canon({short:{output:short.output,overflow:short.overflow}, long:{output:l.output,overflow:l.overflow}, wide:{output:wide.output,overflow:wide.overflow}}));
+
+Exit Code: 0
+Duration: 146 ms
+Timestamp: 2026-08-17T09:31:33Z
+SHA-256 Output Hash: 7d95da60150e14cd6bd96428abf84a269d72c5153c8ce3bbe511168f03981284
+Output:
+{"long":{"output":"line 1\nline 2\nline 3\nline 4\nline 5\n…","overflow":true},"short":{"output":"hello\nworld","overflow":false},"wide":{"output":"abcd…","overflow":true}}

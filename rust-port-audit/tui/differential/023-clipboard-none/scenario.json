@@ -1,0 +1,26 @@
+{
+  "scenario_id": "023-clipboard-none",
+  "name": "Clipboard Unavailable Returns undefined",
+  "area": "Clipboard",
+  "behavior": "no provider available yields undefined",
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "023-clipboard-none"
+  ]
+}

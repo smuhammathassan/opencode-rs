@@ -1,0 +1,29 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 024-patch-metadata-multi - Apply-Patch Multi-File Parsing
+Reference Source File: reference/packages/session-ui/src/components/apply-patch-file.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/session-ui/src/components/apply-patch-file.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { patchFiles } from "./reference/packages/session-ui/src/components/apply-patch-file.ts";
+const files = patchFiles([
+  {filePath:"/x/a.rs",relativePath:"a.rs",type:"update",patch:"@@ -1 +1 @@\n-a\n+b\n",additions:1,deletions:1},
+  {filePath:"/x/c.md",relativePath:"c.md",type:"add",patch:"@@ -0,0 +1 @@\n+new\n",additions:1,deletions:0},
+]);
+console.log(canon(files.map(f=>({relativePath:f.relativePath, additions:f.additions, deletions:f.deletions}))));
+
+Exit Code: 0
+Duration: 152 ms
+Timestamp: 2026-08-17T09:31:42Z
+SHA-256 Output Hash: 80d88080bc64c4a14f723ccdea2e4c4ad18cd371ca8e156bf93001aa2c8bf412
+Output:
+[{"additions":1,"deletions":1,"relativePath":"a.rs"},{"additions":1,"deletions":0,"relativePath":"c.md"}]

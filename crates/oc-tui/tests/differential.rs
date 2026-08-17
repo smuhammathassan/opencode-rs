@@ -239,7 +239,7 @@ fn test_collapse_tool_output_short_not_collapsed() {
 fn test_collapse_tool_output_long_collapsed_with_ellipsis() {
     let long = "line1\nline2\nline3\nline4\nline5";
     let collapsed = collapse_tool_output(long, 2, 100);
-    assert_eq!(collapsed.output, "line1\nline2…");
+    assert_eq!(collapsed.output, "line1\nline2\n…");
     assert!(collapsed.overflow);
 }
 

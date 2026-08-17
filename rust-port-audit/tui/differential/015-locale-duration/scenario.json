@@ -1,0 +1,26 @@
+{
+  "scenario_id": "015-locale-duration",
+  "name": "Locale Duration Formatting",
+  "area": "Locale",
+  "behavior": "duration formats ms ranges",
+  "reference_source": "reference/packages/tui/src/util/locale.ts",
+  "reference_command": [
+    "node",
+    "--import",
+    "--import",
+    "<ts_loader>",
+    "-e",
+    "<real import eval; see reference-frame.txt>"
+  ],
+  "rust_command": [
+    "cargo",
+    "run",
+    "-q",
+    "-p",
+    "oc-tui",
+    "--example",
+    "diff_scenarios",
+    "--",
+    "015-locale-duration"
+  ]
+}

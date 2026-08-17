@@ -1,0 +1,25 @@
+{
+  "scenario_id": "021-clipboard-macos",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/clipboard.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "osascript"
+  ],
+  "rust_output": {
+    "scenario": "021-clipboard-macos",
+    "result": [
+      "osascript"
+    ]
+  },
+  "input_sha256": "0d406886b6ba54950c854a03e2ed52df92851901e9557334bf7cb4bfdacd8d84",
+  "reference_output_sha256": "01c3374e6eae162c9a4c6e1663fb8dd893465585991d9fb28806d0cf0c2ae5aa",
+  "rust_output_sha256": "01c3374e6eae162c9a4c6e1663fb8dd893465585991d9fb28806d0cf0c2ae5aa",
+  "hashes_equal": true,
+  "reference_duration_ms": 152,
+  "rust_duration_ms": 560,
+  "executed_at": "2026-08-17T09:31:40Z"
+}

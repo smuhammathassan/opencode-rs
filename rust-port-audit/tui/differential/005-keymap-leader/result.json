@@ -1,0 +1,27 @@
+{
+  "scenario_id": "005-keymap-leader",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/keymap.tsx",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": {
+    "base_mode": "base",
+    "leader_token": "leader"
+  },
+  "rust_output": {
+    "scenario": "005-keymap-leader",
+    "result": {
+      "leader_token": "leader",
+      "base_mode": "base"
+    }
+  },
+  "input_sha256": "fd83a4e60bb507d58a067b387f333924b2ad03844d651f32160109cdcd8d709e",
+  "reference_output_sha256": "d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc",
+  "rust_output_sha256": "d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc",
+  "hashes_equal": true,
+  "reference_duration_ms": 161,
+  "rust_duration_ms": 560,
+  "executed_at": "2026-08-17T09:31:29Z"
+}

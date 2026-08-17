@@ -1,0 +1,33 @@
+{
+  "scenario_id": "015-locale-duration",
+  "status": "PASS",
+  "matched": true,
+  "outputs_equal": true,
+  "reference_source": "reference/packages/tui/src/util/locale.ts",
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_output": [
+    "0ms",
+    "5.0s",
+    "1m 5s",
+    "1h 2m",
+    "1d 0h"
+  ],
+  "rust_output": {
+    "scenario": "015-locale-duration",
+    "result": [
+      "0ms",
+      "5.0s",
+      "1m 5s",
+      "1h 2m",
+      "1d 0h"
+    ]
+  },
+  "input_sha256": "9c883ddc6e912f2bc1cab705c4d479824c4623ea57fcd2741eb967d48c36be5f",
+  "reference_output_sha256": "b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c",
+  "rust_output_sha256": "b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c",
+  "hashes_equal": true,
+  "reference_duration_ms": 148,
+  "rust_duration_ms": 548,
+  "executed_at": "2026-08-17T09:31:36Z"
+}

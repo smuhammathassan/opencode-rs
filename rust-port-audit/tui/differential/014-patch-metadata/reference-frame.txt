@@ -1,0 +1,26 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 014-patch-metadata - Apply-Patch File Metadata Parsing
+Reference Source File: reference/packages/session-ui/src/components/apply-patch-file.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/session-ui/src/components/apply-patch-file.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { patchFile } from "./reference/packages/session-ui/src/components/apply-patch-file.ts";
+const f = patchFile({filePath:"/tmp/a.ts",relativePath:"a.ts",type:"update",patch:"Index: a.ts\n--- a.ts\n+++ a.ts\n@@ -1,2 +1,2 @@\n one\n-two\n+three\n",additions:1,deletions:1});
+console.log(canon(f ? [{relativePath:f.relativePath, additions:f.additions, deletions:f.deletions}] : null));
+
+Exit Code: 0
+Duration: 152 ms
+Timestamp: 2026-08-17T09:31:35Z
+SHA-256 Output Hash: aae36690d9c6e6b5025ff528cb9683471c5b277006739d26c154cdb4744c2661
+Output:
+[{"additions":1,"deletions":1,"relativePath":"a.ts"}]

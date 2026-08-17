@@ -1,0 +1,25 @@
+=== OpenCode v1.18.13 Vendored Reference Process Frame ===
+Scenario: 007-theme-presets - Registered Theme Preset Names
+Reference Source File: reference/packages/tui/src/theme/index.ts
+Executed Command: node --import <ts_loader.mjs> -e '<imports reference/packages/tui/src/theme/index.ts — full eval below>'
+Eval:
+
+function canon(v){
+  if (v === undefined) return "null";
+  if (Array.isArray(v)) return "["+v.map(canon).join(",")+"]";
+  if (v && typeof v === "object") {
+    return "{"+Object.keys(v).sort().map(k=>JSON.stringify(k)+":"+canon(v[k])).join(",")+"}";
+  }
+  return JSON.stringify(v);
+}
+const rgb = (c) => ({r:c.r,g:c.g,b:c.b});
+
+import { DEFAULT_THEMES } from "./reference/packages/tui/src/theme/index.ts";
+console.log(canon(Object.keys(DEFAULT_THEMES).slice().sort()));
+
+Exit Code: 0
+Duration: 172 ms
+Timestamp: 2026-08-17T09:31:30Z
+SHA-256 Output Hash: 8b782d8cbe01ef8e3d0438f204e3834a6d57b2f9fc2531ef27710e7125d0cb03
+Output:
+["aura","ayu","carbonfox","catppuccin","catppuccin-frappe","catppuccin-macchiato","cobalt2","cursor","dracula","everforest","flexoki","github","gruvbox","kanagawa","lucent-orng","material","matrix","mercury","monokai","nightowl","nord","one-dark","opencode","orng","osaka-jade","palenight","rosepine","solarized","synthwave84","tokyonight","vercel","vesper","zenburn"]
