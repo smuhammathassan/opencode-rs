@@ -291,13 +291,15 @@ The older release-binary probes below are retained as historical evidence of the
   - Enhanced prompt submit fallback: when no provider is configured, prompt submission displays the warning toast and opens the provider connection dialog (`DialogKind::ProviderList`).
   - Enriched `/status` and `/debug` dialogs matching upstream reference: detailed bulleted breakdown of connected providers, models count, LSP status, default formatters, loaded plugins, loaded skills, and stored sessions.
   - Wired interactive session renaming (`session.rename`): submitting a new title updates the session title in sync state with immediate toast confirmation.
-- **GitHub Actions CI Matrix Run `31985190092`:**
-  - `fmt` — **PASSED** (23s)
-  - `clippy` — **PASSED** (1m21s)
-  - `build (ubuntu-latest)` — **PASSED** (1m13s)
-  - `build (macos-latest)` — **PASSED** (1m39s)
-  - `test (ubuntu-latest)` — **PASSED** (2m21s)
-  - `test (macos-latest)` — **PASSED** (4m54s)
+  - Implemented all 33 named themes in `Theme::by_name` (opencode, tokyonight, dracula, nord, catppuccin, gruvbox, one-dark, solarized, github, matrix, vesper, etc.) and interactive theme modal (`DialogKind::InfoItems` -> `Themes`).
+  - Added dedicated MCP server status and modal (`show_mcp_dialog` -> `DialogKind::InfoItems` -> `MCPs`).
+- **GitHub Actions CI Matrix Run `31985692794`:**
+  - `fmt` — **PASSED** (22s)
+  - `clippy` — **PASSED** (1m15s)
+  - `build (ubuntu-latest)` — **PASSED** (1m9s)
+  - `build (macos-latest)` — **PASSED** (1m49s)
+  - `test (ubuntu-latest)` — **PASSED** (2m12s)
+  - `test (macos-latest)` — **PASSED** (4m25s)
   - Overall status: **SUCCESS**.
 
 ## Per-agent evidence (saved under `rust-port-audit/artifacts/`)
