@@ -130,7 +130,10 @@ pub fn substitute(
 }
 
 fn is_absolute(path: &str) -> bool {
-    path.starts_with('/') || path.starts_with('\\') || path.starts_with("file://")
+    path.starts_with('/')
+        || path.starts_with('\\')
+        || path.starts_with("file://")
+        || std::path::Path::new(path).is_absolute()
 }
 
 fn join(dir: &str, path: &str) -> String {

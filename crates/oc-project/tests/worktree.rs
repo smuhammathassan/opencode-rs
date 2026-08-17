@@ -50,13 +50,14 @@ async fn worktree_path_rule_and_lifecycle() {
     assert_eq!(info.name, "my-feature");
     assert_eq!(info.branch.as_deref(), Some("opencode/my-feature"));
     assert_eq!(
-        info.directory,
+        info.directory.replace('\\', "/"),
         data_dir()
             .join("worktree")
             .join(&project_id)
             .join("my-feature")
             .to_str()
             .unwrap()
+            .replace('\\', "/")
     );
 
     // Create the worktree.

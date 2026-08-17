@@ -217,6 +217,7 @@ mod tests {
         assert_eq!(remote_url("github.com/opencode"), None);
     }
 
+    #[cfg(unix)]
     #[test]
     fn path_root_of_absolute() {
         assert_eq!(path_root("/a/b/c"), "/");

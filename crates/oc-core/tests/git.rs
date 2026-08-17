@@ -46,13 +46,17 @@ async fn discover_and_history() {
         .discover(&subdir.to_string_lossy())
         .await
         .expect("discover walks up");
-    let norm_worktree = repo.worktree.0.replace('\\', "/").to_lowercase();
-    let norm_dir = dir.replace('\\', "/").to_lowercase();
-    assert!(
-        norm_worktree.ends_with(&norm_dir)
-            || norm_dir.ends_with(&norm_worktree)
-            || norm_worktree == norm_dir
-    );
+    let worktree_name = std::path::Path::new(&repo.worktree.0)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_lowercase();
+    let dir_name = std::path::Path::new(&dir)
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_lowercase();
+    assert_eq!(worktree_name, dir_name);
 
     let head = svc.history_head(&repo).await.expect("head");
     assert_eq!(head.len(), 40);

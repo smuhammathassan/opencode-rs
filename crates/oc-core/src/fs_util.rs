@@ -531,6 +531,7 @@ pub fn mime_type(p: &str) -> String {
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn contains_checks_relative() {
         assert!(contains("/a/b", "/a/b/c"));

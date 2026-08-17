@@ -51,11 +51,12 @@ fn discovers_singular_and_plural_project_skills() {
     let alpha = svc.get("alpha").unwrap();
     assert_eq!(alpha.description.as_deref(), Some("Does alpha"));
     assert_eq!(
-        alpha.location,
+        alpha.location.replace('\\', "/"),
         tmp.path()
             .join("proj/.opencode/skill/alpha/SKILL.md")
             .to_str()
             .unwrap()
+            .replace('\\', "/")
     );
     assert_eq!(alpha.content, "content for alpha\n");
     assert_eq!(svc.get("beta").unwrap().name, "beta");
@@ -231,11 +232,12 @@ fn builtin_customize_opencode_is_available_and_overridable() {
     let builtin = svc.get("customize-opencode").unwrap();
     assert_eq!(builtin.description.as_deref(), Some("disk override"));
     assert_eq!(
-        builtin.location,
+        builtin.location.replace('\\', "/"),
         tmp.path()
             .join("proj/.opencode/skills/customize-opencode/SKILL.md")
             .to_str()
             .unwrap()
+            .replace('\\', "/")
     );
     assert_eq!(builtin.content, "content for customize-opencode\n");
 }

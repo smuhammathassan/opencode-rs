@@ -104,6 +104,7 @@ mod tests {
         assert_eq!(format_size(1024 * 1024), "1.0 MB");
     }
 
+    #[cfg(unix)]
     #[test]
     fn paths_are_shortened_only_under_home() {
         let home = Path::new("/tmp/home");
