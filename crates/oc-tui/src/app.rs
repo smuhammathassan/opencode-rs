@@ -2512,6 +2512,9 @@ impl App {
         };
         let Some(model) = self.local.current_model(&self.sync) else {
             self.toasts.warning("Connect a provider to send prompts");
+            if self.sync.providers.is_empty() {
+                self.open_dialog(DialogKind::ProviderList);
+            }
             return;
         };
         let mode = prompt.mode;
@@ -3153,6 +3156,8 @@ impl App {
             Route::Session { id } => self.render_session(frame, id.clone()),
         }
 
+        self.render_footer(frame);
+
         if self.dialog.is_some() {
             self.render_dialog(frame);
         }
@@ -3403,8 +3408,9 @@ impl App {
             .cloned()
             .unwrap_or_default();
         let subagent = self.route_is_subagent();
+        let footer_height = 1u16;
         let prompt_height = 6u16;
-        let messages_height = size.height.saturating_sub(prompt_height).max(1);
+        let messages_height = size.height.saturating_sub(prompt_height + footer_height).max(1);
 
         // Messages scroll view (scoped borrow of the view).
         let messages_rect = ratatui::layout::Rect::new(0, 0, size.width, messages_height);
@@ -3449,7 +3455,7 @@ impl App {
             0,
             messages_height,
             size.width,
-            size.height.saturating_sub(messages_height),
+            size.height.saturating_sub(messages_height + footer_height),
         );
         if let Some(request) = permissions.first() {
             self.render_permission_prompt(frame, prompt_rect, request);
@@ -3525,9 +3531,17 @@ impl App {
             }
         };
         let placeholder = if prompt.mode == PromptMode::Shell {
-            "Run a command...".to_string()
+            let shell_placeholders = ["ls -la", "git status", "pwd"];
+            let idx = ((self.tick / 60) as usize) % shell_placeholders.len();
+            format!("Run a command... \"{}\"", shell_placeholders[idx])
         } else {
-            "Ask anything...".to_string()
+            let normal_placeholders = [
+                "Fix a TODO in the codebase",
+                "What is the tech stack of this project?",
+                "Fix broken tests",
+            ];
+            let idx = ((self.tick / 60) as usize) % normal_placeholders.len();
+            format!("Ask anything... \"{}\"", normal_placeholders[idx])
         };
         let (box_lines, cursor) = crate::components::prompt::prompt_lines(
             &prompt.text(),
@@ -3750,6 +3764,64 @@ impl App {
         let mut lines = Vec::new();
         lines.push(line);
         self.draw_styled_lines(frame, rect, &lines);
+    }
+
+    fn render_footer(&self, frame: &mut ratatui::Frame<'_>) {
+        let size = frame.area();
+        if size.height < 2 || size.width == 0 {
+            return;
+        }
+        let footer_y = size.height.saturating_sub(1);
+        let width = size.width as usize;
+        let theme = &self.theme;
+
+        let mut left: StyledLine = Vec::new();
+        let mut right: StyledLine = Vec::new();
+
+        // Left side: directory path
+        let dir_str = self.cwd.to_string_lossy().to_string();
+        left.push((format!(" {dir_str}"), Style::default().fg(theme.text_muted)));
+
+        // Right side:
+        // 1. Pending permissions
+        let pending_perms = self
+            .current_session_id()
+            .and_then(|id| self.sync.permissions.get(&id))
+            .map(|p| p.len())
+            .unwrap_or(0);
+        if pending_perms > 0 {
+            let label = if pending_perms == 1 { "Permission" } else { "Permissions" };
+            right.push((format!("△ {pending_perms} {label}  "), Style::default().fg(theme.warning)));
+        }
+
+        // 2. LSP indicator
+        right.push(("• 0 LSP  ".to_string(), Style::default().fg(theme.text_muted)));
+
+        // 3. Status or Connect shortcut
+        let has_providers = !self.sync.providers.is_empty();
+        if has_providers {
+            right.push(("/status ".to_string(), Style::default().fg(theme.text_muted)));
+        } else {
+            right.push(("Get started ".to_string(), Style::default().fg(theme.text)));
+            right.push(("/connect ".to_string(), Style::default().fg(theme.text_muted)));
+        }
+
+        let left_len: usize = left.iter().map(|(s, _)| s.chars().count()).sum();
+        let right_len: usize = right.iter().map(|(s, _)| s.chars().count()).sum();
+
+        let mut full_line: StyledLine = left;
+        if left_len + right_len < width {
+            full_line.push((" ".repeat(width.saturating_sub(left_len + right_len)), Style::default()));
+        }
+        full_line.extend(right);
+
+        let footer_rect = ratatui::layout::Rect::new(0, footer_y, size.width, 1);
+        let rendered = to_ratatui(&full_line);
+        frame.render_widget(
+            ratatui::widgets::Paragraph::new(rendered)
+                .style(ratatui::style::Style::default().bg(theme.background)),
+            footer_rect,
+        );
     }
 
     fn draw_styled_lines(
