@@ -184,7 +184,6 @@ async fn stdio_client_initialize_list_and_call() {
         .to_lowercase()
         .replace('\\', "/");
     let dir_name = dir
-        .path()
         .file_name()
         .unwrap()
         .to_string_lossy()
