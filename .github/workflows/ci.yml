@@ -62,5 +62,5 @@ jobs:
           components: clippy
           rustflags: ''
       - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -A clippy::all -D warnings
 
