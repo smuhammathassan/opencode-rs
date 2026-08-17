@@ -289,13 +289,15 @@ The older release-binary probes below are retained as historical evidence of the
   - Synchronized Home and Session view bounding areas so the message scroll viewport and prompt leave room for the 1-line persistent footer.
   - Implemented rotating placeholder text in `render_prompt_widget` matching upstream example cycles (`"Fix a TODO in the codebase"`, `"What is the tech stack of this project?"`, `"Fix broken tests"` for normal mode; `"ls -la"`, `"git status"`, `"pwd"` for shell mode).
   - Enhanced prompt submit fallback: when no provider is configured, prompt submission displays the warning toast and opens the provider connection dialog (`DialogKind::ProviderList`).
-- **GitHub Actions CI Matrix Run `31984802068`:**
-  - `fmt` — **PASSED** (20s)
-  - `clippy` — **PASSED** (59s)
-  - `build (ubuntu-latest)` — **PASSED** (1m17s)
-  - `build (macos-latest)` — **PASSED** (1m51s)
-  - `test (ubuntu-latest)` — **PASSED** (2m4s)
-  - `test (macos-latest)` — **PASSED** (3m43s)
+  - Enriched `/status` and `/debug` dialogs matching upstream reference: detailed bulleted breakdown of connected providers, models count, LSP status, default formatters, loaded plugins, loaded skills, and stored sessions.
+  - Wired interactive session renaming (`session.rename`): submitting a new title updates the session title in sync state with immediate toast confirmation.
+- **GitHub Actions CI Matrix Run `31985190092`:**
+  - `fmt` — **PASSED** (23s)
+  - `clippy` — **PASSED** (1m21s)
+  - `build (ubuntu-latest)` — **PASSED** (1m13s)
+  - `build (macos-latest)` — **PASSED** (1m39s)
+  - `test (ubuntu-latest)` — **PASSED** (2m21s)
+  - `test (macos-latest)` — **PASSED** (4m54s)
   - Overall status: **SUCCESS**.
 
 ## Per-agent evidence (saved under `rust-port-audit/artifacts/`)
