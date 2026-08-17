@@ -131,18 +131,34 @@ def verify_differential_scenarios():
 
         if not scenario_json.exists():
             errors.append(f"Scenario {sc_dir.name}: missing scenario.json")
+        else:
+            try:
+                with open(scenario_json, "r", encoding="utf-8") as f:
+                    sc_data = json.load(f)
+                    ref_src = sc_data.get("reference_source", "")
+                    if not ref_src or not (REPO_ROOT / ref_src).exists():
+                        errors.append(f"Scenario {sc_dir.name}: reference_source '{ref_src}' missing in repository")
+            except Exception as e:
+                errors.append(f"Scenario {sc_dir.name}: invalid scenario.json: {e}")
+
         if not ref_frame.exists():
             errors.append(f"Scenario {sc_dir.name}: missing reference-frame.txt")
         else:
             ref_content = ref_frame.read_text(encoding="utf-8")
             if "Executed Command: " not in ref_content or "Exit Code: 0" not in ref_content:
                 errors.append(f"Scenario {sc_dir.name}: reference-frame.txt lacks real execution provenance")
+            if "SHA-256 Output Hash: " not in ref_content:
+                errors.append(f"Scenario {sc_dir.name}: reference-frame.txt lacks cryptographic hash")
+
         if not rust_frame.exists():
             errors.append(f"Scenario {sc_dir.name}: missing rust-frame.txt")
         else:
             rust_content = rust_frame.read_text(encoding="utf-8")
             if "Executed Command: " not in rust_content or "Exit Code: 0" not in rust_content:
                 errors.append(f"Scenario {sc_dir.name}: rust-frame.txt lacks real execution provenance")
+            if "SHA-256 Output Hash: " not in rust_content:
+                errors.append(f"Scenario {sc_dir.name}: rust-frame.txt lacks cryptographic hash")
+
         if not result_json.exists():
             errors.append(f"Scenario {sc_dir.name}: missing result.json")
         else:
@@ -155,6 +171,8 @@ def verify_differential_scenarios():
                         errors.append(f"Scenario {sc_dir.name}: matched is not True")
                     if res_data.get("reference_exit_code") != 0 or res_data.get("rust_exit_code") != 0:
                         errors.append(f"Scenario {sc_dir.name}: process exit code not 0")
+                    if not res_data.get("reference_output_sha256") or not res_data.get("rust_output_sha256"):
+                        errors.append(f"Scenario {sc_dir.name}: missing cryptographic SHA-256 hashes in result.json")
             except Exception as e:
                 errors.append(f"Scenario {sc_dir.name}: invalid result.json: {e}")
 

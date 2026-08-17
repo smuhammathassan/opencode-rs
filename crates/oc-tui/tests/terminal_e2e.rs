@@ -147,10 +147,7 @@ mod pty_e2e {
     #[test]
     fn real_pty_spawns_opencode_binary_version() {
         let bin = find_opencode_binary();
-        if !bin.exists() {
-            // In standalone test invocations where opencode is not yet compiled, build path fallback
-            return;
-        }
+        assert!(bin.exists(), "required production opencode binary missing: {}", bin.display());
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
         unsafe {
@@ -208,9 +205,7 @@ mod pty_e2e {
     #[test]
     fn real_pty_spawns_opencode_binary_help() {
         let bin = find_opencode_binary();
-        if !bin.exists() {
-            return;
-        }
+        assert!(bin.exists(), "required production opencode binary missing: {}", bin.display());
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
         unsafe {
@@ -258,6 +253,95 @@ mod pty_e2e {
             text.contains("█▀▀█") || text.contains("Usage:") || text.contains("opencode"),
             "PTY master must receive help output from spawned opencode binary: {text}"
         );
+
+        unsafe {
+            libc::close(pty.master);
+            libc::close(pty.slave);
+        }
+    }
+
+    #[test]
+    fn real_pty_spawns_interactive_tui_and_handles_input_and_exit() {
+        let bin = find_opencode_binary();
+        assert!(bin.exists(), "required production opencode binary missing: {}", bin.display());
+        let pty = open_pty(80, 24).expect("openpty should succeed");
+
+        unsafe {
+            let flags = libc::fcntl(pty.master, libc::F_GETFL, 0);
+            libc::fcntl(pty.master, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+
+        use std::os::unix::process::CommandExt;
+        let slave_fd = pty.slave;
+        let mut cmd = std::process::Command::new(&bin);
+        cmd.arg("--pure");
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+        unsafe {
+            cmd.pre_exec(move || {
+                libc::dup2(slave_fd, 0);
+                libc::dup2(slave_fd, 1);
+                libc::dup2(slave_fd, 2);
+                Ok(())
+            });
+        }
+
+        let mut child = cmd.spawn().expect("failed to spawn interactive opencode in PTY");
+
+        // Write interactive keystrokes to master PTY
+        let keys = b"echo parity test\x7f\x7f\n";
+        let _ = unsafe {
+            libc::write(
+                pty.master,
+                keys.as_ptr() as *const libc::c_void,
+                keys.len(),
+            )
+        };
+
+        // Read output from master PTY
+        let mut read_buf = [0u8; 512];
+        let mut output = Vec::new();
+        let start = Instant::now();
+
+        while start.elapsed() < Duration::from_secs(2) {
+            let n = unsafe {
+                libc::read(
+                    pty.master,
+                    read_buf.as_mut_ptr() as *mut libc::c_void,
+                    read_buf.len(),
+                )
+            };
+            if n > 0 {
+                output.extend_from_slice(&read_buf[..n as usize]);
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        // Send SIGINT / Ctrl+C to trigger graceful shutdown
+        let ctrl_c = b"\x03";
+        let _ = unsafe {
+            libc::write(
+                pty.master,
+                ctrl_c.as_ptr() as *const libc::c_void,
+                ctrl_c.len(),
+            )
+        };
+
+        // Give process up to 3s to terminate gracefully
+        let start_exit = Instant::now();
+        let mut exited = false;
+        while start_exit.elapsed() < Duration::from_secs(3) {
+            if let Ok(Some(_)) = child.try_wait() {
+                exited = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(20));
+        }
+
+        if !exited {
+            let _ = child.kill();
+            let _ = child.wait();
+        }
 
         unsafe {
             libc::close(pty.master);

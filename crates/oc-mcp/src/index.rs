@@ -510,6 +510,7 @@ impl Mcp {
 
     /// From reference `MCP.authenticate`: opens the browser and waits for the
     /// authorization callback.
+    #[allow(clippy::type_complexity)]
     pub async fn authenticate(
         &self,
         mcp_name: &str,
