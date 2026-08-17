@@ -1,3 +1,5 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::await_holding_lock)]
 //! Workspace service integration tests against an in-memory store and a fake
 //! remote sync surface.
 

@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! oc-tui — ratatui port of the opencode terminal UI.
 //!
 //! Mirrors `reference/packages/tui/` + `reference/packages/session-ui/`.

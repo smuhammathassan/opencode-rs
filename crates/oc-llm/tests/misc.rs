@@ -1,3 +1,4 @@
+#![allow(clippy::result_large_err)]
 //! Tool runtime, cache policy, provider-error detection, and AWS event-stream
 //! framing tests.
 

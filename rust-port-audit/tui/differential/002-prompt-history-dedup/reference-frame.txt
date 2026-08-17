@@ -23,8 +23,8 @@ const b = {input:"describe this",parts:[{type:"file",mime:"image/png",filename:"
 console.log(canon([isDuplicateEntry(undefined,h1),isDuplicateEntry(h1,h2),isDuplicateEntry(h1,h3),isDuplicateEntry(a,b)]));
 
 Exit Code: 0
-Duration: 155 ms
-Timestamp: 2026-08-17T09:32:18Z
+Duration: 193 ms
+Timestamp: 2026-08-17T09:54:15Z
 SHA-256 Output Hash: c1480cda61a1a2b79ccc4ff81910cf1cac7f556849de92e717132bf3846e8c19
 Output:
 [false,true,false,false]

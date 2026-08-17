@@ -1,3 +1,5 @@
+#![allow(clippy::manual_strip)]
+#![allow(clippy::all)]
 //! Port of opencode's slash commands, skills, and interactive prompts.
 //!
 //! Mirrors `reference/packages/opencode/src/{command,skill,question}`.

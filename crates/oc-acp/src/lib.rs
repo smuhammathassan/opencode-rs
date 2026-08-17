@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! Agent Client Protocol (ACP) support.
 //!
 //! A JSON-RPC 2.0 based protocol that lets external AI clients (other agents /

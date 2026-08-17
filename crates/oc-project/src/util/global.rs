@@ -55,11 +55,11 @@ impl Global {
     }
 }
 
-fn xdg_dir(key: &str, fallback: &PathBuf) -> Option<PathBuf> {
+fn xdg_dir(key: &str, fallback: &std::path::Path) -> Option<PathBuf> {
     std::env::var_os(key)
         .filter(|value| !value.is_empty())
         .map(PathBuf::from)
-        .or_else(|| Some(fallback.clone()))
+        .or_else(|| Some(fallback.to_path_buf()))
 }
 
 #[cfg(target_os = "windows")]

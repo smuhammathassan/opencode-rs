@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! Integration tests: snapshot the rendered layouts of the core screens with
 //! fixed-width input.
 

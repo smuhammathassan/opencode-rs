@@ -101,6 +101,7 @@ fn parse_json(data: &str) -> Result<Value, ClientError> {
     serde_json::from_str(data).map_err(|err| ClientError::MalformedResponse(Some(err)))
 }
 
+#[allow(clippy::large_enum_variant)]
 enum SsePhase {
     Pending {
         transport: Transport,
@@ -111,6 +112,7 @@ enum SsePhase {
     Done,
 }
 
+#[allow(clippy::large_enum_variant)]
 enum RawSsePhase {
     Pending {
         transport: Transport,

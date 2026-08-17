@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 pub mod bootstrap;
 pub mod bootstrap_service;
 pub mod instance_context;

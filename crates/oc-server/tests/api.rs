@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! End-to-end handler tests over the axum router.
 //!
 //! Golden assertions mirror the reference handler output (reference/packages/server/

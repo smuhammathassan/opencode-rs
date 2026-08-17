@@ -1,3 +1,4 @@
+#![allow(clippy::field_reassign_with_default)]
 //! Golden tests for the provider registry: models.dev snapshot parsing and
 //! the `build_registry` merge logic.
 //!

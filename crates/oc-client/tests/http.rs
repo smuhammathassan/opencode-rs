@@ -761,12 +761,8 @@ async fn ptys_create_and_update_serialize_bodies() {
             "pid": 42
         }
     });
-    let server = MockServer::spawn(Arc::new(move |recorded: &common::RecordedRequest| {
-        if recorded.method == "PUT" {
-            common::json_response(200, &pty)
-        } else {
-            common::json_response(200, &pty)
-        }
+    let server = MockServer::spawn(Arc::new(move |_recorded: &common::RecordedRequest| {
+        common::json_response(200, &pty)
     }))
     .await;
     let client = make_client(&server);

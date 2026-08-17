@@ -83,6 +83,7 @@ impl McpAuth {
     }
 
     /// `filepath = path.join(Global.Path.data, "mcp-auth.json")`
+    #[allow(clippy::should_implement_trait)]
     pub fn default() -> Self {
         Self::new(default_data_dir().join("mcp-auth.json"))
     }

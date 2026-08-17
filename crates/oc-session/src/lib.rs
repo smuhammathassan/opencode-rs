@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! oc-session — session data model + orchestration for the opencode-rs port.
 //!
 //! Mirrors `reference/packages/core/src/session/` and

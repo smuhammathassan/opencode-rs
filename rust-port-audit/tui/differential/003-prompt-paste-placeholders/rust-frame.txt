@@ -2,22 +2,8 @@
 Scenario: 003-prompt-paste-placeholders - Pasted Text Placeholder Expansion
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 003-prompt-paste-placeholders
 Exit Code: 0
-Duration: 548 ms
-Timestamp: 2026-08-17T09:32:19Z
+Duration: 562 ms
+Timestamp: 2026-08-17T09:54:16Z
 SHA-256 Output Hash: 80e848236ef1f2f62b19319f9cb72495d019c961eb4a596b222fd6f5b5fcd715
 Output:
 ["line1\nline2 tail","plain tail"]
-Stderr:
-warning: function `rgb_of` is never used
-  --> crates/oc-tui/examples/diff_scenarios.rs:27:4
-   |
-27 | fn rgb_of(c: ratatui::style::Color) -> Value {
-   |    ^^^^^^
-   |
-   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
-
-warning: function `resolved_anchor` is never used
-  --> crates/oc-tui/examples/diff_scenarios.rs:45:4
-   |
-45 | fn resolved_anchor(name: &str, mode: Mode) -> V...
-   |    ^^^^^^^^^^^^^^^

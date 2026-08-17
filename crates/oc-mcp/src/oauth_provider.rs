@@ -146,6 +146,7 @@ pub trait OAuthClientProvider: Send + Sync {
 
 #[derive(Clone)]
 pub struct McpOAuthCallbacks {
+    #[allow(clippy::type_complexity)]
     pub on_redirect: Arc<dyn Fn(&Url) -> BoxFuture<'_, Result<()>> + Send + Sync>,
 }
 

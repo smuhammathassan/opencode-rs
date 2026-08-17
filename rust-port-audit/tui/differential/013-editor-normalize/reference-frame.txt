@@ -19,8 +19,8 @@ const cases = ["hello\n","hello\r\n","a\nb\n","a\nb",""];
 console.log(canon(cases.map(normalizePromptContent)));
 
 Exit Code: 0
-Duration: 154 ms
-Timestamp: 2026-08-17T09:32:26Z
+Duration: 159 ms
+Timestamp: 2026-08-17T09:54:24Z
 SHA-256 Output Hash: 8091b8b6fa2469763fc461886fa0d1687b48ff62f7cf33730fbac5936f18ac5d
 Output:
 ["hello","hello","a\nb\n","a\nb",""]

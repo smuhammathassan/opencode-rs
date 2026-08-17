@@ -223,8 +223,11 @@ async fn native_patch(
     let result = if item.code == "??" || r#ref.is_none() {
         git.patch_untracked(cwd, &item.file, Some(options)).await
     } else {
-        git.patch(cwd, r#ref.unwrap(), &item.file, Some(options))
-            .await
+        if let Some(r) = r#ref {
+            git.patch(cwd, r, &item.file, Some(options)).await
+        } else {
+            unreachable!()
+        }
     };
     if !result.truncated && !result.text.is_empty() {
         return result.text;
@@ -664,7 +667,7 @@ mod tests {
         );
         assert_eq!(parse_quoted_path("\"unterminated"), None);
         assert_eq!(
-            parse_quoted_path("\"plain\"").map(|(v, end)| (v, end)),
+            parse_quoted_path("\"plain\""),
             Some(("plain".to_string(), 7))
         );
     }

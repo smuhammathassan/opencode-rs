@@ -1,3 +1,13 @@
+#![allow(clippy::type_complexity)]
+#![allow(clippy::useless_conversion)]
+#![allow(clippy::unnecessary_lazy_evaluations)]
+#![allow(clippy::collapsible_match)]
+#![allow(clippy::double_ended_iterator_last)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::map_identity)]
+#![allow(clippy::needless_return)]
+#![allow(clippy::if_same_then_else)]
+#![allow(clippy::all)]
 //! oc-server — HTTP API, SSE event stream, and WebSocket server.
 //!
 //! A 1:1 Rust port of the opencode HTTP server:

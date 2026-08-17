@@ -1,9 +1,9 @@
+#![allow(clippy::const_is_empty)]
 //! Property-based invariants, Unicode width, and layout boundary tests.
 //!
 //! Tests unicode grapheme clusters, full-width CJK ideographs, emoji ZWJ
 //! sequences, Arabic/Urdu RTL strings, combining diacritics, and prompt editor
 //! buffer invariants across extreme boundary conditions.
-
 use oc_tui::components::text::{plain, width};
 use oc_tui::prompt::state::PromptState;
 use oc_tui::theme::Theme;

@@ -1,3 +1,4 @@
+#![allow(clippy::bool_assert_comparison)]
 //! TUI performance, startup, and memory footprint benchmarks.
 //!
 //! Measures cold initialization time, theme loading latency, keymap trie
@@ -92,7 +93,7 @@ fn styled_lines_layout_throughput_benchmark() {
     for i in 0..iterations {
         let text = format!("Line {i}: Status ok, elapsed time 0.05s");
         let line = plain(text);
-        assert_eq!(oc_tui::components::text::width(&line) > 0, true);
+        assert!(oc_tui::components::text::width(&line) > 0);
     }
     let elapsed = start.elapsed();
     assert!(

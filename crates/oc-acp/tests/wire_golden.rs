@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! End-to-end wire golden tests for the ACP service, driven by an in-memory
 //! fake opencode SDK.
 

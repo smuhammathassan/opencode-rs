@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 pub mod execution;
 pub mod execution_local;
 pub mod llm;

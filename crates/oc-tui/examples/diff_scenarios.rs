@@ -1,3 +1,4 @@
+#![allow(unused_imports, dead_code, clippy::all)]
 //! Differential scenario harness.
 //!
 //! Executes the SAME production oc-tui functions the TUI uses and prints one

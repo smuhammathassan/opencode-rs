@@ -66,6 +66,7 @@ impl Drop for MockServer {
     }
 }
 
+#[allow(clippy::type_complexity)]
 async fn handler(
     state: axum::extract::State<Arc<(Arc<Mutex<Vec<RecordedRequest>>>, Responder)>>,
     request: Request<Body>,

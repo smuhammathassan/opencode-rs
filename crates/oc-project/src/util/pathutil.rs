@@ -1,3 +1,4 @@
+#![allow(clippy::same_item_push)]
 /// Path helpers ported from `@opencode-ai/core/fs-util` (FSUtil.contains and
 /// friends) and Node's `path` module. The crate targets unix paths.
 use std::path::{Path, PathBuf};

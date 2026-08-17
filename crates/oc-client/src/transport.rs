@@ -367,7 +367,7 @@ impl Transport {
             for (key, value) in query {
                 append_query(&mut pairs, key, value);
             }
-            url.query_pairs_mut().extend_pairs(pairs.into_iter());
+            url.query_pairs_mut().extend_pairs(pairs);
         }
         url
     }

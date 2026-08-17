@@ -68,6 +68,7 @@ pub trait LoginPrompt: Send + Sync {
     fn log_error(&self, message: &str);
     fn log_success(&self, message: &str);
     fn outro(&self, message: &str);
+    #[allow(clippy::type_complexity)]
     fn text(
         &self,
         message: &str,

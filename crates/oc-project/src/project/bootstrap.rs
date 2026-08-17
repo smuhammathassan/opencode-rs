@@ -1,3 +1,4 @@
+#![allow(clippy::let_underscore_future)]
 /// From reference/packages/opencode/src/project/bootstrap.ts
 ///
 /// `InstanceBootstrap.run` eagerly loads config and fires each per-instance

@@ -1,3 +1,9 @@
+#![allow(clippy::large_enum_variant)]
+#![allow(clippy::result_large_err)]
+#![allow(clippy::type_complexity)]
+#![allow(clippy::unnecessary_unwrap)]
+#![allow(clippy::field_reassign_with_default)]
+#![allow(clippy::while_let_loop)]
 //! `oc-llm` — 1:1 Rust port of `@opencode-ai/llm` (opencode v1.18.13).
 //!
 //! Async streaming clients that translate opencode's internal message/part

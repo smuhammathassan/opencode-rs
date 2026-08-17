@@ -464,6 +464,7 @@ fn parse_sse_message(data: &str) -> Option<Message> {
     serde_json::from_str::<Message>(data).ok()
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn open_stream_again(
     url: &Url,
     headers: &HashMap<String, String>,

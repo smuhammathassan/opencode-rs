@@ -1,3 +1,4 @@
+#![allow(clippy::default_constructed_unit_structs)]
 //! End-to-end agent loop: drive a full `run()` through the tool-call →
 //! tool-result → continuation cycle with mock services.
 

@@ -136,6 +136,7 @@ pub struct AssistantToolTime {
 }
 
 /// `Session.Message.AssistantContent` — tagged on `type`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum AssistantContent {
@@ -192,6 +193,7 @@ pub struct TokenCache {
 }
 
 /// `Session.Message` — tagged union on `type`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum SessionMessage {

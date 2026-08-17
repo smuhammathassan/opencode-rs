@@ -240,7 +240,7 @@ port = int(sys.argv[1])
 ThreadingHTTPServer(("127.0.0.1", port), Handler).serve_forever()
 "#;
 
-fn spawn_python(dir: &PathBuf, script: &str, port: u16) -> tokio::process::Child {
+fn spawn_python(dir: &std::path::Path, script: &str, port: u16) -> tokio::process::Child {
     let path = dir.join("server.py");
     std::fs::write(&path, script).unwrap();
     tokio::process::Command::new("python3")

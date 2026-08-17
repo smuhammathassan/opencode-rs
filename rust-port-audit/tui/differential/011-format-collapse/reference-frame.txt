@@ -22,8 +22,8 @@ const wide = collapseToolOutput("abcdefghij",10,5);
 console.log(canon({short:{output:short.output,overflow:short.overflow}, long:{output:l.output,overflow:l.overflow}, wide:{output:wide.output,overflow:wide.overflow}}));
 
 Exit Code: 0
-Duration: 145 ms
-Timestamp: 2026-08-17T09:32:25Z
+Duration: 148 ms
+Timestamp: 2026-08-17T09:54:22Z
 SHA-256 Output Hash: 7d95da60150e14cd6bd96428abf84a269d72c5153c8ce3bbe511168f03981284
 Output:
 {"long":{"output":"line 1\nline 2\nline 3\nline 4\nline 5\n…","overflow":true},"short":{"output":"hello\nworld","overflow":false},"wide":{"output":"abcd…","overflow":true}}

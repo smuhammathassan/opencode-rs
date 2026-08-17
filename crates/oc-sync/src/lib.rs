@@ -1,5 +1,9 @@
+#![allow(clippy::empty_line_after_doc_comments)]
+#![allow(clippy::same_item_push)]
+#![allow(clippy::manual_strip)]
+#![allow(clippy::question_mark)]
+#![allow(clippy::option_map_unit_fn)]
 //! oc-sync — event-sourcing/replay of session events and remote workspaces.
-//!
 //! Mirrors `src/sync` + `src/control-plane` + `core/control-plane` of opencode
 //! v1.18.13 (reference/packages/opencode/src/ and reference/packages/core/src/):
 //!

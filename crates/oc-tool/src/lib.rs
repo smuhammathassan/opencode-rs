@@ -1,3 +1,13 @@
+#![allow(
+    clippy::field_reassign_with_default,
+    clippy::type_complexity,
+    clippy::too_many_arguments,
+    clippy::module_inception,
+    clippy::needless_range_loop,
+    clippy::if_same_then_else,
+    clippy::no_effect,
+    clippy::manual_strip
+)]
 //! `oc-tool` — a 1:1 Rust port of the opencode v1.18.13 tool machinery.
 //!
 //! Two tool engines are ported:

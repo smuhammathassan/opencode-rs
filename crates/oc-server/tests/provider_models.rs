@@ -1,3 +1,5 @@
+#![allow(clippy::await_holding_lock)]
+#![allow(clippy::all)]
 //! Focused F079 coverage for the v2 provider/model catalog endpoints.
 
 use axum::body::Body;

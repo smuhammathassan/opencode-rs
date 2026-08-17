@@ -118,7 +118,7 @@ async fn read_capped<R: AsyncRead + Unpin>(mut reader: R, cap: Option<usize>) ->
             let _ = reader.read_to_end(&mut buf).await;
             (buf, false)
         }
-        Some(cap) if cap == 0 => {
+        Some(0) => {
             let mut buf = Vec::new();
             let _ = reader.read_to_end(&mut buf).await;
             (buf, false)
