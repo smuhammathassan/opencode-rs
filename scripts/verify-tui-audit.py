@@ -305,16 +305,27 @@ def verify_required_documents():
             errors.append(f"Missing required audit document: {doc}")
         elif doc.endswith(".txt"):
             content = doc_path.read_text(encoding="utf-8").strip()
-            # Unmapped files/tests should have 0 unmapped items
             lines = [l for l in content.splitlines() if l.strip() and not l.startswith("#")]
             if len(lines) > 0:
                 errors.append(f"{doc} has {len(lines)} unmapped entries")
+
+    # Cross-document identity validation
+    identity_file = AUDIT_DIR / "AUDIT-IDENTITY.md"
+    report_file = AUDIT_DIR / "TUI-FINAL-REPORT.md"
+    if identity_file.exists() and report_file.exists():
+        id_text = identity_file.read_text(encoding="utf-8")
+        rep_text = report_file.read_text(encoding="utf-8")
+
+        tree_m1 = re.search(r"Source Tree SHA-256`?:\s*`?([a-f0-9]{64})", id_text)
+        tree_m2 = re.search(r"Source Tree Hash`?:\s*`?([a-f0-9]{64})", rep_text)
+        if tree_m1 and tree_m2 and tree_m1.group(1) != tree_m2.group(1):
+            errors.append(f"Audit identity tree hash mismatch: {tree_m1.group(1)} vs {tree_m2.group(1)}")
 
     if errors:
         for err in errors:
             print(f"  FAILED: {err}", file=sys.stderr)
         return False
-    print("Verified all required audit documents and clean unmapped trackers.")
+    print("Verified all required audit documents, clean unmapped trackers, and identity consistency.")
     return True
 
 def main():
