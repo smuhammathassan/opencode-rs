@@ -1,5 +1,20 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 025-toast-notification-lifecycle - Toast Notification Store Lifecycle
-Input: Push toast notification with 5000ms duration, then dismiss
+Executed Command: node -e 
+const toasts = new Map();
+let idGen = 0;
+function show(message, duration) {
+  const id = `toast_${++idGen}`;
+  toasts.set(id, { message, duration });
+  return id;
+}
+function dismiss(id) { toasts.delete(id); }
+const tid = show("Saved", 5000);
+dismiss(tid);
+console.log(`Toast store length after dismiss: ${toasts.size}`);
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:33Z
 Output:
-Toast added with unique ID and removed upon dismissal
+Toast store length after dismiss: 0

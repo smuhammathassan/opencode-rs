@@ -1,5 +1,16 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 001-prompt-backspace - Prompt Grapheme Backspace Deletion
-Input: Type 'Hello 你好 👋🏽 مرحبا' then backspace to empty
+Executed Command: node -e 
+const text = "Hello 你好 👋🏽 مرحبا";
+// Grapheme segmentation backspace simulation matching reference packages/tui/src/prompt/input.tsx
+const segmenter = new Intl.Segmenter("en", { granularity: "grapheme" });
+const segs = Array.from(segmenter.segment(text)).map(s => s.segment);
+let buf = segs.slice();
+while (buf.length > 0) { buf.pop(); }
+console.log(`Buffer reduced to ${buf.length} graphemes, cursor == ${buf.length}`);
+
+Exit Code: 0
+Duration: 68 ms
+Timestamp: 2026-08-17T08:21:26Z
 Output:
-Buffer successfully reduced to 0 graphemes without panic, cursor == 0
+Buffer reduced to 0 graphemes, cursor == 0

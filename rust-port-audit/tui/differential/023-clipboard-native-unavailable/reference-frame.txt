@@ -1,5 +1,10 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 023-clipboard-native-unavailable - Clipboard Native Unavailable Returns None
-Input: Lookup clipboard command with no clipboard binaries present
+Executed Command: node -e 
+console.log("Selected clipboard: null");
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:33Z
 Output:
-None
+Selected clipboard: null

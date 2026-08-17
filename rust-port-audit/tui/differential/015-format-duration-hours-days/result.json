@@ -2,8 +2,9 @@
   "scenario_id": "015-format-duration-hours-days",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "2h 2m",
-  "rust_behavior": "2h 2m",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 245,
+  "executed_at": "2026-08-17T08:21:31Z"
 }

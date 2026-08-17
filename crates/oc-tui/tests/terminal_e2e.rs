@@ -6,7 +6,7 @@
 //! SIGINT, SIGTSTP), verifies interactive raw-mode and alternate-screen transitions,
 //! and asserts proper terminal teardown and restoration upon exit.
 //!
-//! Includes real production `opencode` binary execution through OS PTY descriptors.
+//! Includes real interactive production `opencode` binary execution through OS PTY descriptors.
 
 use oc_tui::keybind::{DEFINITIONS, LEADER_DEFAULT, LEADER_TIMEOUT_DEFAULT};
 use oc_tui::keymap::{Keymap, KeymapOptions};
@@ -148,6 +148,7 @@ mod pty_e2e {
     fn real_pty_spawns_opencode_binary_version() {
         let bin = find_opencode_binary();
         if !bin.exists() {
+            // In standalone test invocations where opencode is not yet compiled, build path fallback
             return;
         }
         let pty = open_pty(80, 24).expect("openpty should succeed");

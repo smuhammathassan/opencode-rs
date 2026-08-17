@@ -1,5 +1,14 @@
-=== opencode-rs Rust Execution Frame ===
+=== opencode-rs Cargo Process Execution Frame ===
 Scenario: 012-theme-light-dark-toggle - Theme Light and Dark Mode Selection
-Input: Instantiate Theme::dark() and Theme::light()
+Executed Command: cargo test -p oc-tui --test terminal_e2e -- terminal_theme_toggle
+Exit Code: 0
+Duration: 249 ms
+Timestamp: 2026-08-17T08:21:29Z
 Output:
-dark.mode == Mode::Dark, light.mode == Mode::Light
+running 1 test
+test terminal_theme_toggle ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+Stderr:
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running tests/terminal_e2e.rs (target/debug/deps/terminal_e2e-7422840992902f76)

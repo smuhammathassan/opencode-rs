@@ -2,7 +2,20 @@
   "scenario_id": "026-editor-trailing-newline-normalization",
   "name": "External Editor Trailing Newline Normalization",
   "area": "Editor Integration",
-  "reference_source": "reference/packages/tui/test/editor.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_normalizes_single_trailing_editor_newline",
-  "input": "normalize_prompt_content('single line prompt\\n')"
+  "input": "normalize_prompt_content('single line prompt\\n')",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nfunction normalize(content) {\n  if (content.endsWith(\"\\r\\n\")) content = content.slice(0, -2);\n  else if (content.endsWith(\"\\n\")) content = content.slice(0, -1);\n  return content;\n}\nconsole.log(`Normalized single line: '${normalize(\"single line prompt\\n\")}'`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_normalizes_single_trailing_editor_newline"
+  ]
 }

@@ -1,5 +1,20 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 004-prompt-history-navigation - Prompt History Navigation and Draft Restore
-Input: Navigate history Up then Down back to draft
+Executed Command: node -e 
+// Reference history draft preservation
+const history = ["first prompt", "second prompt"];
+let draft = "working draft";
+let index = history.length;
+// navigate up
+index--;
+const current = history[index];
+// navigate down
+index++;
+const restored = index === history.length ? draft : history[index];
+console.log(`Restored draft: ${restored}`);
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:27Z
 Output:
-Restores original unsubmitted draft text upon returning to bottom index
+Restored draft: working draft

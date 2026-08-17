@@ -2,8 +2,9 @@
   "scenario_id": "002-prompt-cursor-movement",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "Cursor preserves column index clamped to target line length",
-  "rust_behavior": "Cursor preserves column index clamped to target line length",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 42,
+  "rust_duration_ms": 266,
+  "executed_at": "2026-08-17T08:21:27Z"
 }

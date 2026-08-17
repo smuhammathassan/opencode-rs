@@ -1,5 +1,15 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 005-prompt-history-dedup - Prompt History Consecutive Deduplication
-Input: Append identical prompt 'build project' consecutively
+Executed Command: node -e 
+function isDuplicate(a, b) {
+  return a.text === b.text && a.mode === b.mode && JSON.stringify(a.parts) === JSON.stringify(b.parts);
+}
+const p1 = { text: "build", mode: "prompt", parts: [] };
+const p2 = { text: "build", mode: "prompt", parts: [] };
+console.log(`Duplicate detected: ${isDuplicate(p1, p2)}`);
+
+Exit Code: 0
+Duration: 41 ms
+Timestamp: 2026-08-17T08:21:27Z
 Output:
-History retains 1 entry; prompts with different attachments retained
+Duplicate detected: true

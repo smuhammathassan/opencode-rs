@@ -1,5 +1,15 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 014-format-duration-minutes-hours - Format Duration Minutes Under Hour
-Input: format_duration(125_000)
+Executed Command: node -e 
+function formatDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return `${m}m ${s % 60}s`;
+}
+console.log(`Duration 125000ms: ${formatDuration(125000)}`);
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:30Z
 Output:
-2m 5s
+Duration 125000ms: 2m 5s

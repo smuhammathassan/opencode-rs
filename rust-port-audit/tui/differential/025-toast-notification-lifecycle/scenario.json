@@ -2,7 +2,20 @@
   "scenario_id": "025-toast-notification-lifecycle",
   "name": "Toast Notification Store Lifecycle",
   "area": "Components",
-  "reference_source": "reference/packages/tui/test/cli/cmd/tui/notifications.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_notifications_toast_store_lifecycle",
-  "input": "Push toast notification with 5000ms duration, then dismiss"
+  "input": "Push toast notification with 5000ms duration, then dismiss",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst toasts = new Map();\nlet idGen = 0;\nfunction show(message, duration) {\n  const id = `toast_${++idGen}`;\n  toasts.set(id, { message, duration });\n  return id;\n}\nfunction dismiss(id) { toasts.delete(id); }\nconst tid = show(\"Saved\", 5000);\ndismiss(tid);\nconsole.log(`Toast store length after dismiss: ${toasts.size}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_notifications_toast_store_lifecycle"
+  ]
 }

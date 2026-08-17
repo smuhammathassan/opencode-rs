@@ -133,8 +133,16 @@ def verify_differential_scenarios():
             errors.append(f"Scenario {sc_dir.name}: missing scenario.json")
         if not ref_frame.exists():
             errors.append(f"Scenario {sc_dir.name}: missing reference-frame.txt")
+        else:
+            ref_content = ref_frame.read_text(encoding="utf-8")
+            if "Executed Command: " not in ref_content or "Exit Code: 0" not in ref_content:
+                errors.append(f"Scenario {sc_dir.name}: reference-frame.txt lacks real execution provenance")
         if not rust_frame.exists():
             errors.append(f"Scenario {sc_dir.name}: missing rust-frame.txt")
+        else:
+            rust_content = rust_frame.read_text(encoding="utf-8")
+            if "Executed Command: " not in rust_content or "Exit Code: 0" not in rust_content:
+                errors.append(f"Scenario {sc_dir.name}: rust-frame.txt lacks real execution provenance")
         if not result_json.exists():
             errors.append(f"Scenario {sc_dir.name}: missing result.json")
         else:
@@ -145,6 +153,8 @@ def verify_differential_scenarios():
                         errors.append(f"Scenario {sc_dir.name}: result status is '{res_data.get('status')}', expected PASS")
                     if not res_data.get("matched", False):
                         errors.append(f"Scenario {sc_dir.name}: matched is not True")
+                    if res_data.get("reference_exit_code") != 0 or res_data.get("rust_exit_code") != 0:
+                        errors.append(f"Scenario {sc_dir.name}: process exit code not 0")
             except Exception as e:
                 errors.append(f"Scenario {sc_dir.name}: invalid result.json: {e}")
 

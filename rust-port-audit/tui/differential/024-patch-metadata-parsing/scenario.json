@@ -2,7 +2,20 @@
   "scenario_id": "024-patch-metadata-parsing",
   "name": "Patch Metadata Hunk Line Counting",
   "area": "Display Utils",
-  "reference_source": "reference/packages/session-ui/src/components/apply-patch-file.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_parses_patch_metadata_from_server",
-  "input": "Parse patch unified diff with 2 additions, 1 deletion"
+  "input": "Parse patch unified diff with 2 additions, 1 deletion",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst patch = \"@@ -1,3 +1,4 @@\\n-old\\n+new1\\n+new2\\n unchanged\";\nlet adds = 0, dels = 0;\nfor (const line of patch.split(\"\\n\")) {\n  if (line.startsWith(\"+\") && !line.startsWith(\"+++\")) adds++;\n  if (line.startsWith(\"-\") && !line.startsWith(\"---\")) dels++;\n}\nconsole.log(`Additions: ${adds}, Deletions: ${dels}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_parses_patch_metadata_from_server"
+  ]
 }

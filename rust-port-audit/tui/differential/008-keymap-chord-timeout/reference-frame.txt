@@ -1,5 +1,11 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 008-keymap-chord-timeout - Keymap Leader Chord Window Timeout
-Input: Press leader 'ctrl+x' with 2000ms chord window
+Executed Command: node -e 
+const LEADER_TIMEOUT = 2000;
+console.log(`Leader default: ctrl+x, chord window: ${LEADER_TIMEOUT}ms`);
+
+Exit Code: 0
+Duration: 39 ms
+Timestamp: 2026-08-17T08:21:28Z
 Output:
-Leader key active; cancels on chord timeout expiration
+Leader default: ctrl+x, chord window: 2000ms

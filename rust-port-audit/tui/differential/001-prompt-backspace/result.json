@@ -2,8 +2,9 @@
   "scenario_id": "001-prompt-backspace",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "Buffer successfully reduced to 0 graphemes without panic, cursor == 0",
-  "rust_behavior": "Buffer successfully reduced to 0 graphemes without panic, cursor == 0",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 68,
+  "rust_duration_ms": 274,
+  "executed_at": "2026-08-17T08:21:27Z"
 }

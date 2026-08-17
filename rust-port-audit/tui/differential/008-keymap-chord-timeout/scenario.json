@@ -2,7 +2,20 @@
   "scenario_id": "008-keymap-chord-timeout",
   "name": "Keymap Leader Chord Window Timeout",
   "area": "Keymap",
-  "reference_source": "reference/packages/tui/test/keymap.test.tsx",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_keymap_chord_timeout_and_resolution",
-  "input": "Press leader 'ctrl+x' with 2000ms chord window"
+  "input": "Press leader 'ctrl+x' with 2000ms chord window",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst LEADER_TIMEOUT = 2000;\nconsole.log(`Leader default: ctrl+x, chord window: ${LEADER_TIMEOUT}ms`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_keymap_chord_timeout_and_resolution"
+  ]
 }

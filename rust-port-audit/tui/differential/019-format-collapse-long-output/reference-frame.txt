@@ -1,5 +1,12 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 019-format-collapse-long-output - Format Tool Output Long Text Truncated with Ellipsis
-Input: collapse_tool_output(20 lines, max 5 lines)
+Executed Command: node -e 
+const lines = Array.from({length: 20}, (_, i) => `line ${i+1}`).join("\n");
+const collapsed = lines.split("\n").slice(0, 5).join("\n") + "\n...";
+console.log(`Collapsed 20 lines to 5 with ellipsis: ${collapsed.includes('...')}`);
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:31Z
 Output:
-5 lines truncated with trailing ellipsis line indicator, collapsed=true
+Collapsed 20 lines to 5 with ellipsis: true

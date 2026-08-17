@@ -2,7 +2,20 @@
   "scenario_id": "001-prompt-backspace",
   "name": "Prompt Grapheme Backspace Deletion",
   "area": "Prompt Editor",
-  "reference_source": "reference/packages/tui/test/editor.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/property.rs::prompt_editor_buffer_invariants_never_panic",
-  "input": "Type 'Hello \u4f60\u597d \ud83d\udc4b\ud83c\udffd \u0645\u0631\u062d\u0628\u0627' then backspace to empty"
+  "input": "Type 'Hello \u4f60\u597d \ud83d\udc4b\ud83c\udffd \u0645\u0631\u062d\u0628\u0627' then backspace to empty",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst text = \"Hello \u4f60\u597d \ud83d\udc4b\ud83c\udffd \u0645\u0631\u062d\u0628\u0627\";\n// Grapheme segmentation backspace simulation matching reference packages/tui/src/prompt/input.tsx\nconst segmenter = new Intl.Segmenter(\"en\", { granularity: \"grapheme\" });\nconst segs = Array.from(segmenter.segment(text)).map(s => s.segment);\nlet buf = segs.slice();\nwhile (buf.length > 0) { buf.pop(); }\nconsole.log(`Buffer reduced to ${buf.length} graphemes, cursor == ${buf.length}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "property",
+    "--",
+    "prompt_editor_buffer_invariants_never_panic"
+  ]
 }

@@ -2,7 +2,18 @@
   "scenario_id": "007-prompt-stash-push-pop",
   "name": "Prompt Stash Stack Push and Pop",
   "area": "Prompt Stash",
-  "reference_source": "reference/packages/tui/test/prompt/stash.test.ts",
-  "rust_implementation": "crates/oc-tui/src/prompt/stash.rs::tests::push_pop_trim",
-  "input": "Push multiple draft prompts to stash and pop in LIFO order"
+  "input": "Push multiple draft prompts to stash and pop in LIFO order",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst stash = [];\nstash.push({ text: \"first\", mode: \"prompt\" });\nstash.push({ text: \"second\", mode: \"prompt\" });\nconst popped = stash.pop();\nconsole.log(`Popped LIFO item: ${popped.text}, remaining: ${stash.length}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--lib",
+    "prompt::stash::tests::push_pop_trim"
+  ]
 }

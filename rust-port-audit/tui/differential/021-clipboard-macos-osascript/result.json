@@ -2,8 +2,9 @@
   "scenario_id": "021-clipboard-macos-osascript",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "['osascript', '-e', 'set the clipboard to (read (POSIX file \"...\") as \u00abclass utf8\u00bb)...']",
-  "rust_behavior": "['osascript', '-e', 'set the clipboard to (read (POSIX file \"...\") as \u00abclass utf8\u00bb)...']",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 245,
+  "executed_at": "2026-08-17T08:21:32Z"
 }

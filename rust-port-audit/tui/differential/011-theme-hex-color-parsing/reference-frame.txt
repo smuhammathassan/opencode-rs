@@ -1,5 +1,14 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 011-theme-hex-color-parsing - Theme Hex Color String Parsing
-Input: Parse hex '#82aaff' to RGB color primitive
+Executed Command: node -e 
+function parseHex(hex) {
+  const c = parseInt(hex.slice(1), 16);
+  return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
+}
+console.log(`Parsed #82aaff: rgb(${parseHex('#82aaff').join(', ')})`);
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:29Z
 Output:
-Color::Rgb(130, 170, 255)
+Parsed #82aaff: rgb(130, 170, 255)

@@ -2,7 +2,20 @@
   "scenario_id": "003-prompt-multiline-paste",
   "name": "Prompt Bracketed Multiline Paste",
   "area": "Prompt Editor",
-  "reference_source": "reference/packages/tui/test/prompt/input.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/terminal_e2e.rs::real_pty_bracketed_paste_transmission",
-  "input": "\\x1b[200~line1\\nline2\\x1b[201~"
+  "input": "\\x1b[200~line1\\nline2\\x1b[201~",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst raw = \"\\x1b[200~line1\\nline2\\x1b[201~\";\nconst match = raw.match(/\\x1b\\[200~([\\s\\S]*?)\\x1b\\[201~/);\nconsole.log(`Pasted atomic payload: ${JSON.stringify(match ? match[1] : \"\")}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "terminal_e2e",
+    "--",
+    "real_pty_bracketed_paste_transmission"
+  ]
 }

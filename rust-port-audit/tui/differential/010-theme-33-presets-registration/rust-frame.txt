@@ -1,5 +1,14 @@
-=== opencode-rs Rust Execution Frame ===
+=== opencode-rs Cargo Process Execution Frame ===
 Scenario: 010-theme-33-presets-registration - Theme All 33 Built-in Palettes Registered
-Input: Enumerate available theme names in Theme store
+Executed Command: cargo test -p oc-tui --test differential -- test_all_default_themes_registered
+Exit Code: 0
+Duration: 243 ms
+Timestamp: 2026-08-17T08:21:29Z
 Output:
-Includes opencode, tokyonight, dracula, nord, catppuccin, gruvbox (>=30 themes)
+running 1 test
+test test_all_default_themes_registered ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 25 filtered out; finished in 0.00s
+Stderr:
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running tests/differential.rs (target/debug/deps/differential-71a35cccd69b058e)

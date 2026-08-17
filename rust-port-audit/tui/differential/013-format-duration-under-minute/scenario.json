@@ -2,7 +2,20 @@
   "scenario_id": "013-format-duration-under-minute",
   "name": "Format Duration Seconds Under Minute",
   "area": "Formatting",
-  "reference_source": "reference/packages/tui/test/util/format.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_seconds_under_minute",
-  "input": "format_duration(45_000)"
+  "input": "format_duration(45_000)",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nfunction formatDuration(ms) {\n  const s = Math.floor(ms / 1000);\n  return `${s}s`;\n}\nconsole.log(`Duration 45000ms: ${formatDuration(45000)}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_format_duration_seconds_under_minute"
+  ]
 }

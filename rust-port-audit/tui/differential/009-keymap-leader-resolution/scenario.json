@@ -2,7 +2,20 @@
   "scenario_id": "009-keymap-leader-resolution",
   "name": "Keymap Default Leader Key Binding",
   "area": "Keymap",
-  "reference_source": "reference/packages/tui/test/keymap.test.tsx",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_leader_key_name_matches_default",
-  "input": "Query default leader key name"
+  "input": "Query default leader key name",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst LEADER_DEFAULT = \"ctrl+x\";\nconsole.log(`Leader key: ${LEADER_DEFAULT}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_leader_key_name_matches_default"
+  ]
 }

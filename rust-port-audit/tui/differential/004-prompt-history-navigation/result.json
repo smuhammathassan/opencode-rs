@@ -2,8 +2,9 @@
   "scenario_id": "004-prompt-history-navigation",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "Restores original unsubmitted draft text upon returning to bottom index",
-  "rust_behavior": "Restores original unsubmitted draft text upon returning to bottom index",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 261,
+  "executed_at": "2026-08-17T08:21:27Z"
 }

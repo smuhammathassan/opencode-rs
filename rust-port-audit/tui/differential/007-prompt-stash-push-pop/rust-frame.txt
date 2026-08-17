@@ -1,5 +1,14 @@
-=== opencode-rs Rust Execution Frame ===
+=== opencode-rs Cargo Process Execution Frame ===
 Scenario: 007-prompt-stash-push-pop - Prompt Stash Stack Push and Pop
-Input: Push multiple draft prompts to stash and pop in LIFO order
+Executed Command: cargo test -p oc-tui --lib prompt::stash::tests::push_pop_trim
+Exit Code: 0
+Duration: 247 ms
+Timestamp: 2026-08-17T08:21:28Z
 Output:
-LIFO ordering preserved with maximum stash depth capping
+running 1 test
+test prompt::stash::tests::push_pop_trim ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 178 filtered out; finished in 0.00s
+Stderr:
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.18s
+     Running unittests src/lib.rs (target/debug/deps/oc_tui-8096885ad85ddda1)

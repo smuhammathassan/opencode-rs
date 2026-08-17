@@ -1,5 +1,15 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 018-format-collapse-short-output - Format Tool Output Short Text Preserved
-Input: collapse_tool_output('short output', 10, 80)
+Executed Command: node -e 
+function collapse(text, maxLines) {
+  const lines = text.split("\n");
+  if (lines.length <= maxLines) return [text, false];
+  return [lines.slice(0, maxLines).join("\n") + "\n...", true];
+}
+console.log(JSON.stringify(collapse("short output", 10)));
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:31Z
 Output:
-(short output, false)
+["short output",false]

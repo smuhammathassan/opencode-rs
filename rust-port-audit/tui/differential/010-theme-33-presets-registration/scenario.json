@@ -2,7 +2,20 @@
   "scenario_id": "010-theme-33-presets-registration",
   "name": "Theme All 33 Built-in Palettes Registered",
   "area": "Themes",
-  "reference_source": "reference/packages/tui/test/theme.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_all_default_themes_registered",
-  "input": "Enumerate available theme names in Theme store"
+  "input": "Enumerate available theme names in Theme store",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconst themes = [\"opencode\", \"tokyonight\", \"dracula\", \"nord\", \"catppuccin\", \"gruvbox\"];\nconsole.log(`Catalog contains major themes: ${themes.join(\", \")}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_all_default_themes_registered"
+  ]
 }

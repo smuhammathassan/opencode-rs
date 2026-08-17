@@ -2,8 +2,9 @@
   "scenario_id": "019-format-collapse-long-output",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "5 lines truncated with trailing ellipsis line indicator, collapsed=true",
-  "rust_behavior": "5 lines truncated with trailing ellipsis line indicator, collapsed=true",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 242,
+  "executed_at": "2026-08-17T08:21:32Z"
 }

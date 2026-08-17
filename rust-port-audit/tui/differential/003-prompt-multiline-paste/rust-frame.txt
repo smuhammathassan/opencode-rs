@@ -1,5 +1,14 @@
-=== opencode-rs Rust Execution Frame ===
+=== opencode-rs Cargo Process Execution Frame ===
 Scenario: 003-prompt-multiline-paste - Prompt Bracketed Multiline Paste
-Input: \x1b[200~line1\nline2\x1b[201~
+Executed Command: cargo test -p oc-tui --test terminal_e2e -- real_pty_bracketed_paste_transmission
+Exit Code: 0
+Duration: 257 ms
+Timestamp: 2026-08-17T08:21:27Z
 Output:
-Bracketed paste payload received intact over PTY without newline split
+running 1 test
+test pty_e2e::real_pty_bracketed_paste_transmission ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 7 filtered out; finished in 0.00s
+Stderr:
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.19s
+     Running tests/terminal_e2e.rs (target/debug/deps/terminal_e2e-7422840992902f76)

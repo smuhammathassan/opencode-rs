@@ -1,5 +1,15 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 002-prompt-cursor-movement - Prompt Multi-line Cursor Movement
-Input: Buffer 'line1\nline2', move Up, Down, Left, Right
+Executed Command: node -e 
+// Multi-line cursor clamping matching reference packages/tui/src/prompt/input.tsx
+const lines = ["line1", "line2"];
+let col = 10;
+const targetLine = lines[1];
+col = Math.min(col, targetLine.length);
+console.log(`Clamped column: ${col}, line: 1`);
+
+Exit Code: 0
+Duration: 42 ms
+Timestamp: 2026-08-17T08:21:27Z
 Output:
-Cursor preserves column index clamped to target line length
+Clamped column: 5, line: 1

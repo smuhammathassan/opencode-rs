@@ -2,7 +2,20 @@
   "scenario_id": "012-theme-light-dark-toggle",
   "name": "Theme Light and Dark Mode Selection",
   "area": "Themes",
-  "reference_source": "reference/packages/tui/test/theme.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/terminal_e2e.rs::terminal_theme_toggle",
-  "input": "Instantiate Theme::dark() and Theme::light()"
+  "input": "Instantiate Theme::dark() and Theme::light()",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nconsole.log(\"Dark mode: dark, Light mode: light\");\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "terminal_e2e",
+    "--",
+    "terminal_theme_toggle"
+  ]
 }

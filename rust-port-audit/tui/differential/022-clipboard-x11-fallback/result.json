@@ -2,8 +2,9 @@
   "scenario_id": "022-clipboard-x11-fallback",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "['xsel', '--clipboard', '--input']",
-  "rust_behavior": "['xsel', '--clipboard', '--input']",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 257,
+  "executed_at": "2026-08-17T08:21:33Z"
 }

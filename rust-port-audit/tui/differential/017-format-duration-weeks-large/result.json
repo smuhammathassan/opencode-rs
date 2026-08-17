@@ -2,8 +2,9 @@
   "scenario_id": "017-format-duration-weeks-large",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "~2 weeks",
-  "rust_behavior": "~2 weeks",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 39,
+  "rust_duration_ms": 248,
+  "executed_at": "2026-08-17T08:21:31Z"
 }

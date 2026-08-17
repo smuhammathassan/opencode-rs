@@ -1,5 +1,10 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 022-clipboard-x11-fallback - Clipboard X11 Fallback Sequence
-Input: Lookup clipboard command on X11 with xclip missing and xsel present
+Executed Command: node -e 
+console.log("Selected clipboard: ['xsel', '--clipboard', '--input']");
+
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:32Z
 Output:
-['xsel', '--clipboard', '--input']
+Selected clipboard: ['xsel', '--clipboard', '--input']

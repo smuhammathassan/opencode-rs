@@ -2,8 +2,9 @@
   "scenario_id": "011-theme-hex-color-parsing",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "Color::Rgb(130, 170, 255)",
-  "rust_behavior": "Color::Rgb(130, 170, 255)",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 246,
+  "executed_at": "2026-08-17T08:21:29Z"
 }

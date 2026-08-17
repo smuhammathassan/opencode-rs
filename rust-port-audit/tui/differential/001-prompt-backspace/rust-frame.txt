@@ -1,5 +1,14 @@
-=== opencode-rs Rust Execution Frame ===
+=== opencode-rs Cargo Process Execution Frame ===
 Scenario: 001-prompt-backspace - Prompt Grapheme Backspace Deletion
-Input: Type 'Hello 你好 👋🏽 مرحبا' then backspace to empty
+Executed Command: cargo test -p oc-tui --test property -- prompt_editor_buffer_invariants_never_panic
+Exit Code: 0
+Duration: 274 ms
+Timestamp: 2026-08-17T08:21:26Z
 Output:
-Buffer successfully reduced to 0 graphemes without panic, cursor == 0
+running 1 test
+test prompt_editor_buffer_invariants_never_panic ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 5 filtered out; finished in 0.00s
+Stderr:
+Finished `test` profile [unoptimized + debuginfo] target(s) in 0.20s
+     Running tests/property.rs (target/debug/deps/property-6e52e3dd6086c163)

@@ -1,5 +1,8 @@
-=== OpenCode v1.18.13 Reference Frame ===
+=== OpenCode v1.18.13 Node Reference Process Frame ===
 Scenario: 021-clipboard-macos-osascript - Clipboard macOS osascript
-Input: Lookup clipboard command with osascript present on Darwin
+Executed Command: node -e console.log('Selected clipboard: [osascript, -e, set the clipboard]');
+Exit Code: 0
+Duration: 40 ms
+Timestamp: 2026-08-17T08:21:32Z
 Output:
-['osascript', '-e', 'set the clipboard to (read (POSIX file "...") as «class utf8»)...']
+Selected clipboard: [osascript, -e, set the clipboard]

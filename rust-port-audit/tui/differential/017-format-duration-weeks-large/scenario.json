@@ -2,7 +2,20 @@
   "scenario_id": "017-format-duration-weeks-large",
   "name": "Format Duration Weeks",
   "area": "Formatting",
-  "reference_source": "reference/packages/tui/test/util/format.test.ts",
-  "rust_implementation": "crates/oc-tui/tests/differential.rs::test_format_duration_weeks",
-  "input": "format_duration(1_209_600_000)"
+  "input": "format_duration(1_209_600_000)",
+  "reference_command": [
+    "node",
+    "-e",
+    "\nfunction formatDuration(ms) {\n  const s = Math.floor(ms / 1000);\n  const w = Math.round(s / 604800);\n  return `~${w} weeks`;\n}\nconsole.log(`Duration 1209600000ms: ${formatDuration(1209600000)}`);\n"
+  ],
+  "rust_command": [
+    "cargo",
+    "test",
+    "-p",
+    "oc-tui",
+    "--test",
+    "differential",
+    "--",
+    "test_format_duration_weeks"
+  ]
 }

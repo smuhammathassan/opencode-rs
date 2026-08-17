@@ -2,8 +2,9 @@
   "scenario_id": "007-prompt-stash-push-pop",
   "status": "PASS",
   "matched": true,
-  "reference_behavior": "LIFO ordering preserved with maximum stash depth capping",
-  "rust_behavior": "LIFO ordering preserved with maximum stash depth capping",
-  "diff": null,
-  "verified_in_ci": true
+  "reference_exit_code": 0,
+  "rust_exit_code": 0,
+  "reference_duration_ms": 40,
+  "rust_duration_ms": 247,
+  "executed_at": "2026-08-17T08:21:28Z"
 }
