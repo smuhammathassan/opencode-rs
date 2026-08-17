@@ -94,17 +94,25 @@ def verify_inventory():
         reader = csv.DictReader(f)
         for row in reader:
             total += 1
-            row_id = row.get("ID", "").strip()
-            feature = row.get("Feature", "").strip()
-            ref_behavior = row.get("Reference behavior", "").strip()
-            status = row.get("Status", "").strip()
+            row_id = (row.get("id") or row.get("ID", "")).strip()
+            ref_file = (row.get("reference_file") or row.get("Reference file", "")).strip()
+            rust_target = (row.get("rust_target") or row.get("Rust implementation", "")).strip()
+            status = (row.get("parity_status") or row.get("Status", "")).strip()
+            method = (row.get("verification_method") or "unit").strip().lower()
 
-            if not row_id or not feature or not ref_behavior:
-                errors.append(f"Inventory Row {total}: Incomplete behavioral row")
-            if ref_behavior in ["State Updated", "Frame Rendered", "HTTP/SSE", "Error Handled", "Feature works"]:
-                errors.append(f"Inventory Row {total} ({row_id}): Contains generic filler behavior '{ref_behavior}'")
+            if not row_id or not ref_file or not rust_target:
+                errors.append(f"Inventory Row {total}: Incomplete row fields")
+            if ref_file and not (REPO_ROOT / ref_file).exists():
+                errors.append(f"Inventory Row {total} ({row_id}): Reference file '{ref_file}' does not exist")
+            if method not in {"differential", "pty", "unit", "manual"}:
+                errors.append(f"Inventory Row {total} ({row_id}): Invalid verification method '{method}'")
+            if status != "PASS":
+                errors.append(f"Inventory Row {total} ({row_id}): Status is '{status}', expected PASS")
 
-    print(f"Verified {total} behavioral inventory rows.")
+    if total < 50:
+        errors.append(f"Inventory has only {total} rows, expected at least 50 atomic symbols")
+
+    print(f"Verified {total} atomic reference inventory rows.")
     if errors:
         for err in errors:
             print(f"  FAILED: {err}", file=sys.stderr)
