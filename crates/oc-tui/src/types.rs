@@ -1009,6 +1009,8 @@ pub struct Config {
     pub tui: Option<serde_json::Value>,
     #[serde(default)]
     pub share: Option<String>,
+    #[serde(default)]
+    pub plugin: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
