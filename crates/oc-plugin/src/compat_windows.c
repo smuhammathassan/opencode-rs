@@ -1,5 +1,6 @@
 #ifdef _WIN32
 
+#include <winsock2.h>
 #include <windows.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -47,11 +48,6 @@ int __mingw_fprintf(FILE *stream, const char *format, ...) {
     va_end(args);
     return ret;
 }
-
-struct timeval {
-    long tv_sec;
-    long tv_usec;
-};
 
 int gettimeofday(struct timeval *tp, void *tzp) {
     (void)tzp;
