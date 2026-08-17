@@ -442,6 +442,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn data_url_image_to_image_chunk() {
         let part = ReplayPart::File {

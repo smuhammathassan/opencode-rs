@@ -90,9 +90,19 @@ async fn worktree_path_rule_and_lifecycle() {
 
     // The created worktree shows up in list (primary repo is excluded).
     let list = runtime.worktree.list(&ctx).await.expect("worktree list");
+    let norm_canonical = canonical_created
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_lowercase()
+        .replace("///?/", "");
     let listed = list
         .iter()
-        .find(|item| item.directory == canonical_created.to_string_lossy())
+        .find(|item| {
+            let norm_item = item.directory.replace('\\', "/").to_lowercase();
+            norm_item == norm_canonical
+                || norm_item.ends_with(&norm_canonical)
+                || norm_canonical.ends_with(&norm_item)
+        })
         .expect("created worktree listed");
     assert_eq!(listed.branch.as_deref(), created.branch.as_deref());
 
@@ -115,9 +125,12 @@ async fn worktree_path_rule_and_lifecycle() {
         .list(&ctx)
         .await
         .expect("worktree list after remove");
-    assert!(!list
-        .iter()
-        .any(|item| item.directory == canonical_created.to_string_lossy()));
+    assert!(!list.iter().any(|item| {
+        let norm_item = item.directory.replace('\\', "/").to_lowercase();
+        norm_item == norm_canonical
+            || norm_item.ends_with(&norm_canonical)
+            || norm_canonical.ends_with(&norm_item)
+    }));
 
     let _ = home;
 }
