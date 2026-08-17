@@ -517,6 +517,7 @@ mod tests {
         assert_eq!(err.kind(), std::io::ErrorKind::InvalidInput);
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn env_override_and_cwd() {
         let dir = std::env::temp_dir();
@@ -539,6 +540,7 @@ mod tests {
         assert!(text.contains("bar"));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn shell_system_runs_through_sh() {
         let out = run(
@@ -553,6 +555,7 @@ mod tests {
         assert_eq!(String::from_utf8_lossy(&out.stdout).trim(), "shell");
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn abort_kills_process() {
         let signal = Signal::new();
@@ -565,6 +568,7 @@ mod tests {
         assert_eq!(code, 1);
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn stop_terminates_process() {
         let mut child = spawn(&sh_args("sleep 30"), &Options::default()).unwrap();

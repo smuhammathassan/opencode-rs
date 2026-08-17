@@ -443,6 +443,7 @@ mod tests {
         assert_eq!(config.theme_mode, Mode::Dark);
     }
 
+    #[cfg(unix)]
     #[test]
     fn environment_config_loads_file_and_disables_mouse() {
         let path = std::env::temp_dir().join(format!(

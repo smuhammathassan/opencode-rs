@@ -393,6 +393,7 @@ mod tests {
         assert!(error.message().contains("out of range"));
     }
 
+    #[cfg(unix)]
     #[test]
     fn lists_directory() {
         let dir = tempfile::tempdir().unwrap();

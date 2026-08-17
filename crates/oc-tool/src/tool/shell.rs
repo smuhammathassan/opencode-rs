@@ -862,6 +862,7 @@ mod tests {
         assert!(out.ends_with("line 4999"));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn executes_and_returns_exit_code() {
         let dir = tempfile::tempdir().unwrap();
@@ -880,6 +881,7 @@ mod tests {
         assert_eq!(result.metadata["truncated"], serde_json::json!(false));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn reports_timeout_metadata() {
         let dir = tempfile::tempdir().unwrap();

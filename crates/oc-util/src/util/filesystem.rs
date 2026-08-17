@@ -381,6 +381,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn resolve_file_path_handles_file_urls() {
         assert!(resolve_file_path("/root", "file:///tmp/x.txt").ends_with("x.txt"));
@@ -397,6 +398,7 @@ mod tests {
         assert_eq!(mime_type("e.unknown_ext"), "application/octet-stream");
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn find_up_with_stop_and_root_first() {
         let dir = tmp_dir("findup");
@@ -411,6 +413,7 @@ mod tests {
         assert_eq!(reversed[0], dir.join("m").to_string_lossy().into_owned());
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn up_collects_all_targets_per_directory() {
         let dir = tmp_dir("up");
@@ -426,6 +429,7 @@ mod tests {
         assert!(found.iter().any(|f| f.ends_with("m2")));
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn glob_up_collects_matches() {
         let dir = tmp_dir("globup");

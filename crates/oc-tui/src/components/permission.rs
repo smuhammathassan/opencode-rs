@@ -352,6 +352,7 @@ fn option_footer(options: &[&str], selected: usize, theme: &Theme) -> Vec<Styled
     vec![spans]
 }
 
+#[cfg(unix)]
 #[cfg(test)]
 mod tests {
     use super::*;

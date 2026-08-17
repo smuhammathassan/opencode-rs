@@ -360,6 +360,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir).await;
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn find_up_walks_to_root() {
         let dir = std::env::temp_dir().join(format!("oc-util-findup-{}", std::process::id()));
@@ -379,6 +380,7 @@ mod tests {
         let _ = fs::remove_dir_all(&dir).await;
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn glob_up_collects_across_directories() {
         let dir = std::env::temp_dir().join(format!("oc-util-globup-{}", std::process::id()));

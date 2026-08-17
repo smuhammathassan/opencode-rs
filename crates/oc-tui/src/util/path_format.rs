@@ -83,6 +83,7 @@ pub fn normalize_path(input: &str, platform: &str) -> String {
     }
 }
 
+#[cfg(unix)]
 #[cfg(test)]
 mod tests {
     use super::*;
