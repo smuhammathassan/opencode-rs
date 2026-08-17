@@ -30,3 +30,6 @@ crossterm = { version = "0.28", features = ["events"] }
 libc = "0.2"
 
 [dev-dependencies]
+portable-pty = "0.8"
+tempfile = "3"
+

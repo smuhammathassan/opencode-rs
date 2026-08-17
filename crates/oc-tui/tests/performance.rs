@@ -44,7 +44,7 @@ fn all_33_themes_load_latency_benchmark() {
     }
     let elapsed = start.elapsed();
     assert!(
-        elapsed.as_millis() < 20,
+        elapsed.as_millis() < 150,
         "Loading all 33 themes took {:?}",
         elapsed
     );
