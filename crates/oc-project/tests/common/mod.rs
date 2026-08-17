@@ -56,6 +56,7 @@ pub fn init_repo(name: &str, file: &str, content: &str) -> PathBuf {
     dir
 }
 
+#[allow(dead_code)]
 pub fn root_commit(dir: &Path) -> String {
     let output = git(dir, &["rev-list", "--max-parents=0", "HEAD"]);
     String::from_utf8(output.stdout).unwrap().trim().to_string()
