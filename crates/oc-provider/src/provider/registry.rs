@@ -720,7 +720,7 @@ fn custom_loader(
             }
         }
         _ if provider.source == Source::Config
-            && (provider.models.len() > 0
+            && (!provider.models.is_empty()
                 || provider.options.contains_key("apiKey")
                 || provider.options.contains_key("baseURL")
                 || provider.options.contains_key("baseUrl")) =>

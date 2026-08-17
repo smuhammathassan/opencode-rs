@@ -27,7 +27,7 @@ async fn snapshot_track_diff_and_restore() {
     let expected = data_dir()
         .join("snapshot")
         .join(&ctx.project.id.0)
-        .join(&oc_project::util::hash::Hash::fast(ctx.worktree.as_bytes()));
+        .join(oc_project::util::hash::Hash::fast(ctx.worktree.as_bytes()));
     let first = runtime
         .snapshot
         .track(&ctx)

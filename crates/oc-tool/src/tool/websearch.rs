@@ -196,7 +196,7 @@ async fn call_provider(
             model_name: web_search_model_name(extra),
         };
         mcp_websearch::call(
-            &client,
+            client,
             mcp_websearch::PARALLEL_URL,
             "web_search",
             serde_json::to_value(args).map_err(|error| error.to_string())?,
@@ -212,7 +212,7 @@ async fn call_provider(
             context_max_characters,
         };
         mcp_websearch::call(
-            &client,
+            client,
             &mcp_websearch::exa_endpoint(),
             "web_search_exa",
             serde_json::to_value(args).map_err(|error| error.to_string())?,

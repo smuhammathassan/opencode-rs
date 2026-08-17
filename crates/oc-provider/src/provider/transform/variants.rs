@@ -934,9 +934,7 @@ fn anthropic_effort(model: &Model, effort: &str) -> Option<JsonMap> {
                 .clone(),
         );
     }
-    if anthropic_adaptive_efforts(&model.api.id).is_none() {
-        return None;
-    }
+    anthropic_adaptive_efforts(&model.api.id)?;
     Some(adaptive_thinking_map(
         anthropic_omits_thinking(&model.api.id),
         effort,

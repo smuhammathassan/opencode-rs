@@ -73,8 +73,7 @@ async fn decode_and_execute(
             name: call.name.clone(),
         },
     )
-    .await
-    .map_err(|failure| failure)?;
+    .await?;
     let encoded = (tool.encode)(&value).map_err(|error| {
         ToolFailure::new(format!(
             "Tool returned an invalid value for its success schema: {}",

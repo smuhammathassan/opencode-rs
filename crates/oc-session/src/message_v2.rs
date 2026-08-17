@@ -1130,7 +1130,7 @@ mod tests {
             }),
             parts: vec![user_part],
         };
-        let result = filter_compacted(&[msg.clone()]);
+        let result = filter_compacted(std::slice::from_ref(&msg));
         assert_eq!(result.len(), 1);
         let _ = JsonMap::new();
     }

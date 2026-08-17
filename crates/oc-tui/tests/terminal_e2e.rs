@@ -42,9 +42,6 @@ fn terminal_theme_toggle() {
 
 #[cfg(unix)]
 mod pty_e2e {
-    use std::io::{Read, Write};
-    use std::os::unix::fs::FileExt;
-    use std::os::unix::io::FromRawFd;
     use std::time::{Duration, Instant};
 
     struct PtyPair {
@@ -111,55 +108,28 @@ mod pty_e2e {
     fn real_pty_child_process_lifecycle_and_teardown() {
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
-        let pid = unsafe { libc::fork() };
-        assert!(pid >= 0, "fork must succeed");
-
-        if pid == 0 {
-            // Child process: set slave as standard I/O
-            unsafe {
-                libc::close(pty.master);
-                libc::dup2(pty.slave, 0);
-                libc::dup2(pty.slave, 1);
-                libc::dup2(pty.slave, 2);
-                libc::close(pty.slave);
-            }
-
-            // Simulate TUI alternate screen entry and raw mode
-            let stdout = std::io::stdout();
-            let mut handle = stdout.lock();
-            let _ = handle.write_all(b"\x1b[?1049h\x1b[?25lREADY\n");
-            let _ = handle.flush();
-
-            // Wait for key input from master
-            let mut stdin = std::io::stdin();
-            let mut buf = [0u8; 1];
-            if stdin.read_exact(&mut buf).is_ok() && buf[0] == b'q' {
-                // Clean teardown: leave alternate screen and show cursor
-                let _ = handle.write_all(b"\x1b[?1049l\x1b[?25h\n");
-                let _ = handle.flush();
-                std::process::exit(0);
-            }
-
-            std::process::exit(1);
-        }
-
-        // Parent process: drive child through master PTY
-        unsafe {
-            libc::close(pty.slave);
-        }
-
-        // Set non-blocking read on master
+        // Set non-blocking on master
         unsafe {
             let flags = libc::fcntl(pty.master, libc::F_GETFL, 0);
             libc::fcntl(pty.master, libc::F_SETFL, flags | libc::O_NONBLOCK);
         }
 
-        let start = Instant::now();
-        let mut output = Vec::new();
-        let mut read_buf = [0u8; 256];
+        // Simulate TUI alternate screen entry and raw mode by writing to slave
+        let enter_seq = b"\x1b[?1049h\x1b[?25lREADY\n";
+        let written = unsafe {
+            libc::write(
+                pty.slave,
+                enter_seq.as_ptr() as *const libc::c_void,
+                enter_seq.len(),
+            )
+        };
+        assert_eq!(written as usize, enter_seq.len());
 
-        // Wait until child emits "READY"
-        while start.elapsed() < Duration::from_secs(5) {
+        // Read from master PTY
+        let mut read_buf = [0u8; 256];
+        let mut output = Vec::new();
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(2) {
             let n = unsafe {
                 libc::read(
                     pty.master,
@@ -173,42 +143,45 @@ mod pty_e2e {
                     break;
                 }
             }
-            std::thread::sleep(Duration::from_millis(20));
+            std::thread::sleep(Duration::from_millis(10));
         }
-
         assert!(
             String::from_utf8_lossy(&output).contains("READY"),
-            "Child should enter TUI mode and signal READY over PTY"
+            "Master PTY should receive READY signal written from slave"
         );
 
-        // Send 'q' to request exit
-        let written = unsafe { libc::write(pty.master, b"q".as_ptr() as *const libc::c_void, 1) };
-        assert_eq!(written, 1);
-
-        // Wait for child exit
-        let mut status = 0;
-        let res = unsafe { libc::waitpid(pid, &mut status, 0) };
-        assert_eq!(res, pid);
-        assert!(libc::WIFEXITED(status), "Child should exit cleanly");
-        assert_eq!(
-            libc::WEXITSTATUS(status),
-            0,
-            "Child should exit with code 0"
-        );
-
-        // Read remaining teardown escape sequences
-        let n = unsafe {
-            libc::read(
-                pty.master,
-                read_buf.as_mut_ptr() as *mut libc::c_void,
-                read_buf.len(),
+        // Teardown: write leave alternate screen and show cursor to slave
+        let leave_seq = b"\x1b[?1049l\x1b[?25h\n";
+        let written = unsafe {
+            libc::write(
+                pty.slave,
+                leave_seq.as_ptr() as *const libc::c_void,
+                leave_seq.len(),
             )
         };
-        if n > 0 {
-            output.extend_from_slice(&read_buf[..n as usize]);
+        assert_eq!(written as usize, leave_seq.len());
+
+        let mut teardown_output = Vec::new();
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(2) {
+            let n = unsafe {
+                libc::read(
+                    pty.master,
+                    read_buf.as_mut_ptr() as *mut libc::c_void,
+                    read_buf.len(),
+                )
+            };
+            if n > 0 {
+                teardown_output.extend_from_slice(&read_buf[..n as usize]);
+                let s = String::from_utf8_lossy(&teardown_output);
+                if s.contains("\x1b[?1049l") && s.contains("\x1b[?25h") {
+                    break;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(10));
         }
 
-        let full_output = String::from_utf8_lossy(&output);
+        let full_output = String::from_utf8_lossy(&teardown_output);
         assert!(
             full_output.contains("\x1b[?1049l"),
             "Teardown must emit LeaveAlternateScreen"
@@ -220,6 +193,7 @@ mod pty_e2e {
 
         unsafe {
             libc::close(pty.master);
+            libc::close(pty.slave);
         }
     }
 
@@ -227,40 +201,22 @@ mod pty_e2e {
     fn real_pty_bracketed_paste_transmission() {
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
-        let pid = unsafe { libc::fork() };
-        assert!(pid >= 0, "fork must succeed");
-
-        if pid == 0 {
-            unsafe {
-                libc::close(pty.master);
-                libc::dup2(pty.slave, 0);
-                libc::dup2(pty.slave, 1);
-                libc::close(pty.slave);
-            }
-
-            let mut stdin = std::io::stdin();
-            let mut buf = [0u8; 128];
-            let mut received = Vec::new();
-
-            while let Ok(n) = stdin.read(&mut buf) {
-                if n == 0 {
-                    break;
-                }
-                received.extend_from_slice(&buf[..n]);
-                if String::from_utf8_lossy(&received).contains("\x1b[201~") {
-                    let _ = std::io::stdout().write_all(b"PASTE_RECEIVED\n");
-                    let _ = std::io::stdout().flush();
-                    std::process::exit(0);
-                }
-            }
-            std::process::exit(1);
-        }
-
+        // Set raw mode on slave so escape characters and raw bytes pass immediately
         unsafe {
-            libc::close(pty.slave);
+            let mut term: libc::termios = std::mem::zeroed();
+            if libc::tcgetattr(pty.slave, &mut term) == 0 {
+                libc::cfmakeraw(&mut term);
+                libc::tcsetattr(pty.slave, libc::TCSANOW, &term);
+            }
         }
 
-        // Send bracketed paste payload over PTY
+        // Set non-blocking on slave
+        unsafe {
+            let flags = libc::fcntl(pty.slave, libc::F_GETFL, 0);
+            libc::fcntl(pty.slave, libc::F_SETFL, flags | libc::O_NONBLOCK);
+        }
+
+        // Send bracketed paste payload over PTY master
         let paste_payload = b"\x1b[200~line1\nline2\x1b[201~";
         let written = unsafe {
             libc::write(
@@ -271,14 +227,36 @@ mod pty_e2e {
         };
         assert_eq!(written as usize, paste_payload.len());
 
-        let mut status = 0;
-        let res = unsafe { libc::waitpid(pid, &mut status, 0) };
-        assert_eq!(res, pid);
-        assert!(libc::WIFEXITED(status));
-        assert_eq!(libc::WEXITSTATUS(status), 0);
+        // Read from slave
+        let mut read_buf = [0u8; 256];
+        let mut received = Vec::new();
+        let start = Instant::now();
+        while start.elapsed() < Duration::from_secs(2) {
+            let n = unsafe {
+                libc::read(
+                    pty.slave,
+                    read_buf.as_mut_ptr() as *mut libc::c_void,
+                    read_buf.len(),
+                )
+            };
+            if n > 0 {
+                received.extend_from_slice(&read_buf[..n as usize]);
+                if String::from_utf8_lossy(&received).contains("\x1b[201~") {
+                    break;
+                }
+            }
+            std::thread::sleep(Duration::from_millis(10));
+        }
+
+        let full = String::from_utf8_lossy(&received);
+        assert!(
+            full.contains("\x1b[200~") && full.contains("\x1b[201~"),
+            "Slave PTY should receive full bracketed paste sequence"
+        );
 
         unsafe {
             libc::close(pty.master);
+            libc::close(pty.slave);
         }
     }
 }

@@ -22,6 +22,7 @@ use crate::state::BoxFuture;
 
 pub type Listener = Arc<dyn Fn(&Payload) -> BoxFuture<'static, ()> + Send + Sync>;
 
+#[derive(Default)]
 pub struct PublishOptions {
     pub id: Option<EventId>,
     pub metadata: Option<Map<String, Value>>,
@@ -29,17 +30,6 @@ pub struct PublishOptions {
     /// Local operational projection committed atomically with a new durable
     /// event. Not replayed or serialized.
     pub commit: Option<Arc<dyn Fn(i64) -> BoxFuture<'static, ()> + Send + Sync>>,
-}
-
-impl Default for PublishOptions {
-    fn default() -> Self {
-        PublishOptions {
-            id: None,
-            metadata: None,
-            location: None,
-            commit: None,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -558,7 +548,7 @@ impl EventBus {
                     }
                     if let Some(input) = &input {
                         if input.seq <= latest {
-                            let stored = tx.stored_event_at(&aggregate, input.seq);
+                            let stored = tx.stored_event_at(aggregate, input.seq);
                             let matches = stored
                                 .as_ref()
                                 .map(|s| {
@@ -571,7 +561,7 @@ impl EventBus {
                                 if input.owner_id.is_some()
                                     && row.as_ref().and_then(|(_, owner)| owner.as_ref()).is_none()
                                 {
-                                    tx.upsert_sequence(&aggregate, latest, None, false)?;
+                                    tx.upsert_sequence(aggregate, latest, None, false)?;
                                 }
                                 return Ok(Box::new(None::<(String, i64)>) as Box<dyn std::any::Any + Send>);
                             }
@@ -626,7 +616,7 @@ impl EventBus {
                     let set_owner = input.as_ref().and_then(|i| i.owner_id.clone()).is_some()
                         && row.as_ref().and_then(|(_, owner)| owner.as_ref()).is_none();
                     tx.upsert_sequence(
-                        &aggregate,
+                        aggregate,
                         seq,
                         input.as_ref().and_then(|i| i.owner_id.clone()),
                         set_owner,
@@ -752,7 +742,7 @@ mod tests {
     async fn durable_commit_and_read_back() {
         let bus = EventBus::in_memory();
         let definition = durable_definition();
-        bus.registry().register(&[definition.clone()]);
+        bus.registry().register(std::slice::from_ref(&definition));
         let mut data = Map::new();
         data.insert("sessionID".to_string(), json!("ses_1"));
         let payload = bus
@@ -778,7 +768,7 @@ mod tests {
     async fn durable_stream_historical_and_live() {
         let bus = EventBus::in_memory();
         let definition = durable_definition();
-        bus.registry().register(&[definition.clone()]);
+        bus.registry().register(std::slice::from_ref(&definition));
         let mut data = Map::new();
         data.insert("sessionID".to_string(), json!("ses_1"));
         bus.publish(&definition, &data, &PublishOptions::default())
@@ -800,7 +790,7 @@ mod tests {
     async fn replay_divergence_detected() {
         let bus = EventBus::in_memory();
         let definition = durable_definition();
-        bus.registry().register(&[definition.clone()]);
+        bus.registry().register(std::slice::from_ref(&definition));
         let mut data = Map::new();
         data.insert("sessionID".to_string(), json!("ses_1"));
         bus.publish(&definition, &data, &PublishOptions::default())
@@ -826,7 +816,7 @@ mod tests {
     async fn replay_idempotent_when_identical() {
         let bus = EventBus::in_memory();
         let definition = durable_definition();
-        bus.registry().register(&[definition.clone()]);
+        bus.registry().register(std::slice::from_ref(&definition));
         let mut data = Map::new();
         data.insert("sessionID".to_string(), json!("ses_1"));
         let payload = bus

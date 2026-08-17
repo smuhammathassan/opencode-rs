@@ -31,8 +31,8 @@ fn fixture_statements() -> Vec<String> {
 }
 
 fn statement_name(stmt: &str) -> (&str, String) {
-    if stmt.starts_with("CREATE TABLE") {
-        let name = stmt["CREATE TABLE".len()..]
+    if let Some(rest) = stmt.strip_prefix("CREATE TABLE") {
+        let name = rest
             .trim()
             .trim_start_matches('`')
             .split('`')
@@ -72,7 +72,7 @@ fn schema_matches_reference_ddl() {
         ..Default::default()
     })
     .unwrap();
-    db.transaction(|tx| schema::schema_up(tx)).unwrap();
+    db.transaction(schema::schema_up).unwrap();
 
     let actual_by_name: BTreeMap<(String, String), String> = db
         .run("SELECT type, name, sql FROM sqlite_master WHERE sql IS NOT NULL")

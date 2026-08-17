@@ -76,7 +76,7 @@ pub struct FindInput {
 /// Mirror of the reference parse function:
 /// `.replace(/^(?:\.[\\/])+/u, "").replace(/^[\\/]+/u, "").replaceAll("\\", "/")`.
 fn clean_relative(path: &str) -> String {
-    let trimmed = path.trim_start_matches(|c| c == '.' || c == '/' || c == '\\');
+    let trimmed = path.trim_start_matches(['.', '/', '\\']);
     trimmed.replace('\\', "/")
 }
 

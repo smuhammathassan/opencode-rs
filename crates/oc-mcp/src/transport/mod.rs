@@ -75,6 +75,12 @@ pub struct SseParser {
     buffer: String,
 }
 
+impl Default for SseParser {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SseParser {
     pub fn new() -> Self {
         SseParser {

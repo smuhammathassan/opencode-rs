@@ -981,7 +981,7 @@ fn on_reasoning_summary_part_added(
     let mut next = state.clone();
     next.lifecycle = lifecycle;
     let mut summary_parts = item.summary_parts.clone();
-    for (_key, status) in summary_parts.iter_mut() {
+    for status in summary_parts.values_mut() {
         if *status == ReasoningSummaryStatus::CanConclude {
             *status = ReasoningSummaryStatus::Concluded;
         }
@@ -1414,7 +1414,7 @@ impl ProtocolStream for OpenAIResponsesStream {
 pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
-        Arc::new(|request| from_request(request)),
+        Arc::new(from_request),
         Arc::new(OpenAIResponsesStream),
     )
 }

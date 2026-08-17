@@ -231,7 +231,7 @@ impl SkillService {
         let mut list: Vec<&Info> = self
             .skills
             .values()
-            .filter(|skill| allow.map_or(true, |allow| allow(&skill.name)))
+            .filter(|skill| allow.is_none_or(|allow| allow(&skill.name)))
             .collect();
         list.sort_by(|a, b| a.name.cmp(&b.name));
         list

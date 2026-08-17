@@ -368,13 +368,13 @@ fn url_decode(value: &str) -> String {
 /// `reference/packages/core/src/oauth/page.ts`.
 /// TODO(integration): full visual parity with the reference page.
 fn success_page() -> String {
-    let body = format!(
+    let body =
         r#"<main class="card" id="oc-card" data-status="success" role="status" aria-live="polite">
       <h1 class="headline" id="oc-headline">Authorization successful</h1>
       <p class="message" id="oc-message">OpenCode is now connected to MCP.</p>
       <p class="footnote" id="oc-footnote">You can close this window.</p>
     </main>"#
-    );
+            .to_string();
     document("Authorization successful", &body, true)
 }
 

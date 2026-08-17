@@ -125,13 +125,10 @@ async fn position_operation_synchronizes_document_lifecycle() {
         .await
         .expect("hover should observe an opened document");
     assert_eq!(result["opened"], true);
-    assert_eq!(
-        result["params"]["textDocument"]["uri"]
-            .as_str()
-            .unwrap()
-            .ends_with("/src/lib.rs"),
-        true
-    );
+    assert!(result["params"]["textDocument"]["uri"]
+        .as_str()
+        .unwrap()
+        .ends_with("/src/lib.rs"));
 
     adapter.shutdown().await.expect("language server shutdown");
 }

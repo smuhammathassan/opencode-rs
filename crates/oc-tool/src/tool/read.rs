@@ -152,7 +152,7 @@ fn run(args: serde_json::Value, ctx: &mut ToolContext) -> Result<ExecuteResult, 
         )));
     }
 
-    let file = read_lines(&filepath, limit, offset).map_err(|error| ToolError::Other(error))?;
+    let file = read_lines(&filepath, limit, offset).map_err(ToolError::Other)?;
     if file.count < file.offset && !(file.count == 0 && file.offset == 1) {
         return Err(ToolError::Other(format!(
             "Offset {} is out of range for this file ({} lines)",

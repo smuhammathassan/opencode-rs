@@ -890,7 +890,7 @@ impl ProtocolStream for BedrockConverseStream {
 pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
-        Arc::new(|request| from_request(request)),
+        Arc::new(from_request),
         Arc::new(BedrockConverseStream),
     )
 }
@@ -907,7 +907,7 @@ pub fn route() -> crate::route::Route {
                 format!(
                     "/model/{}/converse-stream",
                     urlencode_model(
-                        &input
+                        input
                             .body
                             .get("modelId")
                             .and_then(Value::as_str)

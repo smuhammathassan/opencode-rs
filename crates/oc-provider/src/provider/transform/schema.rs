@@ -312,12 +312,12 @@ fn sanitize_gemini(value: &Value) -> Value {
                 let items = result.get("items").cloned().unwrap_or(Value::Null);
                 if let Some(items) = items.as_object() {
                     if !has_schema_intent(&Value::Object(items.clone())) {
-                        result
+                        if let Some(items) = result
                             .get_mut("items")
                             .and_then(|items| items.as_object_mut())
-                            .map(|items| {
-                                items.insert("type".to_string(), Value::from("string"));
-                            });
+                        {
+                            items.insert("type".to_string(), Value::from("string"));
+                        }
                     }
                 }
             }

@@ -1615,6 +1615,7 @@ dependencies = [
 name = "oc-plugin"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "directories",
  "flate2",
  "libquickjs-sys",

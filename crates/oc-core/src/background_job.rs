@@ -292,9 +292,7 @@ impl BackgroundJob {
     pub async fn wait_for_promotion(&self, id: &str) -> Option<Info> {
         let receiver = {
             let mut jobs = self.jobs.lock().unwrap();
-            let Some(job) = jobs.get_mut(id) else {
-                return None;
-            };
+            let job = jobs.get_mut(id)?;
             if job.info.status != "running" {
                 return None;
             }
@@ -321,9 +319,7 @@ impl BackgroundJob {
     pub async fn promote(&self, id: &str) -> Option<Info> {
         let (info, promoted, on_promote) = {
             let mut jobs = self.jobs.lock().unwrap();
-            let Some(job) = jobs.get_mut(id) else {
-                return None;
-            };
+            let job = jobs.get_mut(id)?;
             if job.info.status != "running" {
                 return Some(job.info.clone());
             }
@@ -358,9 +354,7 @@ impl BackgroundJob {
         let completed_at = Self::now();
         let (info, done) = {
             let mut jobs = self.jobs.lock().unwrap();
-            let Some(job) = jobs.get_mut(id) else {
-                return None;
-            };
+            let job = jobs.get_mut(id)?;
             if job.info.status != "running" {
                 return Some(job.info.clone());
             }
@@ -387,9 +381,7 @@ impl BackgroundJob {
         let completed_at = Self::now();
         let (snapshot, done, promoted) = {
             let mut jobs = self.jobs.lock().unwrap();
-            let Some(job) = jobs.get_mut(id) else {
-                return None;
-            };
+            let job = jobs.get_mut(id)?;
             if job.token != token || job.info.status != "running" {
                 return None;
             }

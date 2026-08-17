@@ -56,15 +56,15 @@ fn prompt_editor_buffer_invariants_never_panic() {
     let mut state = PromptState::default();
 
     // Insertion of mixed Unicode, CJK, Emoji, Arabic
-    state.insert_str("Hello 你好 👋🏽 مرحبا");
-    assert!(state.cursor_byte_offset() <= state.buffer.len());
+    state.buffer.insert_str("Hello 你好 👋🏽 مرحبا");
+    assert!(state.buffer.cursor() <= state.buffer.len());
 
     // Backspace from end
     while !state.buffer.is_empty() {
-        state.backspace();
+        state.buffer.backspace();
     }
-    assert_eq!(state.buffer, "");
-    assert_eq!(state.cursor_byte_offset(), 0);
+    assert_eq!(state.buffer.text(), "");
+    assert_eq!(state.buffer.cursor(), 0);
 }
 
 #[test]

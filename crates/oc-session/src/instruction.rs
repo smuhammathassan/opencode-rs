@@ -288,7 +288,7 @@ mod tests {
                 input: Default::default(),
                 output: String::new(),
                 title: String::new(),
-                metadata: metadata,
+                metadata,
                 time: crate::v1::CompletedTime {
                     start: 0,
                     end: 1,

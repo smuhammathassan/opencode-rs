@@ -556,6 +556,6 @@ impl Database {
         let row = self.db.get(sql, &params)?.ok_or_else(|| {
             crate::error::Error::Row("event sequence upsert returned no row".into())
         })?;
-        Ok(row.get_by_name::<i64>("seq")?)
+        row.get_by_name::<i64>("seq")
     }
 }

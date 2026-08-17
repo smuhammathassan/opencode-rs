@@ -193,11 +193,10 @@ pub fn settle(
     call: &ToolCall,
     context: &mut CoreContext,
 ) -> Result<Settled, ToolError> {
-    let input = tool
-        .input
+    tool.input
         .validate(&call.input)
         .map_err(|error| ToolError::failure(format!("Invalid tool input: {error}")))?;
-    let _ = input;
+    ();
     let output = poll(tool, call.input.clone(), call, context)?;
     tool.output.validate(&output).map_err(|error| {
         ToolError::failure(format!(

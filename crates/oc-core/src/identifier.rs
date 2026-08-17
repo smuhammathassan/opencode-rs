@@ -116,6 +116,6 @@ mod tests {
         assert_eq!(id.len(), LENGTH);
         assert!(id
             .bytes()
-            .all(|b| CHARS.contains(&b) || (b'0'..=b'9').contains(&b)));
+            .all(|b: u8| CHARS.contains(&b) || b.is_ascii_digit()));
     }
 }

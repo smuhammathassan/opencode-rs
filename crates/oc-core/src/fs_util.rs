@@ -535,7 +535,9 @@ mod tests {
     fn contains_checks_relative_cross_platform() {
         let root = std::path::Path::new("a").join("b");
         let inside = root.join("c");
-        assert!(contains(&root, &inside));
+        let root_str = root.to_string_lossy();
+        let inside_str = inside.to_string_lossy();
+        assert!(contains(&root_str, &inside_str));
     }
 
     #[cfg(unix)]

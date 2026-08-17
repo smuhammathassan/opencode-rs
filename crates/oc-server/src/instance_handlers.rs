@@ -4269,8 +4269,9 @@ pub async fn openapi_json(State(_state): State<crate::state::AppState>) -> Handl
 #[cfg(test)]
 mod tests {
     use super::{
-        configured_model_for_config_with_auth_and_base, limit_messages, mcp_prompt_message_text,
-        prompt_text, safe_workspace_path,
+        command_prompt_parts, configured_model_for_config_with_auth_and_base, limit_messages,
+        mcp_prompt_message_text, model_from_value, prompt_text, run_command_shell,
+        safe_workspace_path,
     };
 
     #[test]

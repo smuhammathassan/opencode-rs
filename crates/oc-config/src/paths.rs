@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 /// Returns the home directory, honoring `OPENCODE_TEST_HOME` like
 /// `Global.Path.home`.
 pub fn home_dir() -> PathBuf {
-    if let Some(home) = std::env::var("OPENCODE_TEST_HOME").ok() {
+    if let Ok(home) = std::env::var("OPENCODE_TEST_HOME") {
         return PathBuf::from(home);
     }
     std::env::var("HOME")
@@ -21,7 +21,7 @@ pub fn home_dir() -> PathBuf {
 
 /// The xdg config directory (`Global.Path.config`): `$XDG_CONFIG_HOME/opencode`.
 pub fn config_dir() -> PathBuf {
-    if let Some(config_home) = std::env::var("XDG_CONFIG_HOME").ok() {
+    if let Ok(config_home) = std::env::var("XDG_CONFIG_HOME") {
         return PathBuf::from(config_home).join("opencode");
     }
     home_dir().join(".config").join("opencode")
@@ -41,13 +41,13 @@ pub fn find_up(targets: &[&str], start: &Path, stop: Option<&Path>) -> Vec<PathB
             }
         }
         if let Some(stop) = stop {
-            if stop == &dir {
+            if stop == dir {
                 break;
             }
         }
         let parent = dir.parent();
         match parent {
-            Some(parent) if parent != &dir => current = Some(parent.to_path_buf()),
+            Some(parent) if parent != dir => current = Some(parent.to_path_buf()),
             _ => break,
         }
     }
@@ -83,7 +83,7 @@ pub fn directories(directory: &Path, worktree: Option<&Path>) -> Vec<PathBuf> {
     for dir in find_up(&[".opencode"], &home_dir(), Some(&home_dir())) {
         push_unique(&mut out, dir);
     }
-    if let Some(config_dir) = std::env::var("OPENCODE_CONFIG_DIR").ok() {
+    if let Ok(config_dir) = std::env::var("OPENCODE_CONFIG_DIR") {
         push_unique(&mut out, PathBuf::from(config_dir));
     }
     out

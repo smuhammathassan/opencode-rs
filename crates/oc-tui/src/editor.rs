@@ -3,6 +3,27 @@
 use std::io::Write;
 use std::process::Command;
 
+/// Strip a single trailing newline from content that is otherwise a single
+/// line.  Multi-line content is returned unchanged so editors that always
+/// append `\n` don't silently eat the trailing line.
+///
+/// Mirrors `normalizePromptContent` from `reference/packages/tui/src/editor.ts`.
+pub fn normalize_prompt_content(content: &str) -> &str {
+    if let Some(body) = content.strip_suffix("\r\n") {
+        if !body.contains('\n') && !body.contains('\r') {
+            return body;
+        }
+        return content;
+    }
+    if let Some(body) = content.strip_suffix('\n') {
+        if !body.contains('\n') && !body.contains('\r') {
+            return body;
+        }
+        return content;
+    }
+    content
+}
+
 /// Open the configured editor with `initial` and return the resulting file.
 ///
 /// TUI raw mode and the alternate screen are suspended while the editor runs,

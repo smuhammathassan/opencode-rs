@@ -74,6 +74,6 @@ pub struct Enabled {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Value {
-    Server(Info),
+    Server(Box<Info>),
     Enabled(Enabled),
 }

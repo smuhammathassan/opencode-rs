@@ -95,20 +95,11 @@ pub enum AuthStatus {
     NotAuthenticated,
 }
 
+#[derive(Default)]
 pub struct McpOptions {
     pub auth: Option<Arc<McpAuth>>,
     pub default_timeout: Option<u64>,
     pub events: Option<mpsc::UnboundedSender<McpEvent>>,
-}
-
-impl Default for McpOptions {
-    fn default() -> Self {
-        McpOptions {
-            auth: None,
-            default_timeout: None,
-            events: None,
-        }
-    }
 }
 
 struct CreateResult {
@@ -320,7 +311,7 @@ impl Mcp {
         self.collect_from_connected(
             "prompts",
             None::<&catalog::KeyFn<crate::types::Prompt>>,
-            |client, timeout| catalog::prompts(client, timeout),
+            catalog::prompts,
             None,
         )
         .await
@@ -334,7 +325,7 @@ impl Mcp {
         self.collect_from_connected(
             "resources",
             Some(&|resource: &crate::types::Resource| resource.uri.clone()),
-            |client, timeout| catalog::resources(client, timeout),
+            catalog::resources,
             client_name,
         )
         .await
@@ -348,7 +339,7 @@ impl Mcp {
         self.collect_from_connected(
             "resource templates",
             Some(&|template: &crate::types::ResourceTemplate| template.uri_template.clone()),
-            |client, timeout| catalog::resource_templates(client, timeout),
+            catalog::resource_templates,
             client_name,
         )
         .await

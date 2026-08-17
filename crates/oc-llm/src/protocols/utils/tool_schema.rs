@@ -120,7 +120,7 @@ pub fn open_ai(schema: &Value) -> Value {
     let variants: Vec<&Value> = schema
         .get("anyOf")
         .and_then(Value::as_array)
-        .map(|array| array.iter().filter(|v| is_record(*v)).collect())
+        .map(|array| array.iter().filter(|v| is_record(v)).collect())
         .unwrap_or_default();
     let flattened = if variants.is_empty() {
         let mut obj = schema.as_object().cloned().unwrap_or_default();

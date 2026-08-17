@@ -1,7 +1,6 @@
 //! Shared test helpers for protocol golden and stream-parsing tests.
 #![allow(dead_code)]
 
-use std::pin::Pin;
 use std::sync::Arc;
 
 use futures::stream::{BoxStream, StreamExt};
@@ -61,7 +60,7 @@ pub async fn parse_events(
         .collect();
     let stream: BoxStream<'static, Result<FramePayload, LlmError>> =
         futures::stream::iter(frames).boxed();
-    let mut proto = ProtoStream::new(Pin::from(stream), protocol, request);
+    let mut proto = ProtoStream::new(stream, protocol, request);
     let mut events = Vec::new();
     while let Some(event) = proto.next().await {
         events.push(event.unwrap());

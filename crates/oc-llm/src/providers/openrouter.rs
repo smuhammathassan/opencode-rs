@@ -93,7 +93,7 @@ pub fn route() -> Route {
         provider: Some(profile.provider.to_string()),
         protocol: crate::route::Protocol::make(
             "openrouter-chat",
-            Arc::new(|request| from_request(request)),
+            Arc::new(from_request),
             openai_chat::protocol().stream,
         ),
         endpoint: crate::route::endpoint::path(

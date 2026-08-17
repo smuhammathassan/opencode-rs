@@ -322,14 +322,19 @@ fn compute_replacements(
     let mut line_index = 0;
     for chunk in chunks {
         if let Some(context) = &chunk.change_context {
-            let context_idx = seek_sequence(original_lines, &[context.clone()], line_index, false);
+            let context_idx = seek_sequence(
+                original_lines,
+                std::slice::from_ref(context),
+                line_index,
+                false,
+            );
             let context_idx = context_idx
                 .ok_or_else(|| format!("Failed to find context '{context}' in {file_path}"))?;
             line_index = context_idx + 1;
         }
 
         if chunk.old_lines.is_empty() {
-            let insertion_idx = if original_lines.last().map(|line| line == "") == Some(true) {
+            let insertion_idx = if original_lines.last().map(|line| line.is_empty()) == Some(true) {
                 original_lines.len() - 1
             } else {
                 original_lines.len()
@@ -543,10 +548,8 @@ pub fn maybe_parse_apply_patch_verified(
     argv: &[String],
     cwd: &str,
 ) -> Result<MaybeApplyPatchVerified, String> {
-    if argv.len() == 1 {
-        if parse_patch(&argv[0]).is_ok() {
-            return Err("ImplicitInvocation".to_string());
-        }
+    if argv.len() == 1 && parse_patch(&argv[0]).is_ok() {
+        return Err("ImplicitInvocation".to_string());
     }
     let result = maybe_parse_apply_patch(argv);
     match result {

@@ -19,7 +19,7 @@ pub fn merge_provider_options(items: &[Option<&ProviderOptions>]) -> Option<Prov
     let mut result: BTreeMap<String, BTreeMap<String, Value>> = BTreeMap::new();
     for item in items.iter().flatten() {
         for (provider, options) in *item {
-            let merged = merge_json_records(result.get(provider).map(|m| m.clone()), options);
+            let merged = merge_json_records(result.get(provider).cloned(), options);
             if let Some(merged) = merged {
                 result.insert(provider.clone(), merged);
             }
@@ -393,16 +393,14 @@ pub struct CachePolicyObject {
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[derive(Default)]
 pub enum CachePolicyMessages {
+    #[default]
     LatestUserMessage,
     LatestAssistant,
-    Tail { tail: usize },
-}
-
-impl Default for CachePolicyMessages {
-    fn default() -> Self {
-        CachePolicyMessages::LatestUserMessage
-    }
+    Tail {
+        tail: usize,
+    },
 }
 
 /// `CachePolicy` — `"auto" | "none" | CachePolicyObject`.

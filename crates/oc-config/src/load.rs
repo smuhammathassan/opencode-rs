@@ -1018,7 +1018,7 @@ pub fn resolve_plugin_spec(plugin: Spec, config_filepath: &str) -> Spec {
     } else {
         path_to_file_url(&base.join(specifier))
     };
-    let resolved = resolve_path_plugin_target(&file).unwrap_or_else(|_| file);
+    let resolved = resolve_path_plugin_target(&file).unwrap_or(file);
     match plugin {
         Spec::Package(_) => Spec::Package(resolved),
         Spec::Entry((_, options)) => Spec::Entry((resolved, options)),

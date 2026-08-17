@@ -107,9 +107,9 @@ pub mod webfetch {
         let accept = accept_header(&format);
         let client = crate::http::client();
         let response = crate::core::tool::run_future(Box::pin(fetch(
-            &client,
+            client,
             &url,
-            &accept,
+            accept,
             timeout
                 .unwrap_or(DEFAULT_TIMEOUT_SECONDS as f64)
                 .min(MAX_TIMEOUT_SECONDS as f64),
@@ -370,7 +370,7 @@ pub mod websearch {
                 "session_id": session_id,
             });
             crate::tool::mcp_websearch::call(
-                &client,
+                client,
                 PARALLEL_URL,
                 "web_search",
                 args,
@@ -386,7 +386,7 @@ pub mod websearch {
                 "livecrawl": input.get("livecrawl").and_then(|v| v.as_str()).unwrap_or("fallback"),
                 "contextMaxCharacters": input.get("contextMaxCharacters").and_then(|v| v.as_i64()),
             });
-            crate::tool::mcp_websearch::call(&client, EXA_URL, "web_search_exa", args, Vec::new())
+            crate::tool::mcp_websearch::call(client, EXA_URL, "web_search_exa", args, Vec::new())
                 .await
                 .map_err(ToolError::Other)
         }

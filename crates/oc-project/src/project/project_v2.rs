@@ -184,7 +184,7 @@ async fn up_target(target: &str, start: &str) -> Option<String> {
         }
         let parent = current.parent();
         match parent {
-            Some(parent) if parent != &current => current = parent.to_path_buf(),
+            Some(parent) if parent != current => current = parent.to_path_buf(),
             _ => return None,
         }
     }

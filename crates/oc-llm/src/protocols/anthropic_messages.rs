@@ -1212,7 +1212,7 @@ impl ProtocolStream for AnthropicMessagesStream {
 pub fn protocol() -> Protocol {
     Protocol::make(
         ADAPTER,
-        Arc::new(|request| from_request(request)),
+        Arc::new(from_request),
         Arc::new(AnthropicMessagesStream),
     )
 }

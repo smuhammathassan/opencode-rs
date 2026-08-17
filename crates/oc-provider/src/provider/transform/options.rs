@@ -132,15 +132,15 @@ pub fn options(model: &Model, session_id: &str, provider_options: Option<&JsonMa
         result.insert("include".to_string(), include_encrypted_reasoning());
     }
 
-    if model.api.npm == "@ai-sdk/google" || model.api.npm == "@ai-sdk/google-vertex" {
-        if model.capabilities.reasoning {
-            let mut thinking_config = JsonMap::new();
-            thinking_config.insert("includeThoughts".to_string(), Value::from(true));
-            if model.api.id.contains("gemini-3") {
-                thinking_config.insert("thinkingLevel".to_string(), Value::from("high"));
-            }
-            result.insert("thinkingConfig".to_string(), Value::Object(thinking_config));
+    if (model.api.npm == "@ai-sdk/google" || model.api.npm == "@ai-sdk/google-vertex")
+        && model.capabilities.reasoning
+    {
+        let mut thinking_config = JsonMap::new();
+        thinking_config.insert("includeThoughts".to_string(), Value::from(true));
+        if model.api.id.contains("gemini-3") {
+            thinking_config.insert("thinkingLevel".to_string(), Value::from("high"));
         }
+        result.insert("thinkingConfig".to_string(), Value::Object(thinking_config));
     }
 
     let model_id = model.api.id.to_lowercase();
@@ -249,13 +249,14 @@ pub fn small_options(model: &Model) -> JsonMap {
         let merged = crate::provider::merge_deep(json!({ "store": false }), Value::Object(small));
         return merged.as_object().unwrap().clone();
     }
-    if model.provider_id == "openrouter" || model.provider_id == "llmgateway" {
-        if small.is_empty() && model.api.id.contains("google") {
-            return json!({ "reasoning": { "enabled": false } })
-                .as_object()
-                .unwrap()
-                .clone();
-        }
+    if (model.provider_id == "openrouter" || model.provider_id == "llmgateway")
+        && small.is_empty()
+        && model.api.id.contains("google")
+    {
+        return json!({ "reasoning": { "enabled": false } })
+            .as_object()
+            .unwrap()
+            .clone();
     }
     if model.provider_id == "venice" {
         if !small.is_empty() {

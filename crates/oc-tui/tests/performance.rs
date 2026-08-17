@@ -17,7 +17,7 @@ use std::time::Instant;
 fn cold_theme_and_keymap_init_time() {
     let start = Instant::now();
     let theme = Theme::dark();
-    let keymap = Keymap::new(KeymapOptions::default());
+    let _keymap = Keymap::new(KeymapOptions::default());
     let config = ResolvedConfig::default_config();
     let prompt = PromptState::default();
     let sync = SyncState::default();
@@ -29,10 +29,10 @@ fn cold_theme_and_keymap_init_time() {
         elapsed
     );
     assert_eq!(theme.name, "opencode");
-    assert_eq!(keymap.options.leader, "ctrl+x");
+    assert_eq!(oc_tui::keybind::LEADER_DEFAULT, "ctrl+x");
     assert!(config.mouse);
-    assert_eq!(prompt.buffer, "");
-    assert!(sync.sessions().is_empty());
+    assert_eq!(prompt.text(), "");
+    assert!(sync.sessions.is_empty());
 }
 
 #[test]

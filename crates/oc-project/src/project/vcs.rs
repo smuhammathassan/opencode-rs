@@ -233,7 +233,7 @@ async fn native_patch(
 }
 
 fn total_patch(file: &str, patch: &str, total: usize) -> (String, bool) {
-    if total + patch.as_bytes().len() <= MAX_TOTAL_PATCH_BYTES {
+    if total + patch.len() <= MAX_TOTAL_PATCH_BYTES {
         return (patch.to_string(), false);
     }
     (empty_patch(file), true)
@@ -294,7 +294,7 @@ async fn files(
         };
         capped = capped || result.1;
         if !capped {
-            total += result.0.as_bytes().len();
+            total += result.0.len();
             capped = total >= MAX_TOTAL_PATCH_BYTES;
         }
         next.push(VcsFileDiff {

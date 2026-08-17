@@ -166,7 +166,7 @@ impl InstanceStore {
                 if &value != ctx {
                     return;
                 }
-                self.dispose_entry(&ctx.directory, &entry, &ctx).await;
+                self.dispose_entry(&ctx.directory, &entry, ctx).await;
             }
         }
     }

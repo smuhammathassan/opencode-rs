@@ -744,15 +744,12 @@ pub fn response_reduce(state: &ResponseState, event: &LlmEvent) -> ResponseState
 
 /// `LLMResponse.complete` — build a finished response or `None`.
 pub fn response_complete(state: &ResponseState) -> Option<LlmResponse> {
-    match state.finish_reason {
-        None => None,
-        Some(reason) => Some(LlmResponse {
-            message: state.message.clone(),
-            events: state.events.clone(),
-            usage: state.usage.clone(),
-            finish_reason: reason,
-        }),
-    }
+    state.finish_reason.map(|reason| LlmResponse {
+        message: state.message.clone(),
+        events: state.events.clone(),
+        usage: state.usage.clone(),
+        finish_reason: reason,
+    })
 }
 
 /// `LLMResponse.fromEvents`.

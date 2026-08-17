@@ -170,6 +170,7 @@ pub type Listener = Arc<dyn Fn(&Payload) + Send + Sync>;
 type Commit = Box<dyn FnOnce(i64) -> Result<(), StoreError> + Send>;
 
 /// Options for `Store::publish`, mirroring `EventV2.PublishOptions`.
+#[derive(Default)]
 pub struct PublishOptions {
     pub id: Option<EventID>,
     pub metadata: Option<Value>,
@@ -177,17 +178,6 @@ pub struct PublishOptions {
     /// Local operational projection committed atomically with the durable event.
     /// Not replayed or serialized.
     pub commit: Option<Commit>,
-}
-
-impl Default for PublishOptions {
-    fn default() -> Self {
-        Self {
-            id: None,
-            metadata: None,
-            location: None,
-            commit: None,
-        }
-    }
 }
 
 /// Options for `Store::replay`, mirroring the replay options in `EventV2.replay`.

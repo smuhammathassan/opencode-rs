@@ -39,7 +39,7 @@ pub fn def() -> CoreTool {
         Schema::Raw(serde_json::json!({})),
         None,
         None,
-        Some(std::sync::Arc::new(|input, output| to_model_output(input, output))),
+        Some(std::sync::Arc::new(to_model_output)),
         execute,
     )
 }

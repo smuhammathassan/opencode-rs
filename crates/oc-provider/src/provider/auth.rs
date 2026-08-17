@@ -491,7 +491,7 @@ where
             ));
         }
         let code = input.code.as_deref();
-        if pending.result.method == CallbackMethod::Code && code.map_or(true, str::is_empty) {
+        if pending.result.method == CallbackMethod::Code && code.is_none_or(str::is_empty) {
             return Err(ProviderAuthError::OauthCodeMissing(OauthCodeMissing {
                 provider_id: provider_id.to_string(),
             }));

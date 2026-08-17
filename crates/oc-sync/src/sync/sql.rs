@@ -49,7 +49,7 @@ pub struct Table {
 impl Table {
     pub(crate) fn render(&self) -> String {
         let mut out = String::new();
-        write!(out, "CREATE TABLE `{}` (\n", self.name).unwrap();
+        writeln!(out, "CREATE TABLE `{}` (", self.name).unwrap();
         let mut lines: Vec<String> = Vec::new();
         for column in &self.columns {
             let mut line = format!("\t`{}` {}", column.name, column.ty);

@@ -435,7 +435,7 @@ fn filesystem_entry_and_match() {
     };
     assert_eq!(to_string(&entry), r#"{"path":"src/main.rs","type":"file"}"#);
     let m = filesystem::Match {
-        entry: entry,
+        entry,
         line: 3,
         offset: 12,
         text: "fn main".to_string(),

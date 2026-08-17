@@ -221,7 +221,7 @@ impl Transport {
             .http
             .execute(request)
             .await
-            .map_err(|err| ClientError::Transport(err))?;
+            .map_err(ClientError::Transport)?;
         let status = response.status().as_u16();
         if status != desc.success_status {
             return Err(self.response_error(desc, response).await);
@@ -249,7 +249,7 @@ impl Transport {
             .http
             .execute(request)
             .await
-            .map_err(|err| ClientError::Transport(err))?;
+            .map_err(ClientError::Transport)?;
         let status = response.status().as_u16();
         if status != desc.success_status {
             return Err(self.response_error(desc, response).await);
@@ -281,10 +281,7 @@ impl Transport {
         if !is_json(&response) {
             return Err(ClientError::UnsupportedContentType.into());
         }
-        let text = response
-            .text()
-            .await
-            .map_err(|err| ClientError::Transport(err))?;
+        let text = response.text().await.map_err(ClientError::Transport)?;
         if text.is_empty() {
             return serde_json::from_value(Value::Null)
                 .map_err(|err| ClientError::MalformedResponse(Some(err)).into());
@@ -331,7 +328,7 @@ impl Transport {
         if let Some(body) = &desc.body {
             builder = builder.json(body);
         }
-        builder.build().map_err(|err| ClientError::Transport(err))
+        builder.build().map_err(ClientError::Transport)
     }
 
     fn build_raw_request(
@@ -353,7 +350,7 @@ impl Transport {
         if let Some(body) = &request.body {
             builder = builder.json(body);
         }
-        builder.build().map_err(|err| ClientError::Transport(err))
+        builder.build().map_err(ClientError::Transport)
     }
 
     fn build_url(&self, desc: &RequestDescriptor) -> Url {
@@ -370,8 +367,7 @@ impl Transport {
             for (key, value) in query {
                 append_query(&mut pairs, key, value);
             }
-            url.query_pairs_mut()
-                .extend_pairs(pairs.into_iter().map(|(key, value)| (key, value)));
+            url.query_pairs_mut().extend_pairs(pairs.into_iter());
         }
         url
     }
