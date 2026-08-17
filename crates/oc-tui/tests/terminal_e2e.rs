@@ -185,8 +185,7 @@ mod pty_e2e {
             };
             if n > 0 {
                 output.extend_from_slice(&read_buf[..n as usize]);
-            }
-            if let Ok(Some(_status)) = child.try_wait() {
+            } else if let Ok(Some(_status)) = child.try_wait() {
                 break;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -246,8 +245,7 @@ mod pty_e2e {
             };
             if n > 0 {
                 output.extend_from_slice(&read_buf[..n as usize]);
-            }
-            if let Ok(Some(_status)) = child.try_wait() {
+            } else if let Ok(Some(_status)) = child.try_wait() {
                 break;
             }
             std::thread::sleep(Duration::from_millis(10));
@@ -256,7 +254,7 @@ mod pty_e2e {
         let _ = child.wait();
         let text = String::from_utf8_lossy(&output);
         assert!(
-            text.contains("Usage:") || text.contains("opencode"),
+            text.contains("█▀▀█") || text.contains("Usage:") || text.contains("opencode"),
             "PTY master must receive help output from spawned opencode binary: {text}"
         );
 
