@@ -20,7 +20,7 @@ console.log(canon(cases.map(duration)));
 
 Exit Code: 0
 Duration: 148 ms
-Timestamp: 2026-08-17T09:31:36Z
+Timestamp: 2026-08-17T09:32:28Z
 SHA-256 Output Hash: b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c
 Output:
 ["0ms","5.0s","1m 5s","1h 2m","1d 0h"]

@@ -1,8 +1,0 @@
-=== OpenCode v1.18.13 Node Reference Process Frame ===
-Scenario: 021-clipboard-macos-osascript - Clipboard macOS osascript
-Executed Command: node -e console.log('Selected clipboard: [osascript, -e, set the clipboard]');
-Exit Code: 0
-Duration: 40 ms
-Timestamp: 2026-08-17T08:21:32Z
-Output:
-Selected clipboard: [osascript, -e, set the clipboard]

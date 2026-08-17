@@ -11,6 +11,7 @@ Validates that:
 """
 
 import csv
+import hashlib
 import json
 import os
 import re
@@ -110,6 +111,12 @@ def verify_inventory():
         return False
     return True
 
+def canonical_json(obj):
+    return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+def sha256(text):
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
 def verify_differential_scenarios():
     if not DIFF_DIR.exists():
         print(f"ERROR: {DIFF_DIR} does not exist", file=sys.stderr)
@@ -136,8 +143,14 @@ def verify_differential_scenarios():
                 with open(scenario_json, "r", encoding="utf-8") as f:
                     sc_data = json.load(f)
                     ref_src = sc_data.get("reference_source", "")
-                    if not ref_src or not (REPO_ROOT / ref_src).exists():
+                    if "*" not in ref_src and (not ref_src or not (REPO_ROOT / ref_src).exists()):
                         errors.append(f"Scenario {sc_dir.name}: reference_source '{ref_src}' missing in repository")
+                    ref_cmd = " ".join(sc_data.get("reference_command", []))
+                    if "--import" not in ref_cmd or "ts_loader" not in ref_cmd:
+                        errors.append(f"Scenario {sc_dir.name}: reference_command must execute via ts_loader")
+                    rust_cmd = " ".join(sc_data.get("rust_command", []))
+                    if "diff_scenarios" not in rust_cmd:
+                        errors.append(f"Scenario {sc_dir.name}: rust_command must execute diff_scenarios harness")
             except Exception as e:
                 errors.append(f"Scenario {sc_dir.name}: invalid scenario.json: {e}")
 
@@ -149,6 +162,12 @@ def verify_differential_scenarios():
                 errors.append(f"Scenario {sc_dir.name}: reference-frame.txt lacks real execution provenance")
             if "SHA-256 Output Hash: " not in ref_content:
                 errors.append(f"Scenario {sc_dir.name}: reference-frame.txt lacks cryptographic hash")
+            if "--import" not in ref_content or "ts_loader" not in ref_content:
+                errors.append(f"Scenario {sc_dir.name}: reference execution must use ts_loader ESM module loader")
+            if "import " not in ref_content or "reference/" not in ref_content:
+                errors.append(f"Scenario {sc_dir.name}: reference eval must directly import from reference/")
+            if "console.log(\"Selected clipboard" in ref_content:
+                errors.append(f"Scenario {sc_dir.name}: forbidden handwritten reference behavior detected")
 
         if not rust_frame.exists():
             errors.append(f"Scenario {sc_dir.name}: missing rust-frame.txt")
@@ -158,6 +177,8 @@ def verify_differential_scenarios():
                 errors.append(f"Scenario {sc_dir.name}: rust-frame.txt lacks real execution provenance")
             if "SHA-256 Output Hash: " not in rust_content:
                 errors.append(f"Scenario {sc_dir.name}: rust-frame.txt lacks cryptographic hash")
+            if "diff_scenarios" not in rust_content:
+                errors.append(f"Scenario {sc_dir.name}: rust execution must execute production diff_scenarios")
 
         if not result_json.exists():
             errors.append(f"Scenario {sc_dir.name}: missing result.json")
@@ -169,10 +190,29 @@ def verify_differential_scenarios():
                         errors.append(f"Scenario {sc_dir.name}: result status is '{res_data.get('status')}', expected PASS")
                     if not res_data.get("matched", False):
                         errors.append(f"Scenario {sc_dir.name}: matched is not True")
+                    if not res_data.get("outputs_equal", False):
+                        errors.append(f"Scenario {sc_dir.name}: outputs_equal is not True")
                     if res_data.get("reference_exit_code") != 0 or res_data.get("rust_exit_code") != 0:
                         errors.append(f"Scenario {sc_dir.name}: process exit code not 0")
-                    if not res_data.get("reference_output_sha256") or not res_data.get("rust_output_sha256"):
-                        errors.append(f"Scenario {sc_dir.name}: missing cryptographic SHA-256 hashes in result.json")
+                    
+                    # Recompute cryptographic SHA-256 hashes of actual outputs
+                    ref_payload = res_data.get("reference_output")
+                    rust_payload = res_data.get("rust_output")
+                    if isinstance(rust_payload, dict) and "result" in rust_payload:
+                        rust_payload = rust_payload["result"]
+                    
+                    if ref_payload != rust_payload:
+                        errors.append(f"Scenario {sc_dir.name}: reference_output does not match rust_output")
+
+                    recomputed_ref_hash = sha256(canonical_json(ref_payload))
+                    recomputed_rust_hash = sha256(canonical_json(rust_payload))
+
+                    if res_data.get("reference_output_sha256") != recomputed_ref_hash:
+                        errors.append(f"Scenario {sc_dir.name}: reference_output_sha256 mismatch (recorded {res_data.get('reference_output_sha256')}, recomputed {recomputed_ref_hash})")
+                    if res_data.get("rust_output_sha256") != recomputed_rust_hash:
+                        errors.append(f"Scenario {sc_dir.name}: rust_output_sha256 mismatch (recorded {res_data.get('rust_output_sha256')}, recomputed {recomputed_rust_hash})")
+                    if recomputed_ref_hash != recomputed_rust_hash:
+                        errors.append(f"Scenario {sc_dir.name}: cryptographic output hashes differ ({recomputed_ref_hash} vs {recomputed_rust_hash})")
             except Exception as e:
                 errors.append(f"Scenario {sc_dir.name}: invalid result.json: {e}")
 

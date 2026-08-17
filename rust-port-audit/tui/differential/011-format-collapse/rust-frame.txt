@@ -2,8 +2,8 @@
 Scenario: 011-format-collapse - Tool Output Collapse
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 011-format-collapse
 Exit Code: 0
-Duration: 559 ms
-Timestamp: 2026-08-17T09:31:33Z
+Duration: 566 ms
+Timestamp: 2026-08-17T09:32:25Z
 SHA-256 Output Hash: 7d95da60150e14cd6bd96428abf84a269d72c5153c8ce3bbe511168f03981284
 Output:
 {"long":{"output":"line 1\nline 2\nline 3\nline 4\nline 5\n…","overflow":true},"short":{"output":"hello\nworld","overflow":false},"wide":{"output":"abcd…","overflow":true}}

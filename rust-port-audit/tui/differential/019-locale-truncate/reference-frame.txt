@@ -18,8 +18,8 @@ import { truncate, truncateMiddle } from "./reference/packages/tui/src/util/loca
 console.log(canon([truncate("a very long line of text",10), truncate("short",10), truncateMiddle("abcdefghijklmnop",8)]));
 
 Exit Code: 0
-Duration: 154 ms
-Timestamp: 2026-08-17T09:31:38Z
+Duration: 147 ms
+Timestamp: 2026-08-17T09:32:31Z
 SHA-256 Output Hash: ec66a70311a67ee42ad19f7d158171083b3be7f15935d047c8a8f87250eee55a
 Output:
 ["a very lo…","short","abcd…nop"]

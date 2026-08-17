@@ -1500,6 +1500,6 @@
   "rust_output_sha256": "2b686914ca51aebbb999c91e6ed08373cfcdfd2953f8ca931ae7049ece33bd3e",
   "hashes_equal": true,
   "reference_duration_ms": 168,
-  "rust_duration_ms": 562,
-  "executed_at": "2026-08-17T09:31:43Z"
+  "rust_duration_ms": 549,
+  "executed_at": "2026-08-17T09:32:36Z"
 }

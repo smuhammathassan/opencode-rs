@@ -18,8 +18,8 @@ import { DEFAULT_THEMES } from "./reference/packages/tui/src/theme/index.ts";
 console.log(canon(Object.keys(DEFAULT_THEMES).slice().sort()));
 
 Exit Code: 0
-Duration: 172 ms
-Timestamp: 2026-08-17T09:31:30Z
+Duration: 165 ms
+Timestamp: 2026-08-17T09:32:22Z
 SHA-256 Output Hash: 8b782d8cbe01ef8e3d0438f204e3834a6d57b2f9fc2531ef27710e7125d0cb03
 Output:
 ["aura","ayu","carbonfox","catppuccin","catppuccin-frappe","catppuccin-macchiato","cobalt2","cursor","dracula","everforest","flexoki","github","gruvbox","kanagawa","lucent-orng","material","matrix","mercury","monokai","nightowl","nord","one-dark","opencode","orng","osaka-jade","palenight","rosepine","solarized","synthwave84","tokyonight","vercel","vesper","zenburn"]

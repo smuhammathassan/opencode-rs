@@ -2,8 +2,8 @@
 Scenario: 019-locale-truncate - Locale Truncation
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 019-locale-truncate
 Exit Code: 0
-Duration: 535 ms
-Timestamp: 2026-08-17T09:31:39Z
+Duration: 572 ms
+Timestamp: 2026-08-17T09:32:31Z
 SHA-256 Output Hash: ec66a70311a67ee42ad19f7d158171083b3be7f15935d047c8a8f87250eee55a
 Output:
 ["a very lo…","short","abcd…nop"]

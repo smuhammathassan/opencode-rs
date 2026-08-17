@@ -2,8 +2,8 @@
 Scenario: 001-prompt-history-parse - Prompt History JSONL Parse and Corruption Recovery
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 001-prompt-history-parse
 Exit Code: 0
-Duration: 1368 ms
-Timestamp: 2026-08-17T09:31:25Z
+Duration: 639 ms
+Timestamp: 2026-08-17T09:32:17Z
 SHA-256 Output Hash: 28f96abb29a66c73d6c71b5245bb03cbff2e9ce0e210c401a43af0cc3cd9ccdd
 Output:
 {"corrupt":[{"input":"one","parts":[]},{"input":"two","parts":[]}],"empty_len":0,"overflow_first":"5","overflow_len":50}

@@ -2,8 +2,8 @@
 Scenario: 004-prompt-stash - Prompt Stash Parse with Cap
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 004-prompt-stash
 Exit Code: 0
-Duration: 548 ms
-Timestamp: 2026-08-17T09:31:28Z
+Duration: 541 ms
+Timestamp: 2026-08-17T09:32:20Z
 SHA-256 Output Hash: e42b97389b5426f7975bc0435768b0aa373448e50f42617d2a11825bcdb47f29
 Output:
 {"first":"overflow3","len":50,"max":50}

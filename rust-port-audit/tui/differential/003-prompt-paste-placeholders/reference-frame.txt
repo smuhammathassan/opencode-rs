@@ -19,8 +19,8 @@ const parts = [{type:"text",text:"line1\nline2",source:{text:{value:"[Pasted ~2 
 console.log(canon([expandPastedTextPlaceholders("[Pasted ~2 lines] tail",parts), expandPastedTextPlaceholders("plain tail",[])]));
 
 Exit Code: 0
-Duration: 166 ms
-Timestamp: 2026-08-17T09:31:27Z
+Duration: 170 ms
+Timestamp: 2026-08-17T09:32:19Z
 SHA-256 Output Hash: 80e848236ef1f2f62b19319f9cb72495d019c961eb4a596b222fd6f5b5fcd715
 Output:
 ["line1\nline2 tail","plain tail"]

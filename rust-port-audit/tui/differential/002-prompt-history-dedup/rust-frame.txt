@@ -2,8 +2,8 @@
 Scenario: 002-prompt-history-dedup - Prompt History Consecutive Deduplication
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 002-prompt-history-dedup
 Exit Code: 0
-Duration: 764 ms
-Timestamp: 2026-08-17T09:31:26Z
+Duration: 550 ms
+Timestamp: 2026-08-17T09:32:18Z
 SHA-256 Output Hash: c1480cda61a1a2b79ccc4ff81910cf1cac7f556849de92e717132bf3846e8c19
 Output:
 [false,true,false,false]

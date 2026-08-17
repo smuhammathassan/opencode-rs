@@ -18,8 +18,8 @@ import { copyCommand } from "./reference/packages/tui/src/clipboard.ts";
 console.log(canon(copyCommand("linux",false,()=>false)));
 
 Exit Code: 0
-Duration: 151 ms
-Timestamp: 2026-08-17T09:31:41Z
+Duration: 152 ms
+Timestamp: 2026-08-17T09:32:33Z
 SHA-256 Output Hash: 74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b
 Output:
 null

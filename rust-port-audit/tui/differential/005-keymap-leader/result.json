@@ -21,7 +21,7 @@
   "reference_output_sha256": "d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc",
   "rust_output_sha256": "d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc",
   "hashes_equal": true,
-  "reference_duration_ms": 161,
-  "rust_duration_ms": 560,
-  "executed_at": "2026-08-17T09:31:29Z"
+  "reference_duration_ms": 169,
+  "rust_duration_ms": 551,
+  "executed_at": "2026-08-17T09:32:21Z"
 }

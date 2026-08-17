@@ -2,8 +2,8 @@
 Scenario: 005-keymap-leader - Keymap Leader Token and Base Mode Constants
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 005-keymap-leader
 Exit Code: 0
-Duration: 560 ms
-Timestamp: 2026-08-17T09:31:28Z
+Duration: 551 ms
+Timestamp: 2026-08-17T09:32:20Z
 SHA-256 Output Hash: d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc
 Output:
 {"base_mode":"base","leader_token":"leader"}
