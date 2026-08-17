@@ -8,6 +8,7 @@ use ratatui::style::Color;
 
 #[derive(Debug, Clone)]
 pub struct Theme {
+    pub name: String,
     pub mode: Mode,
     pub primary: Color,
     pub secondary: Color,
@@ -49,25 +50,236 @@ pub enum Mode {
 }
 
 impl Theme {
+    pub const ALL_THEMES: &'static [&'static str] = &[
+        "opencode",
+        "tokyonight",
+        "dracula",
+        "nord",
+        "catppuccin",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "gruvbox",
+        "one-dark",
+        "solarized",
+        "github",
+        "monokai",
+        "material",
+        "matrix",
+        "rosepine",
+        "nightowl",
+        "everforest",
+        "aura",
+        "ayu",
+        "carbonfox",
+        "cobalt2",
+        "cursor",
+        "flexoki",
+        "kanagawa",
+        "lucent-orng",
+        "mercury",
+        "orng",
+        "osaka-jade",
+        "palenight",
+        "synthwave84",
+        "vercel",
+        "vesper",
+        "zenburn",
+    ];
+
+    pub fn available_themes() -> &'static [&'static str] {
+        Self::ALL_THEMES
+    }
+
     pub fn dark() -> Self {
-        Self::default()
+        Self::by_name("opencode", Mode::Dark)
     }
 
     pub fn light() -> Self {
-        let mut theme = Self::dark();
-        theme.mode = Mode::Light;
-        theme
+        Self::by_name("opencode", Mode::Light)
+    }
+
+    pub fn by_name(name: &str, mode: Mode) -> Self {
+        let mut t = Self::default();
+        t.name = name.to_string();
+        t.mode = mode;
+
+        match (name, mode) {
+            ("tokyonight", Mode::Dark) => {
+                t.primary = from_hex("#82aaff");
+                t.secondary = from_hex("#c099ff");
+                t.accent = from_hex("#ff966c");
+                t.error = from_hex("#ff757f");
+                t.warning = from_hex("#ff966c");
+                t.success = from_hex("#c3e88d");
+                t.info = from_hex("#82aaff");
+                t.text = from_hex("#c8d3f5");
+                t.text_muted = from_hex("#828bb8");
+                t.background = from_hex("#1a1b26");
+                t.background_panel = from_hex("#1e2030");
+                t.background_element = from_hex("#222436");
+                t.border = from_hex("#737aa2");
+                t.border_active = from_hex("#9099b2");
+                t.border_subtle = from_hex("#545c7e");
+            }
+            ("dracula", Mode::Dark) => {
+                t.primary = from_hex("#bd93f9");
+                t.secondary = from_hex("#8be9fd");
+                t.accent = from_hex("#ff79c6");
+                t.error = from_hex("#ff5555");
+                t.warning = from_hex("#ffb86c");
+                t.success = from_hex("#50fa7b");
+                t.info = from_hex("#8be9fd");
+                t.text = from_hex("#f8f8f2");
+                t.text_muted = from_hex("#6272a4");
+                t.background = from_hex("#282a36");
+                t.background_panel = from_hex("#21222c");
+                t.background_element = from_hex("#343746");
+                t.border = from_hex("#6272a4");
+                t.border_active = from_hex("#bd93f9");
+                t.border_subtle = from_hex("#44475a");
+            }
+            ("nord", Mode::Dark) => {
+                t.primary = from_hex("#88c0d0");
+                t.secondary = from_hex("#81a1c1");
+                t.accent = from_hex("#b48ead");
+                t.error = from_hex("#bf616a");
+                t.warning = from_hex("#ebcb8b");
+                t.success = from_hex("#a3be8c");
+                t.info = from_hex("#8fbcbb");
+                t.text = from_hex("#eceff4");
+                t.text_muted = from_hex("#4c566a");
+                t.background = from_hex("#2e3440");
+                t.background_panel = from_hex("#242933");
+                t.background_element = from_hex("#3b4252");
+                t.border = from_hex("#434c5e");
+                t.border_active = from_hex("#88c0d0");
+                t.border_subtle = from_hex("#3b4252");
+            }
+            ("catppuccin" | "catppuccin-macchiato", Mode::Dark) => {
+                t.primary = from_hex("#cba6f7");
+                t.secondary = from_hex("#89b4fa");
+                t.accent = from_hex("#f38ba8");
+                t.error = from_hex("#f38ba8");
+                t.warning = from_hex("#fab387");
+                t.success = from_hex("#a6e3a1");
+                t.info = from_hex("#89dceb");
+                t.text = from_hex("#cdd6f4");
+                t.text_muted = from_hex("#6c7086");
+                t.background = from_hex("#1e1e2e");
+                t.background_panel = from_hex("#181825");
+                t.background_element = from_hex("#313244");
+                t.border = from_hex("#585b70");
+                t.border_active = from_hex("#cba6f7");
+                t.border_subtle = from_hex("#45475a");
+            }
+            ("gruvbox", Mode::Dark) => {
+                t.primary = from_hex("#fe8019");
+                t.secondary = from_hex("#83a598");
+                t.accent = from_hex("#fabd2f");
+                t.error = from_hex("#fb4934");
+                t.warning = from_hex("#fe8019");
+                t.success = from_hex("#b8bb26");
+                t.info = from_hex("#8ec07c");
+                t.text = from_hex("#ebdbb2");
+                t.text_muted = from_hex("#928374");
+                t.background = from_hex("#282828");
+                t.background_panel = from_hex("#1d2021");
+                t.background_element = from_hex("#3c3836");
+                t.border = from_hex("#504945");
+                t.border_active = from_hex("#fe8019");
+                t.border_subtle = from_hex("#3c3836");
+            }
+            ("one-dark", Mode::Dark) => {
+                t.primary = from_hex("#61afef");
+                t.secondary = from_hex("#c678dd");
+                t.accent = from_hex("#e5c07b");
+                t.error = from_hex("#e06c75");
+                t.warning = from_hex("#d19a66");
+                t.success = from_hex("#98c379");
+                t.info = from_hex("#56b6c2");
+                t.text = from_hex("#abb2bf");
+                t.text_muted = from_hex("#5c6370");
+                t.background = from_hex("#282c34");
+                t.background_panel = from_hex("#21252b");
+                t.background_element = from_hex("#2c313a");
+                t.border = from_hex("#4b5263");
+                t.border_active = from_hex("#61afef");
+                t.border_subtle = from_hex("#3e4451");
+            }
+            ("github", Mode::Dark) => {
+                t.primary = from_hex("#58a6ff");
+                t.secondary = from_hex("#bc8cff");
+                t.accent = from_hex("#d29922");
+                t.error = from_hex("#f85149");
+                t.warning = from_hex("#d29922");
+                t.success = from_hex("#3fb950");
+                t.info = from_hex("#58a6ff");
+                t.text = from_hex("#c9d1d9");
+                t.text_muted = from_hex("#8b949e");
+                t.background = from_hex("#0d1117");
+                t.background_panel = from_hex("#161b22");
+                t.background_element = from_hex("#21262d");
+                t.border = from_hex("#30363d");
+                t.border_active = from_hex("#58a6ff");
+                t.border_subtle = from_hex("#21262d");
+            }
+            ("matrix", Mode::Dark) => {
+                t.primary = from_hex("#00ff41");
+                t.secondary = from_hex("#008f11");
+                t.accent = from_hex("#00ff41");
+                t.error = from_hex("#ff0033");
+                t.warning = from_hex("#00ff41");
+                t.success = from_hex("#00ff41");
+                t.info = from_hex("#008f11");
+                t.text = from_hex("#00ff41");
+                t.text_muted = from_hex("#008f11");
+                t.background = from_hex("#0d0208");
+                t.background_panel = from_hex("#001100");
+                t.background_element = from_hex("#002200");
+                t.border = from_hex("#008f11");
+                t.border_active = from_hex("#00ff41");
+                t.border_subtle = from_hex("#003b00");
+            }
+            ("vesper", Mode::Dark) => {
+                t.primary = from_hex("#ffc799");
+                t.secondary = from_hex("#99ffe4");
+                t.accent = from_hex("#ff99aa");
+                t.error = from_hex("#ff8080");
+                t.warning = from_hex("#ffc799");
+                t.success = from_hex("#99ffe4");
+                t.info = from_hex("#acd1f0");
+                t.text = from_hex("#ffffff");
+                t.text_muted = from_hex("#505050");
+                t.background = from_hex("#101010");
+                t.background_panel = from_hex("#161616");
+                t.background_element = from_hex("#232323");
+                t.border = from_hex("#282828");
+                t.border_active = from_hex("#ffc799");
+                t.border_subtle = from_hex("#1c1c1c");
+            }
+            _ if mode == Mode::Light => {
+                t.text = from_hex("#202020");
+                t.text_muted = from_hex("#707070");
+                t.background = from_hex("#f8f9fa");
+                t.background_panel = from_hex("#ffffff");
+                t.background_element = from_hex("#e9ecef");
+                t.background_menu = from_hex("#e9ecef");
+                t.border = from_hex("#ced4da");
+                t.border_active = from_hex("#adb5bd");
+                t.border_subtle = from_hex("#dee2e6");
+                t.diff_added_bg = from_hex("#d4edda");
+                t.diff_removed_bg = from_hex("#f8d7da");
+                t.diff_context_bg = from_hex("#ffffff");
+                t.markdown_text = from_hex("#202020");
+            }
+            _ => {}
+        }
+        t
     }
 
     /// Build the supported theme from the resolved TUI settings.
-    ///
-    /// The reference accepts named theme assets. This port currently ships
-    /// only the built-in `opencode` palette, so the resolved name falls back
-    /// to it while preserving the configured light/dark mode.
     pub fn from_config(config: &crate::config::ResolvedConfig) -> Self {
-        let mut theme = Self::dark();
-        theme.mode = config.theme_mode;
-        theme
+        Self::by_name("opencode", config.theme_mode)
     }
 
     /// Default agent color palette.
@@ -128,6 +340,7 @@ impl Theme {
 impl Default for Theme {
     fn default() -> Self {
         Theme {
+            name: "opencode".to_string(),
             mode: Mode::Dark,
             primary: from_hex("#fab283"),
             secondary: from_hex("#5c9cf5"),

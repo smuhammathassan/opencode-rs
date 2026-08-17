@@ -1583,6 +1583,7 @@ impl App {
             "agent.list" => self.open_dialog(DialogKind::AgentList),
             "prompt.skills" => self.open_dialog(DialogKind::SkillList),
             "provider.connect" => self.open_dialog(DialogKind::ProviderList),
+            "mcp.list" => self.show_mcp_dialog(),
             "help.show" => self.open_dialog(DialogKind::Help),
             "opencode.status" => self.show_status_dialog(),
             "opencode.debug" => self.show_debug_dialog(),
@@ -1980,14 +1981,56 @@ impl App {
     }
 
     fn show_theme_dialog(&mut self) {
-        let mut items = vec![DialogItem::new("opencode")];
+        let mut items = Vec::new();
         if self.theme.mode == Mode::Dark {
-            items.push(DialogItem::new("Switch to light mode"));
+            items.push(
+                DialogItem::new("Switch to light mode")
+                    .with_description("Toggle overall appearance to Light mode"),
+            );
         } else {
-            items.push(DialogItem::new("Switch to dark mode"));
+            items.push(
+                DialogItem::new("Switch to dark mode")
+                    .with_description("Toggle overall appearance to Dark mode"),
+            );
+        }
+        for name in Theme::available_themes() {
+            let mut item = DialogItem::new(*name).with_description("Built-in color theme");
+            if *name == self.theme.name {
+                item.selected = true;
+            }
+            items.push(item);
         }
         self.dialog = Some(DialogState::new(DialogKind::InfoItems {
             title: "Themes".to_string(),
+            items,
+        }));
+    }
+
+    fn show_mcp_dialog(&mut self) {
+        let mut items = Vec::new();
+        if let Some(mcp_map) = &self.sync.config.mcp {
+            for (name, val) in mcp_map {
+                let status = val
+                    .get("status")
+                    .and_then(|s| s.as_str())
+                    .unwrap_or("configured");
+                let desc = match status {
+                    "connected" => "✓ Connected",
+                    "failed" => "✗ Connection failed",
+                    "disabled" => "○ Disabled",
+                    _ => "Configured MCP server",
+                };
+                items.push(DialogItem::new(name).with_description(desc));
+            }
+        }
+        if items.is_empty() {
+            items.push(
+                DialogItem::new("No MCP servers configured")
+                    .with_description("Configure MCP servers in opencode.json"),
+            );
+        }
+        self.dialog = Some(DialogState::new(DialogKind::InfoItems {
+            title: "MCPs".to_string(),
             items,
         }));
     }
@@ -3106,9 +3149,24 @@ impl App {
                     if let Some(item_index) = filtered.get(dialog.selected) {
                         if let Some(item) = items.get(*item_index) {
                             if item.title.contains("light mode") {
-                                self.theme = Theme::light();
+                                self.theme = Theme::by_name(&self.theme.name, Mode::Light);
+                                self.toasts.info("Theme appearance set to: Light");
                             } else if item.title.contains("dark mode") {
-                                self.theme = Theme::dark();
+                                self.theme = Theme::by_name(&self.theme.name, Mode::Dark);
+                                self.toasts.info("Theme appearance set to: Dark");
+                            } else {
+                                let theme_name = item.title.as_str();
+                                self.theme = Theme::by_name(theme_name, self.theme.mode);
+                                self.toasts.info(format!("Theme set to: {theme_name}"));
+                            }
+                        }
+                    }
+                } else if title == "MCPs" {
+                    let filtered = dialog::filter_items(&items, &dialog.filter);
+                    if let Some(item_index) = filtered.get(dialog.selected) {
+                        if let Some(item) = items.get(*item_index) {
+                            if !item.title.contains("No MCP servers") {
+                                self.toasts.info(format!("MCP: {}", item.title));
                             }
                         }
                     }

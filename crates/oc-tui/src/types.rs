@@ -1011,6 +1011,8 @@ pub struct Config {
     pub share: Option<String>,
     #[serde(default)]
     pub plugin: Option<Vec<String>>,
+    #[serde(default)]
+    pub mcp: Option<std::collections::HashMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Clone, Default, Deserialize)]
