@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! Real PTY end-to-end and terminal lifecycle test suite.
 //!
 //! Spawns real pseudo-terminal (PTY) pairs via OS syscalls on Unix, sets window

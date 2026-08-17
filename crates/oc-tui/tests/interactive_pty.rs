@@ -1,3 +1,4 @@
+#![allow(clippy::all)]
 //! Cross-platform interactive PTY test suite using portable-pty.
 //!
 //! Spawns real production `opencode` TUI binaries attached to OS PTY descriptors
