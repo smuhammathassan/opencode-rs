@@ -18,8 +18,8 @@ import { copyCommand } from "./reference/packages/tui/src/clipboard.ts";
 console.log(canon(copyCommand("darwin",false,(n)=>n==="osascript")));
 
 Exit Code: 0
-Duration: 162 ms
-Timestamp: 2026-08-17T09:54:29Z
+Duration: 150 ms
+Timestamp: 2026-08-17T10:10:06Z
 SHA-256 Output Hash: 01c3374e6eae162c9a4c6e1663fb8dd893465585991d9fb28806d0cf0c2ae5aa
 Output:
 ["osascript"]

@@ -18,8 +18,8 @@ import { LEADER_TOKEN, OPENCODE_BASE_MODE } from "./reference/packages/tui/src/k
 console.log(canon({leader_token:LEADER_TOKEN, base_mode:OPENCODE_BASE_MODE}));
 
 Exit Code: 0
-Duration: 164 ms
-Timestamp: 2026-08-17T09:54:18Z
+Duration: 168 ms
+Timestamp: 2026-08-17T10:09:54Z
 SHA-256 Output Hash: d269d33ad273f2c3b1b0056046aef53b9bad50f58c3c1f4e98fdcc08c5e3d9cc
 Output:
 {"base_mode":"base","leader_token":"leader"}

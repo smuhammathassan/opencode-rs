@@ -2,8 +2,8 @@
 Scenario: 021-clipboard-macos - Clipboard macOS osascript
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 021-clipboard-macos
 Exit Code: 0
-Duration: 561 ms
-Timestamp: 2026-08-17T09:54:30Z
+Duration: 550 ms
+Timestamp: 2026-08-17T10:10:06Z
 SHA-256 Output Hash: 01c3374e6eae162c9a4c6e1663fb8dd893465585991d9fb28806d0cf0c2ae5aa
 Output:
 ["osascript"]

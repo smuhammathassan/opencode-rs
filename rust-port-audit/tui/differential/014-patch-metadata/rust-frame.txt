@@ -2,8 +2,8 @@
 Scenario: 014-patch-metadata - Apply-Patch File Metadata Parsing
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 014-patch-metadata
 Exit Code: 0
-Duration: 554 ms
-Timestamp: 2026-08-17T09:54:24Z
+Duration: 540 ms
+Timestamp: 2026-08-17T10:10:01Z
 SHA-256 Output Hash: aae36690d9c6e6b5025ff528cb9683471c5b277006739d26c154cdb4744c2661
 Output:
 [{"additions":1,"deletions":1,"relativePath":"a.ts"}]

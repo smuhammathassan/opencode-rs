@@ -19,8 +19,8 @@ const m = (os,wl,present) => copyCommand(os,wl,(n)=>present.includes(n));
 console.log(canon([m("darwin",false,["osascript"]), m("linux",true,["wl-copy"]), m("linux",false,["xclip"]), m("linux",false,["xsel"]), m("win32",false,["powershell.exe"]), m("linux",false,[])]));
 
 Exit Code: 0
-Duration: 180 ms
-Timestamp: 2026-08-17T09:54:23Z
+Duration: 148 ms
+Timestamp: 2026-08-17T10:09:59Z
 SHA-256 Output Hash: 87c4639a70aba675aae19a3e8f69f53bc1af821c663a848db1b45a3c3427ea24
 Output:
 [["osascript"],["wl-copy"],["xclip","-selection","clipboard"],["xsel","--clipboard","--input"],["powershell.exe","-NonInteractive","-NoProfile","-Command","[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())"],null]

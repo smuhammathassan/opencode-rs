@@ -2,8 +2,8 @@
 Scenario: 012-clipboard-lookup - Clipboard Command Lookup Matrix
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 012-clipboard-lookup
 Exit Code: 0
-Duration: 565 ms
-Timestamp: 2026-08-17T09:54:23Z
+Duration: 550 ms
+Timestamp: 2026-08-17T10:09:59Z
 SHA-256 Output Hash: 87c4639a70aba675aae19a3e8f69f53bc1af821c663a848db1b45a3c3427ea24
 Output:
 [["osascript"],["wl-copy"],["xclip","-selection","clipboard"],["xsel","--clipboard","--input"],["powershell.exe","-NonInteractive","-NoProfile","-Command","[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())"],null]

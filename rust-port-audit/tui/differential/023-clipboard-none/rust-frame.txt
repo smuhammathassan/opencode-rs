@@ -2,8 +2,8 @@
 Scenario: 023-clipboard-none - Clipboard Unavailable Returns undefined
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 023-clipboard-none
 Exit Code: 0
-Duration: 563 ms
-Timestamp: 2026-08-17T09:54:31Z
+Duration: 546 ms
+Timestamp: 2026-08-17T10:10:07Z
 SHA-256 Output Hash: 74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b
 Output:
 null

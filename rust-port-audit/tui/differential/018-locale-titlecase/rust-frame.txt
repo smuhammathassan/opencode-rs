@@ -2,8 +2,8 @@
 Scenario: 018-locale-titlecase - Locale Titlecase
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 018-locale-titlecase
 Exit Code: 0
-Duration: 580 ms
-Timestamp: 2026-08-17T09:54:27Z
+Duration: 563 ms
+Timestamp: 2026-08-17T10:10:04Z
 SHA-256 Output Hash: a386f949202fde3779a677c450fce009cb9aa1d4ef5748b05e9972680c4f260f
 Output:
 ["Patch Metadata Hunk","Hello WORLD","MiXeD Case Words"]

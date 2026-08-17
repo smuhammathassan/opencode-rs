@@ -22,8 +22,8 @@ const files = patchFiles([
 console.log(canon(files.map(f=>({relativePath:f.relativePath, additions:f.additions, deletions:f.deletions}))));
 
 Exit Code: 0
-Duration: 161 ms
-Timestamp: 2026-08-17T09:54:32Z
+Duration: 149 ms
+Timestamp: 2026-08-17T10:10:08Z
 SHA-256 Output Hash: 80d88080bc64c4a14f723ccdea2e4c4ad18cd371ca8e156bf93001aa2c8bf412
 Output:
 [{"additions":1,"deletions":1,"relativePath":"a.rs"},{"additions":1,"deletions":0,"relativePath":"c.md"}]

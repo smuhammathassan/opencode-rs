@@ -200,9 +200,9 @@ fn tui_dialog_escape_restores_state() {
     session.write_all(b"my prompt buffer");
     let _ = session.wait_frame("my prompt buffer", Duration::from_secs(5));
 
-    // Open model dialog with ctrl+x then m (chord)
-    session.write_all(b"\x18m");
-    let _ = session.wait_frame("Select model", Duration::from_secs(5));
+    // Open command palette with ctrl+p
+    session.write_all(b"\x10");
+    std::thread::sleep(Duration::from_millis(200));
 
     // Send Escape to close dialog
     session.write_all(b"\x1b");
@@ -276,3 +276,23 @@ fn tui_sigterm_exits_and_restores() {
         "Teardown must restore terminal"
     );
 }
+
+#[test]
+fn tui_interactive_pty_sanitizes_osc_injection() {
+    let mut session = launch(80, 24);
+    session.wait_frame("Ask", Duration::from_secs(8));
+
+    // Send text with OSC 52 clipboard injection
+    session.write_all(b"\x1b]52;c;SGVsbG8gV29ybGQ=\x07clean_text_after_osc");
+    let _ = session.wait_frame("clean_text_after_osc", Duration::from_secs(5));
+
+    // Read all output and verify raw OSC 52 was stripped
+    let output = session.read_drain(Duration::from_millis(300));
+    assert!(
+        !output.contains("\x1b]52;c;"),
+        "Raw OSC 52 sequence must not escape to the terminal"
+    );
+
+    session.quit_cleanly();
+}
+

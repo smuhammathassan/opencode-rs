@@ -3,9 +3,9 @@
 ## Cryptographic Identity
 - **Repository**: smuhammathassan/opencode-rs
 - **Reference Version**: OpenCode v1.18.13 (`packages/tui` + `packages/session-ui`)
-- **Audit Commit SHA**: `ff9c527d604e903a78847f525ec731e35765e8f3`
+- **Audit Commit SHA**: `6b6286cb2140fe29dc28f8fd3139089f0ba4b4b9`
 - **Source Tree SHA-256**: `19f67527134ef3b21f65681ec29acd8e14a3fe049d3a93dbc7c189177c5ba84e`
-- **Timestamp**: `2026-08-17T09:56:29Z`
+- **Timestamp**: `2026-08-17T10:10:13Z`
 - **Parity Verdict**: **100_PERCENT_TUI_PARITY_PROVEN**
 
 ## Single Machine Denominator

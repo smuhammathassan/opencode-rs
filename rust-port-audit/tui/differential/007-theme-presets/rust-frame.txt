@@ -2,8 +2,8 @@
 Scenario: 007-theme-presets - Registered Theme Preset Names
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 007-theme-presets
 Exit Code: 0
-Duration: 563 ms
-Timestamp: 2026-08-17T09:54:19Z
+Duration: 557 ms
+Timestamp: 2026-08-17T10:09:56Z
 SHA-256 Output Hash: 8b782d8cbe01ef8e3d0438f204e3834a6d57b2f9fc2531ef27710e7125d0cb03
 Output:
 ["aura","ayu","carbonfox","catppuccin","catppuccin-frappe","catppuccin-macchiato","cobalt2","cursor","dracula","everforest","flexoki","github","gruvbox","kanagawa","lucent-orng","material","matrix","mercury","monokai","nightowl","nord","one-dark","opencode","orng","osaka-jade","palenight","rosepine","solarized","synthwave84","tokyonight","vercel","vesper","zenburn"]
