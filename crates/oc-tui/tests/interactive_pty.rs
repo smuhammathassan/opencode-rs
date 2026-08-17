@@ -65,7 +65,9 @@ struct TuiSession {
 
 impl TuiSession {
     fn write_all(&mut self, bytes: &[u8]) {
-        self.writer.write_all(bytes).expect("write to PTY master failed");
+        self.writer
+            .write_all(bytes)
+            .expect("write to PTY master failed");
         let _ = self.writer.flush();
     }
 
@@ -295,4 +297,3 @@ fn tui_interactive_pty_sanitizes_osc_injection() {
 
     session.quit_cleanly();
 }
-

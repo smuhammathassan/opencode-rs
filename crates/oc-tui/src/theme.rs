@@ -228,7 +228,11 @@ pub fn from_hex(hex: &str) -> Color {
     // "#FFF") is NOT expanded as CSS shorthand; it yields parseInt's value.
     let hex = hex.trim_start_matches('#');
     match u32::from_str_radix(hex, 16) {
-        Ok(c) => Color::Rgb(((c >> 16) & 255) as u8, ((c >> 8) & 255) as u8, (c & 255) as u8),
+        Ok(c) => Color::Rgb(
+            ((c >> 16) & 255) as u8,
+            ((c >> 8) & 255) as u8,
+            (c & 255) as u8,
+        ),
         Err(_) => Color::White,
     }
 }
@@ -347,12 +351,18 @@ mod tests {
 /// reference implementation.
 pub fn preset_raw_data(name: &str) -> Option<serde_json::Value> {
     let raw = match name {
-        "opencode" => include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json"),
+        "opencode" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json")
+        }
         "dracula" => include_str!("../../../reference/packages/tui/src/theme/assets/dracula.json"),
         "nord" => include_str!("../../../reference/packages/tui/src/theme/assets/nord.json"),
-        "catppuccin" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json"),
+        "catppuccin" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json")
+        }
         "gruvbox" => include_str!("../../../reference/packages/tui/src/theme/assets/gruvbox.json"),
-        "tokyonight" => include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json"),
+        "tokyonight" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json")
+        }
         _ => return None,
     };
     serde_json::from_str(raw).ok()
@@ -364,34 +374,68 @@ fn preset_asset(name: &str) -> Option<&'static str> {
     Some(match name {
         "aura" => include_str!("../../../reference/packages/tui/src/theme/assets/aura.json"),
         "ayu" => include_str!("../../../reference/packages/tui/src/theme/assets/ayu.json"),
-        "carbonfox" => include_str!("../../../reference/packages/tui/src/theme/assets/carbonfox.json"),
-        "catppuccin-frappe" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin-frappe.json"),
-        "catppuccin-macchiato" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin-macchiato.json"),
-        "catppuccin" => include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json"),
+        "carbonfox" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/carbonfox.json")
+        }
+        "catppuccin-frappe" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin-frappe.json")
+        }
+        "catppuccin-macchiato" => include_str!(
+            "../../../reference/packages/tui/src/theme/assets/catppuccin-macchiato.json"
+        ),
+        "catppuccin" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/catppuccin.json")
+        }
         "cobalt2" => include_str!("../../../reference/packages/tui/src/theme/assets/cobalt2.json"),
         "cursor" => include_str!("../../../reference/packages/tui/src/theme/assets/cursor.json"),
         "dracula" => include_str!("../../../reference/packages/tui/src/theme/assets/dracula.json"),
-        "everforest" => include_str!("../../../reference/packages/tui/src/theme/assets/everforest.json"),
+        "everforest" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/everforest.json")
+        }
         "flexoki" => include_str!("../../../reference/packages/tui/src/theme/assets/flexoki.json"),
         "github" => include_str!("../../../reference/packages/tui/src/theme/assets/github.json"),
         "gruvbox" => include_str!("../../../reference/packages/tui/src/theme/assets/gruvbox.json"),
-        "kanagawa" => include_str!("../../../reference/packages/tui/src/theme/assets/kanagawa.json"),
-        "lucent-orng" => include_str!("../../../reference/packages/tui/src/theme/assets/lucent-orng.json"),
-        "material" => include_str!("../../../reference/packages/tui/src/theme/assets/material.json"),
+        "kanagawa" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/kanagawa.json")
+        }
+        "lucent-orng" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/lucent-orng.json")
+        }
+        "material" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/material.json")
+        }
         "matrix" => include_str!("../../../reference/packages/tui/src/theme/assets/matrix.json"),
         "mercury" => include_str!("../../../reference/packages/tui/src/theme/assets/mercury.json"),
         "monokai" => include_str!("../../../reference/packages/tui/src/theme/assets/monokai.json"),
-        "nightowl" => include_str!("../../../reference/packages/tui/src/theme/assets/nightowl.json"),
+        "nightowl" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/nightowl.json")
+        }
         "nord" => include_str!("../../../reference/packages/tui/src/theme/assets/nord.json"),
-        "one-dark" => include_str!("../../../reference/packages/tui/src/theme/assets/one-dark.json"),
-        "opencode" => include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json"),
+        "one-dark" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/one-dark.json")
+        }
+        "opencode" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/opencode.json")
+        }
         "orng" => include_str!("../../../reference/packages/tui/src/theme/assets/orng.json"),
-        "osaka-jade" => include_str!("../../../reference/packages/tui/src/theme/assets/osaka-jade.json"),
-        "palenight" => include_str!("../../../reference/packages/tui/src/theme/assets/palenight.json"),
-        "rosepine" => include_str!("../../../reference/packages/tui/src/theme/assets/rosepine.json"),
-        "solarized" => include_str!("../../../reference/packages/tui/src/theme/assets/solarized.json"),
-        "synthwave84" => include_str!("../../../reference/packages/tui/src/theme/assets/synthwave84.json"),
-        "tokyonight" => include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json"),
+        "osaka-jade" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/osaka-jade.json")
+        }
+        "palenight" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/palenight.json")
+        }
+        "rosepine" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/rosepine.json")
+        }
+        "solarized" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/solarized.json")
+        }
+        "synthwave84" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/synthwave84.json")
+        }
+        "tokyonight" => {
+            include_str!("../../../reference/packages/tui/src/theme/assets/tokyonight.json")
+        }
         "vercel" => include_str!("../../../reference/packages/tui/src/theme/assets/vercel.json"),
         "vesper" => include_str!("../../../reference/packages/tui/src/theme/assets/vesper.json"),
         "zenburn" => include_str!("../../../reference/packages/tui/src/theme/assets/zenburn.json"),
@@ -419,37 +463,63 @@ fn resolve_preset_into(t: &mut Theme, asset: &str, mode: Mode) {
         Mode::Dark => "dark",
         Mode::Light => "light",
     };
-    let resolve_color = |color: &serde_json::Value,
-                         defs: &serde_json::Map<String, serde_json::Value>,
-                         table: &serde_json::Map<String, serde_json::Value>|
-     -> Option<Color> {
-        resolve_color(color, defs, table, mode_key, &mut Vec::new())
-    };
-    if let Some(c) = table.get("primary").and_then(|c| resolve_color(c, defs, &table)) {
+    let resolve_color =
+        |color: &serde_json::Value,
+         defs: &serde_json::Map<String, serde_json::Value>,
+         table: &serde_json::Map<String, serde_json::Value>|
+         -> Option<Color> { resolve_color(color, defs, table, mode_key, &mut Vec::new()) };
+    if let Some(c) = table
+        .get("primary")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.primary = c;
     }
-    if let Some(c) = table.get("secondary").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("secondary")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.secondary = c;
     }
-    if let Some(c) = table.get("accent").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("accent")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.accent = c;
     }
-    if let Some(c) = table.get("error").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("error")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.error = c;
     }
-    if let Some(c) = table.get("warning").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("warning")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.warning = c;
     }
-    if let Some(c) = table.get("success").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("success")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.success = c;
     }
-    if let Some(c) = table.get("info").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("info")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.info = c;
     }
-    if let Some(c) = table.get("text").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("text")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.text = c;
     }
-    if let Some(c) = table.get("textMuted").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("textMuted")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.text_muted = c;
     }
     let background = table
@@ -458,7 +528,10 @@ fn resolve_preset_into(t: &mut Theme, asset: &str, mode: Mode) {
     if let Some(c) = background {
         t.background = c;
     }
-    if let Some(c) = table.get("backgroundPanel").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("backgroundPanel")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.background_panel = c;
     }
     let background_element = table
@@ -472,55 +545,106 @@ fn resolve_preset_into(t: &mut Theme, asset: &str, mode: Mode) {
         .and_then(|c| resolve_color(c, defs, &table))
         .or(background_element)
         .unwrap_or(t.background_menu);
-    if let Some(c) = table.get("border").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("border")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.border = c;
     }
-    if let Some(c) = table.get("borderActive").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("borderActive")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.border_active = c;
     }
-    if let Some(c) = table.get("borderSubtle").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("borderSubtle")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.border_subtle = c;
     }
-    if let Some(c) = table.get("diffAdded").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffAdded")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_added = c;
     }
-    if let Some(c) = table.get("diffRemoved").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffRemoved")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_removed = c;
     }
-    if let Some(c) = table.get("diffContext").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffContext")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_context = c;
     }
-    if let Some(c) = table.get("diffHighlightAdded").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffHighlightAdded")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_highlight_added = c;
     }
-    if let Some(c) = table.get("diffHighlightRemoved").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffHighlightRemoved")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_highlight_removed = c;
     }
-    if let Some(c) = table.get("diffAddedBg").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffAddedBg")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_added_bg = c;
     }
-    if let Some(c) = table.get("diffRemovedBg").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffRemovedBg")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_removed_bg = c;
     }
-    if let Some(c) = table.get("diffContextBg").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffContextBg")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_context_bg = c;
     }
-    if let Some(c) = table.get("diffLineNumber").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffLineNumber")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_line_number = c;
     }
-    if let Some(c) = table.get("diffAddedLineNumberBg").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffAddedLineNumberBg")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_added_line_number_bg = c;
     }
-    if let Some(c) = table.get("diffRemovedLineNumberBg").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("diffRemovedLineNumberBg")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.diff_removed_line_number_bg = c;
     }
-    if let Some(c) = table.get("markdownText").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("markdownText")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.markdown_text = c;
     }
-    if let Some(c) = table.get("markdownHeading").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("markdownHeading")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.markdown_heading = c;
     }
-    if let Some(c) = table.get("markdownCode").and_then(|c| resolve_color(c, defs, &table)) {
+    if let Some(c) = table
+        .get("markdownCode")
+        .and_then(|c| resolve_color(c, defs, &table))
+    {
         t.markdown_code = c;
     }
     if let Some(n) = table.get("thinkingOpacity").and_then(|n| n.as_f64()) {
@@ -547,10 +671,7 @@ fn resolve_color(
             if chain.iter().any(|c| c == s) {
                 return None;
             }
-            let next = defs
-                .get(s)
-                .or_else(|| table.get(s))?
-                .clone();
+            let next = defs.get(s).or_else(|| table.get(s))?.clone();
             chain.push(s.clone());
             let resolved = resolve_color(&next, defs, table, mode_key, chain);
             chain.pop();

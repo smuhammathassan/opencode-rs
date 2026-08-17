@@ -308,7 +308,10 @@ pub async fn cancel_pending(mcp_name: &str) {
 /// True if a TCP connection can be established on `port`. From reference
 /// `McpOAuthCallback.isPortInUse`.
 pub async fn is_port_in_use(port: u16) -> bool {
-    matches!(tokio::time::timeout(Duration::from_millis(500), TcpStream::connect((HOST, port))).await, Ok(Ok(_stream)))
+    matches!(
+        tokio::time::timeout(Duration::from_millis(500), TcpStream::connect((HOST, port))).await,
+        Ok(Ok(_stream))
+    )
 }
 
 /// Stop the server and reject all pending authorizations.

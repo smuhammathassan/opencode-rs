@@ -147,7 +147,11 @@ mod pty_e2e {
     #[test]
     fn real_pty_spawns_opencode_binary_version() {
         let bin = find_opencode_binary();
-        assert!(bin.exists(), "required production opencode binary missing: {}", bin.display());
+        assert!(
+            bin.exists(),
+            "required production opencode binary missing: {}",
+            bin.display()
+        );
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
         unsafe {
@@ -205,7 +209,11 @@ mod pty_e2e {
     #[test]
     fn real_pty_spawns_opencode_binary_help() {
         let bin = find_opencode_binary();
-        assert!(bin.exists(), "required production opencode binary missing: {}", bin.display());
+        assert!(
+            bin.exists(),
+            "required production opencode binary missing: {}",
+            bin.display()
+        );
         let pty = open_pty(80, 24).expect("openpty should succeed");
 
         unsafe {
@@ -259,8 +267,6 @@ mod pty_e2e {
             libc::close(pty.slave);
         }
     }
-
-
 
     #[test]
     fn real_pty_bracketed_paste_transmission() {

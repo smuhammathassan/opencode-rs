@@ -15,7 +15,11 @@ pub struct InteractionState {
     pub popover: Popover,
     pub drag: Drag,
     pub focus: Focus,
-    #[serde(default, skip_serializing_if = "Option::is_none", rename = "activeContextID")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        rename = "activeContextID"
+    )]
     pub active_context_id: Option<String>,
     pub history_index: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -88,14 +92,22 @@ pub enum Event {
     CommandsOpen,
     ContextOpen,
     #[serde(rename_all = "camelCase")]
-    PopoverQuery { value: String },
+    PopoverQuery {
+        value: String,
+    },
     #[serde(rename_all = "camelCase")]
-    PopoverResults { ids: Vec<String> },
+    PopoverResults {
+        ids: Vec<String>,
+    },
     #[serde(rename_all = "camelCase")]
-    PopoverActive { id: String },
+    PopoverActive {
+        id: String,
+    },
     PopoverClose,
     #[serde(rename_all = "camelCase")]
-    PopoverSelect { item: Suggestion },
+    PopoverSelect {
+        item: Suggestion,
+    },
     KeyDown {
         key: String,
         ctrl: bool,
@@ -117,7 +129,9 @@ pub enum Event {
     #[serde(rename = "focus.external")]
     FocusExternal,
     #[serde(rename = "context.active")]
-    ContextActive { id: String },
+    ContextActive {
+        id: String,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -173,9 +187,17 @@ pub struct PersistedState {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum PromptPart {
-    Text { content: String },
-    File { #[serde(default)] path: Option<String> },
-    Image { #[serde(default)] path: Option<String> },
+    Text {
+        content: String,
+    },
+    File {
+        #[serde(default)]
+        path: Option<String>,
+    },
+    Image {
+        #[serde(default)]
+        path: Option<String>,
+    },
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -197,7 +219,11 @@ pub fn create_interaction_state() -> InteractionState {
 }
 
 /// From reference `transitionPromptInputV2`.
-pub fn transition(state: &InteractionState, event: &Event, persisted: &PersistedState) -> Transition {
+pub fn transition(
+    state: &InteractionState,
+    event: &Event,
+    persisted: &PersistedState,
+) -> Transition {
     match event {
         Event::InputChanged { value, persist } => {
             input_changed(state, value, *persist != Some(false), persisted.cursor)
@@ -219,14 +245,7 @@ pub fn transition(state: &InteractionState, event: &Event, persisted: &Persisted
             composing,
             ids,
             empty,
-        } => key_down(
-            state,
-            key,
-            *ctrl,
-            *composing,
-            ids,
-            empty.unwrap_or(false),
-        ),
+        } => key_down(state, key, *ctrl, *composing, ids, empty.unwrap_or(false)),
         Event::ModeShell => changed(
             &mut clone_with(state, |s| {
                 s.mode = Mode::Shell;
@@ -552,9 +571,7 @@ fn suggestion_selected(
         };
         commands.push(Command::DraftSetText { value });
     } else {
-        commands.push(Command::MentionAdd {
-            item: item.clone(),
-        });
+        commands.push(Command::MentionAdd { item: item.clone() });
     }
     commands.push(Command::FocusEditor);
     changed(
@@ -643,7 +660,9 @@ fn key_down(
         | Popover::CommandMenu { active_id, .. } => active_id.clone(),
         Popover::Closed => None,
     };
-    let current = current_active.as_ref().and_then(|id| ids.iter().position(|i| i == id));
+    let current = current_active
+        .as_ref()
+        .and_then(|id| ids.iter().position(|i| i == id));
     let len = ids.len() as i64;
     let index = match current {
         None => {
@@ -730,12 +749,21 @@ mod tests {
     fn exclamation_in_normal_mode_switches_to_shell() {
         let s = create_interaction_state();
         let persisted = PersistedState::default();
-        let t = transition(&s, &Event::InputChanged { value: "!".into(), persist: None }, &persisted);
+        let t = transition(
+            &s,
+            &Event::InputChanged {
+                value: "!".into(),
+                persist: None,
+            },
+            &persisted,
+        );
         assert_eq!(t.state.mode, Mode::Shell);
         assert_eq!(t.state.popover, Popover::Closed);
         assert_eq!(
             t.commands,
-            vec![Command::DraftSetText { value: String::new() }]
+            vec![Command::DraftSetText {
+                value: String::new()
+            }]
         );
     }
 
@@ -753,7 +781,10 @@ mod tests {
         );
         assert_eq!(
             t.state.popover,
-            Popover::Context { query: "par".into(), active_id: None }
+            Popover::Context {
+                query: "par".into(),
+                active_id: None
+            }
         );
     }
 
@@ -771,7 +802,10 @@ mod tests {
         );
         assert_eq!(
             t.state.popover,
-            Popover::CommandInline { query: "fix".into(), active_id: None }
+            Popover::CommandInline {
+                query: "fix".into(),
+                active_id: None
+            }
         );
     }
 
@@ -814,7 +848,10 @@ mod tests {
         );
         assert_eq!(
             t.state.popover,
-            Popover::CommandMenu { query: String::new(), active_id: Some("a".into()) }
+            Popover::CommandMenu {
+                query: String::new(),
+                active_id: Some("a".into())
+            }
         );
         assert!(t.handled);
     }

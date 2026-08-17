@@ -69,7 +69,8 @@ fn main() {
     let id = std::env::args().nth(1).unwrap_or_default();
     match id.as_str() {
         "001-prompt-history-parse" => {
-            let corrupt = "{\"input\":\"one\",\"parts\":[]}\nnot-json\n{\"input\":\"two\",\"parts\":[]}\n";
+            let corrupt =
+                "{\"input\":\"one\",\"parts\":[]}\nnot-json\n{\"input\":\"two\",\"parts\":[]}\n";
             let overflow: String = (0..55)
                 .map(|i| format!("{{\"input\":\"{}\",\"parts\":[]}}\n", i))
                 .collect();
@@ -89,8 +90,14 @@ fn main() {
             let h1 = prompt_info("hello", json!([]));
             let h2 = prompt_info("hello", json!([]));
             let h3 = prompt_info("world", json!([]));
-            let a = prompt_info("describe this", json!([{"type": "file", "mime": "image/png", "filename": "a.png"}]));
-            let b = prompt_info("describe this", json!([{"type": "file", "mime": "image/png", "filename": "b.png"}]));
+            let a = prompt_info(
+                "describe this",
+                json!([{"type": "file", "mime": "image/png", "filename": "a.png"}]),
+            );
+            let b = prompt_info(
+                "describe this",
+                json!([{"type": "file", "mime": "image/png", "filename": "b.png"}]),
+            );
             result(
                 &id,
                 json!([
@@ -134,7 +141,10 @@ fn main() {
             );
         }
         "005-keymap-leader" => {
-            result(&id, json!({"leader_token": LEADER_TOKEN, "base_mode": OPENCODE_BASE_MODE}));
+            result(
+                &id,
+                json!({"leader_token": LEADER_TOKEN, "base_mode": OPENCODE_BASE_MODE}),
+            );
         }
         "006-keymap-chord-timeout" => {
             let o = KeymapOptions::default();
@@ -186,7 +196,9 @@ fn main() {
             result(&id, Value::Object(out));
         }
         "010-format-duration" => {
-            let cases = [0, 1, 45, 59, 60, 61, 3599, 3600, 86399, 86400, 604799, 604800, 1209600];
+            let cases = [
+                0, 1, 45, 59, 60, 61, 3599, 3600, 86399, 86400, 604799, 604800, 1209600,
+            ];
             result(&id, json!(cases.map(format_duration)));
         }
         "011-format-collapse" => {
@@ -218,7 +230,10 @@ fn main() {
         }
         "013-editor-normalize" => {
             let cases = ["hello\n", "hello\r\n", "a\nb\n", "a\nb", ""];
-            result(&id, json!(cases.map(oc_tui::editor::normalize_prompt_content)));
+            result(
+                &id,
+                json!(cases.map(oc_tui::editor::normalize_prompt_content)),
+            );
         }
         "014-patch-metadata" => {
             let payload = json!([{
@@ -232,11 +247,14 @@ fn main() {
             let parsed = parse_apply_patch_files(&payload);
             result(
                 &id,
-                json!(parsed.iter().map(|p| json!({
-                    "relativePath": p.relative_path,
-                    "additions": p.additions,
-                    "deletions": p.deletions,
-                })).collect::<Vec<_>>()),
+                json!(parsed
+                    .iter()
+                    .map(|p| json!({
+                        "relativePath": p.relative_path,
+                        "additions": p.additions,
+                        "deletions": p.deletions,
+                    }))
+                    .collect::<Vec<_>>()),
             );
         }
         "015-locale-duration" => {
@@ -245,7 +263,9 @@ fn main() {
         }
         "016-prompt-interaction" => {
             let persisted = PersistedState {
-                prompt: vec![PromptPart::Text { content: "fix the bug".into() }],
+                prompt: vec![PromptPart::Text {
+                    content: "fix the bug".into(),
+                }],
                 ..Default::default()
             };
             let empty = PersistedState::default();
@@ -256,9 +276,27 @@ fn main() {
                     interaction_case(&Event::ModeNormal, &empty),
                     interaction_case(&Event::DragEnter, &empty),
                     interaction_case(&Event::FocusEditor, &empty),
-                    interaction_case(&Event::InputChanged { value: "!".into(), persist: None }, &empty),
-                    interaction_case(&Event::InputChanged { value: "fix @par".into(), persist: None }, &empty),
-                    interaction_case(&Event::InputChanged { value: "/fix".into(), persist: None }, &empty),
+                    interaction_case(
+                        &Event::InputChanged {
+                            value: "!".into(),
+                            persist: None
+                        },
+                        &empty
+                    ),
+                    interaction_case(
+                        &Event::InputChanged {
+                            value: "fix @par".into(),
+                            persist: None
+                        },
+                        &empty
+                    ),
+                    interaction_case(
+                        &Event::InputChanged {
+                            value: "/fix".into(),
+                            persist: None
+                        },
+                        &empty
+                    ),
                     interaction_case(&Event::CommandsOpen, &persisted),
                     interaction_case(&Event::CommandsOpen, &empty),
                     interaction_case(&Event::PopoverQuery { value: "re".into() }, &empty),
@@ -300,11 +338,14 @@ fn main() {
             let parsed = parse_apply_patch_files(&payload);
             result(
                 &id,
-                json!(parsed.iter().map(|p| json!({
-                    "relativePath": p.relative_path,
-                    "additions": p.additions,
-                    "deletions": p.deletions,
-                })).collect::<Vec<_>>()),
+                json!(parsed
+                    .iter()
+                    .map(|p| json!({
+                        "relativePath": p.relative_path,
+                        "additions": p.additions,
+                        "deletions": p.deletions,
+                    }))
+                    .collect::<Vec<_>>()),
             );
         }
         "025-theme-preset-data-2" => {
@@ -319,7 +360,10 @@ fn main() {
         }
         "026-editor-multiline" => {
             let cases = ["first\nsecond\nthird\n", "single\n", "trailing\n\n\n"];
-            result(&id, json!(cases.map(oc_tui::editor::normalize_prompt_content)));
+            result(
+                &id,
+                json!(cases.map(oc_tui::editor::normalize_prompt_content)),
+            );
         }
         _ => {
             eprintln!("unknown scenario: {id}");

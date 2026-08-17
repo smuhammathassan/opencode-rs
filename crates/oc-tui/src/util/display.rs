@@ -107,9 +107,9 @@ pub fn parse_apply_patch_files(value: &Value) -> Vec<ApplyPatchFile> {
                 return None;
             }
             let file_path = string_value(map.get("filePath"))?;
-            let relative_path = string_value(map.get("relativePath")).unwrap_or_else(|| file_path.clone());
-            let patch = string_value(map.get("patch"))
-                .or_else(|| string_value(map.get("diff")));
+            let relative_path =
+                string_value(map.get("relativePath")).unwrap_or_else(|| file_path.clone());
+            let patch = string_value(map.get("patch")).or_else(|| string_value(map.get("diff")));
             if patch.is_none() {
                 return None;
             }
