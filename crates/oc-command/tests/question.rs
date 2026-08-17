@@ -66,7 +66,7 @@ async fn reject_for_unknown_request_is_not_found() {
 #[tokio::test]
 async fn list_returns_pending_requests() {
     let svc = QuestionService::new();
-    let (handle, request) = svc.ask("sess-1", vec![info("a?"), info("b?")], None);
+    let (handle, _request) = svc.ask("sess-1", vec![info("a?"), info("b?")], None);
     let list = svc.list();
     assert_eq!(list.len(), 1);
     assert_eq!(list[0].questions.len(), 2);
