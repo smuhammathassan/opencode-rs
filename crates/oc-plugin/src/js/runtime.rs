@@ -29,7 +29,7 @@ const TAG_FLOAT64: i64 = 7;
 /// `value` must be a live QuickJS value owned by `context`.
 unsafe fn free_value(context: *mut q::JSContext, value: q::JSValue) {
     if value.tag < 0 {
-        let ptr = std::mem::transmute::<_, *mut q::JSRefCountHeader>(value.u.ptr);
+        let ptr = value.u.ptr as *mut q::JSRefCountHeader;
         let pref: &mut q::JSRefCountHeader = &mut *ptr;
         pref.ref_count -= 1;
         if pref.ref_count <= 0 {
@@ -103,7 +103,7 @@ impl_callback! { A1 }
 impl_callback! { A1 A2 }
 impl_callback! { A1 A2 A3 }
 
-type WrappedCallback = dyn Fn(c_int, *mut q::JSValue) -> q::JSValue;
+type WrappedCallback = dyn Fn(c_int, *mut q::JSValue) -> q::JSValue + Send + Sync;
 type CallbackRegistry = Vec<Arc<WrappedCallback>>;
 type CallbackRegistryHandle = Arc<Mutex<CallbackRegistry>>;
 
@@ -748,10 +748,7 @@ fn to_value_inner(
                 return Err(JsError::Internal("could not convert string".into()));
             }
             let cstr = unsafe { std::ffi::CStr::from_ptr(ptr) };
-            let s = cstr
-                .to_str()
-                .map_err(|e| JsError::InvalidString(e))?
-                .to_string();
+            let s = cstr.to_str().map_err(JsError::InvalidString)?.to_string();
             unsafe { q::JS_FreeCString(ctx, ptr) };
             Ok(JsValue::String(s))
         }

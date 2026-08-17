@@ -115,6 +115,9 @@ impl From<InvalidPatternError> for RipgrepError {
     }
 }
 
+type EntryCallback = Arc<dyn Fn(&Entry) + Send + Sync>;
+type ItemCallback<A> = Arc<dyn Fn(&A) + Send + Sync>;
+
 pub struct FindInput {
     pub cwd: String,
     pub pattern: String,
@@ -122,7 +125,7 @@ pub struct FindInput {
     pub hidden: bool,
     pub follow: bool,
     pub signal: Option<Arc<Signal>>,
-    pub on_entry: Option<Arc<dyn Fn(&Entry) + Send + Sync>>,
+    pub on_entry: Option<EntryCallback>,
 }
 
 pub struct GlobInput {
@@ -157,7 +160,7 @@ struct RunInput<A> {
     signal: Option<Arc<Signal>>,
     parse: fn(&str) -> Result<Option<A>, RipgrepError>,
     pattern: Option<String>,
-    on_item: Option<Arc<dyn Fn(&A) + Send + Sync>>,
+    on_item: Option<ItemCallback<A>>,
     _marker: std::marker::PhantomData<A>,
 }
 
@@ -284,7 +287,7 @@ where
                         }
                         observed += 1;
                         rows.push(row);
-                        if rows.len() >= input.limit + 1 {
+                        if rows.len() > input.limit {
                             break;
                         }
                     }

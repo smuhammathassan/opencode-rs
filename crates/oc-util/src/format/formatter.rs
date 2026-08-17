@@ -18,14 +18,9 @@ pub struct Context {
     pub experimental_oxfmt: bool,
 }
 
-pub type EnabledFn = Arc<
-    dyn Fn(
-            Context,
-        )
-            -> futures::future::BoxFuture<'static, Result<Option<Vec<String>>, anyhow::Error>>
-        + Send
-        + Sync,
->;
+pub type EnabledFuture =
+    futures::future::BoxFuture<'static, Result<Option<Vec<String>>, anyhow::Error>>;
+pub type EnabledFn = Arc<dyn Fn(Context) -> EnabledFuture + Send + Sync>;
 
 pub struct Info {
     pub name: &'static str,
@@ -48,11 +43,7 @@ async fn find_up_file(target: &str, context: &Context) -> Vec<String> {
     .await
 }
 
-fn enabled(
-    f: fn(
-        Context,
-    ) -> futures::future::BoxFuture<'static, Result<Option<Vec<String>>, anyhow::Error>>,
-) -> EnabledFn {
+fn enabled(f: fn(Context) -> EnabledFuture) -> EnabledFn {
     Arc::new(f)
 }
 

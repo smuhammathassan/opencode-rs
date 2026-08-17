@@ -346,9 +346,9 @@ fn extract_blocking(
     if extension == "tar.gz" {
         let output = std::process::Command::new("tar")
             .args([
-                "-xzf".as_ref(),
+                "-xzf",
                 archive.to_string_lossy().as_ref(),
-                "-C".as_ref(),
+                "-C",
                 bin_dir.to_string_lossy().as_ref(),
             ])
             .output();

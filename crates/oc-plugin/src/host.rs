@@ -111,14 +111,15 @@ pub struct NoopHost;
 
 impl PluginHost for NoopHost {}
 
+pub type ClientRpcHandler = Arc<dyn Fn(&ClientRpcRequest) -> Result<Value, String> + Send + Sync>;
+
 /// A local host for production plugin bootstrap. It implements the effects
 /// that are independent of the server's HTTP/client state while leaving the
 /// client RPC surface injectable through [`PluginHost`].
 #[derive(Default)]
 pub struct LocalHost {
     registration_sink: Option<Arc<dyn PluginRegistrationSink>>,
-    client_rpc_handler:
-        Option<Arc<dyn Fn(&ClientRpcRequest) -> Result<Value, String> + Send + Sync>>,
+    client_rpc_handler: Option<ClientRpcHandler>,
 }
 
 impl LocalHost {
