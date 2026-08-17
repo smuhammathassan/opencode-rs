@@ -60,7 +60,7 @@ jobs:
       - name: Build workspace binaries
         run: cargo build --workspace
       - name: Run workspace tests
-        run: cargo test --workspace --no-fail-fast -- --skip tui_
+        run: cargo test --workspace --no-fail-fast
       - name: Run interactive PTY test suite
         if: runner.os != 'Windows'
         run: cargo test -p oc-tui --test interactive_pty -- --test-threads=1

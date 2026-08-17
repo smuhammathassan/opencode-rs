@@ -85,12 +85,16 @@ mod pty_e2e {
     use super::*;
     use std::time::{Duration, Instant};
 
+    static PTY_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
     struct PtyPair {
         master: i32,
         slave: i32,
+        _lock: std::sync::MutexGuard<'static, ()>,
     }
 
     fn open_pty(cols: u16, rows: u16) -> Result<PtyPair, std::io::Error> {
+        let lock = PTY_LOCK.lock().unwrap_or_else(|e| e.into_inner());
         let mut master: i32 = -1;
         let mut slave: i32 = -1;
         let mut ws = libc::winsize {
@@ -114,7 +118,11 @@ mod pty_e2e {
             return Err(std::io::Error::last_os_error());
         }
 
-        Ok(PtyPair { master, slave })
+        Ok(PtyPair {
+            master,
+            slave,
+            _lock: lock,
+        })
     }
 
     fn set_pty_size(master: i32, cols: u16, rows: u16) -> Result<(), std::io::Error> {
