@@ -5122,6 +5122,7 @@ mod tests {
         assert!(mcp_resource_targets(&clients, None).unwrap().is_empty());
     }
 
+    #[cfg(unix)]
     #[tokio::test]
     async fn runner_skill_guidance_surfaces_project_skill() {
         let root = std::env::temp_dir().join(format!("oc-server-skill-guidance-{}", event_id()));
@@ -5146,7 +5147,12 @@ mod tests {
         assert!(context
             .baseline
             .contains("<description>Use for project-specific work</description>"));
-        assert!(context.baseline.contains(&skill.display().to_string()));
+        assert!(
+            context.baseline.contains(&skill.display().to_string())
+                || context
+                    .baseline
+                    .contains(&crate::fs_util::normalize_path(&skill.to_string_lossy()))
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

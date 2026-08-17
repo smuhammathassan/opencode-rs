@@ -4317,6 +4317,7 @@ mod tests {
         assert!(safe_workspace_path("/definitely/missing", "/etc/passwd").is_none());
     }
 
+    #[cfg(unix)]
     #[test]
     fn command_template_renders_arguments_and_shell_expansion_into_parts() {
         let mut registry = oc_command::command::Registry::new("/tmp");

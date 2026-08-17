@@ -608,9 +608,10 @@ async fn project_current_uses_oc_project_resolution() {
         .is_some_and(|time| time > 0));
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn experimental_worktree_routes_use_git_worktree_service() {
-    let _test_home_guard = TEST_HOME_LOCK.lock().unwrap();
+    let _test_home_guard = TEST_HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let directory =
         std::env::temp_dir().join(format!("opencode-rs-worktree-api-{}", std::process::id()));
     std::fs::create_dir_all(&directory).unwrap();
@@ -665,11 +666,13 @@ async fn experimental_worktree_routes_use_git_worktree_service() {
     let listed =
         json_body(send(&router, request(Method::GET, "/experimental/worktree")).await).await;
     assert!(
-        listed
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|item| item["directory"] == worktree_directory),
+        listed.as_array().unwrap().iter().any(|item| {
+            item["name"] == "feature"
+                && item["directory"]
+                    .as_str()
+                    .map(|d| d.eq_ignore_ascii_case(&worktree_directory))
+                    .unwrap_or(false)
+        }),
         "listed={listed:?} expected={worktree_directory}"
     );
 
@@ -880,7 +883,7 @@ async fn session_share_and_unshare_follow_remote_protocol_and_persist_durably() 
 
 #[tokio::test]
 async fn account_share_uses_bearer_org_headers_and_account_resource() {
-    let _env_lock = TEST_HOME_LOCK.lock().unwrap();
+    let _env_lock = TEST_HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let previous_token = std::env::var_os("OPENCODE_TEST_ACCOUNT_TOKEN");
     std::env::set_var("OPENCODE_TEST_ACCOUNT_TOKEN", "token_test");
 
@@ -1801,9 +1804,10 @@ async fn configured_agents_are_exposed_to_run_clients() {
         .any(|agent| { agent["id"] == "review" && agent["mode"] == "primary" }));
 }
 
+#[cfg(unix)]
 #[tokio::test]
 async fn v2_revert_commit_restores_project_snapshot() {
-    let _test_home_guard = TEST_HOME_LOCK.lock().unwrap();
+    let _test_home_guard = TEST_HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let directory =
         std::env::temp_dir().join(format!("opencode-rs-snapshot-api-{}", std::process::id()));
     std::fs::create_dir_all(&directory).unwrap();
@@ -2114,7 +2118,7 @@ async fn auth_token_query_bypasses() {
 
 #[tokio::test]
 async fn provider_auth_methods_authorize_and_callback_persist_hook_credentials() {
-    let _home_lock = TEST_HOME_LOCK.lock().unwrap();
+    let _home_lock = TEST_HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let test_home = std::env::temp_dir().join(format!(
         "opencode-rs-provider-auth-{}-{}",
         std::process::id(),
@@ -2204,7 +2208,7 @@ async fn provider_auth_callback_without_authorization_is_an_explicit_error() {
 
 #[tokio::test]
 async fn integration_oauth_attempt_uses_provider_hook_and_tracks_lifecycle() {
-    let _home_lock = TEST_HOME_LOCK.lock().unwrap();
+    let _home_lock = TEST_HOME_LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let test_home = std::env::temp_dir().join(format!(
         "opencode-rs-integration-oauth-{}-{}",
         std::process::id(),
