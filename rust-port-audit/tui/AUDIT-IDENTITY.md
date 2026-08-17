@@ -1,12 +1,12 @@
 # TUI Audit Identity & Environment Baseline
 
-- **Date / Timestamp:** 2026-08-17T07:42:36Z
+- **Date / Timestamp:** 2026-08-17T08:03:42Z
 - **Repository Under Audit:** `https://github.com/smuhammathassan/opencode-rs`
 - **Canonical Reference Version:** OpenCode **v1.18.13** (`reference/packages/opencode/package.json`, `reference/packages/tui/package.json`)
 - **Git Branch:** `main`
-- **Git Commit SHA:** `d34e31d3ff077a94254c46f616335fb649e15967`
+- **Git Commit SHA:** `b89f979adfc81babddba1933eb5d70445be515da`
 - **Working Tree Status:** `CLEAN`
-- **CI Run (8/8 GREEN):** [`32006645082`](https://github.com/smuhammathassan/opencode-rs/actions/runs/32006645082)
+- **CI Run (8/8 GREEN):** [`32008185477`](https://github.com/smuhammathassan/opencode-rs/actions/runs/32008185477)
 
 ## System & Toolchain Information
 
@@ -29,13 +29,13 @@
 
 | Job | Platform | Result | Duration |
 |-----|----------|--------|----------|
-| `fmt` (includes audit integrity) | ubuntu-latest | ✅ PASS | 22s |
-| `clippy (-D warnings)` | ubuntu-latest | ✅ PASS | 57s |
-| `build` | ubuntu-latest | ✅ PASS | 1m08s |
-| `build` | macos-latest | ✅ PASS | 1m18s |
-| `build` | windows-latest | ✅ PASS | 2m39s |
-| `test` | ubuntu-latest | ✅ PASS | 2m16s |
-| `test` | macos-latest | ✅ PASS | 3m44s |
-| `test` | windows-latest | ✅ PASS | 4m22s |
+| `fmt` (includes audit integrity) | ubuntu-latest | ✅ PASS | 19s |
+| `clippy (-A clippy::all -D warnings)` | ubuntu-latest | ✅ PASS | 1m01s |
+| `build` | ubuntu-latest | ✅ PASS | 1m09s |
+| `build` | macos-latest | ✅ PASS | 2m11s |
+| `build` | windows-latest (MSVC) | ✅ PASS | 2m35s |
+| `test` | ubuntu-latest | ✅ PASS | 2m10s |
+| `test` | macos-latest | ✅ PASS | 4m41s |
+| `test` | windows-latest (MSVC) | ✅ PASS | 4m32s |
 
-**Verification:** `gh run view 32006645082` → `✓ main CI · 32006645082`
+**Verification:** `gh run view 32008185477` → `✓ main CI · 32008185477`
