@@ -183,11 +183,7 @@ async fn stdio_client_initialize_list_and_call() {
         .unwrap()
         .to_lowercase()
         .replace('\\', "/");
-    let dir_name = dir
-        .file_name()
-        .unwrap()
-        .to_string_lossy()
-        .to_lowercase();
+    let dir_name = dir.file_name().unwrap().to_string_lossy().to_lowercase();
     assert!(
         root_uri.contains(&dir_name),
         "roots uri should contain the workspace directory; uri={root_uri}, dir_name={dir_name}"
