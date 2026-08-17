@@ -229,7 +229,7 @@ mod tests {
 
     #[test]
     fn recent_models_cycle() {
-        let sync = sync_with_provider();
+        let _sync = sync_with_provider();
         let mut local = Local::default();
         local.set_model(
             ModelSelection {

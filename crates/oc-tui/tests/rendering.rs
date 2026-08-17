@@ -155,7 +155,7 @@ fn message_list_wraps_to_fixed_width() {
 
 #[test]
 fn prompt_layout_renders_placeholder_and_cursor() {
-    let prompt = PromptState::default();
+    let _prompt = PromptState::default();
     let (lines, cursor) = oc_tui::components::prompt::prompt_lines(
         "",
         40,

@@ -150,7 +150,7 @@ mod tests {
         let (lines, cursor) = layout(text, 6, 4, &[], &Theme::dark());
         assert_eq!(lines.len(), 2);
         assert_eq!(cursor, Some((0, 4)));
-        let (lines, cursor) = layout(text, 6, 7, &[], &Theme::dark());
+        let (_lines, cursor) = layout(text, 6, 7, &[], &Theme::dark());
         assert_eq!(cursor, Some((1, 1)));
     }
 
