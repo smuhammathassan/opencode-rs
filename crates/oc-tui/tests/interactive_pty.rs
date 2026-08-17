@@ -215,7 +215,10 @@ fn tui_dialog_escape_restores_state() {
 
     // Confirm typed prompt buffer remains preserved
     let frame = session.read_drain(Duration::from_millis(500));
-    assert!(frame.contains("testprompt123") || session.history.windows(13).any(|w| w == b"testprompt123"));
+    assert!(
+        frame.contains("testprompt123")
+            || session.history.windows(13).any(|w| w == b"testprompt123")
+    );
 
     session.quit_cleanly();
 }
