@@ -57,6 +57,20 @@ def verify_test_mappings():
                 errors.append(f"Row {total}: Empty Rust test mapping for {ref_file}::{ref_test}")
                 continue
 
+            full_ref_path = REPO_ROOT / ref_file
+            if not full_ref_path.exists():
+                errors.append(f"Row {total}: Reference test file does not exist: {ref_file}")
+                continue
+
+            if full_ref_path not in file_cache:
+                file_cache[full_ref_path] = full_ref_path.read_text(encoding="utf-8")
+            ref_content = file_cache[full_ref_path]
+            if ref_test not in ref_content:
+                # Search for normalized test substring or describe block
+                words = [w for w in re.split(r"[^\w]", ref_test) if len(w) > 3]
+                if not any(w in ref_content for w in words):
+                    errors.append(f"Row {total}: Reference test '{ref_test}' not found in {ref_file}")
+
             full_rust_path = REPO_ROOT / rust_file
             if not full_rust_path.exists():
                 errors.append(f"Row {total}: Rust test file does not exist: {rust_file}")
