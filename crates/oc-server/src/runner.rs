@@ -5151,7 +5151,7 @@ mod tests {
             context.baseline.contains(&skill.display().to_string())
                 || context
                     .baseline
-                    .contains(&crate::fs_util::normalize_path(&skill.to_string_lossy()))
+                    .contains(&oc_util::fs_util::normalize_path(&skill.to_string_lossy()))
         );
         let _ = std::fs::remove_dir_all(root);
     }
