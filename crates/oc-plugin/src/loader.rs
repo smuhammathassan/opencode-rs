@@ -129,7 +129,11 @@ fn spec_to_path(spec: &str) -> PathBuf {
 
 /// Is `spec` a path-like plugin spec? Mirrors `isPathPluginSpec` in shared.ts.
 pub fn is_path_plugin_spec(spec: &str) -> bool {
-    spec.starts_with("file://") || spec.starts_with('.') || Path::new(spec).is_absolute()
+    spec.starts_with("file://")
+        || spec.starts_with('.')
+        || spec.starts_with('/')
+        || spec.starts_with('\\')
+        || Path::new(spec).is_absolute()
 }
 
 /// Split an npm-style specifier into `(package, version)`. Mirrors

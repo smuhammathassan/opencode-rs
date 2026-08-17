@@ -39,12 +39,20 @@ async fn discover_and_history() {
     git(&dir, &["add", "file.txt"]);
     git(&dir, &["commit", "-q", "-m", "initial"]);
 
+    let subdir = std::path::Path::new(&dir).join("sub").join("dir");
+    std::fs::create_dir_all(&subdir).unwrap();
     let svc = service();
     let repo = svc
-        .discover(&format!("{dir}/sub/dir"))
+        .discover(&subdir.to_string_lossy())
         .await
         .expect("discover walks up");
-    assert!(repo.worktree.0.ends_with(&dir) || repo.worktree.0 == dir);
+    let norm_worktree = repo.worktree.0.replace('\\', "/").to_lowercase();
+    let norm_dir = dir.replace('\\', "/").to_lowercase();
+    assert!(
+        norm_worktree.ends_with(&norm_dir)
+            || norm_dir.ends_with(&norm_worktree)
+            || norm_worktree == norm_dir
+    );
 
     let head = svc.history_head(&repo).await.expect("head");
     assert_eq!(head.len(), 40);

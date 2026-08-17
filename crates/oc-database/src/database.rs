@@ -17,7 +17,11 @@ pub fn path() -> PathBuf {
         .ok()
         .filter(|value| !value.is_empty())
     {
-        if db == ":memory:" || Path::new(&db).is_absolute() {
+        if db == ":memory:"
+            || Path::new(&db).is_absolute()
+            || db.starts_with('/')
+            || db.starts_with('\\')
+        {
             return PathBuf::from(db);
         }
         return data.join(db);

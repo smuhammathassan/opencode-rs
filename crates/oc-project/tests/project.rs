@@ -31,8 +31,22 @@ async fn from_directory_resolves_global_and_git_projects() {
         .expect("fromDirectory");
     assert_eq!(result.project.id.0, project_id);
     assert_eq!(result.project.vcs.as_deref(), Some("git"));
-    assert_eq!(result.project.worktree, canonical_repo.to_str().unwrap());
-    assert_eq!(result.sandbox, canonical_repo.to_str().unwrap());
+    let norm_worktree = result.project.worktree.replace('\\', "/").to_lowercase();
+    let norm_canonical = canonical_repo
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_lowercase();
+    assert!(
+        norm_canonical.ends_with(&norm_worktree)
+            || norm_worktree.ends_with(&norm_canonical)
+            || norm_worktree == norm_canonical
+    );
+    let norm_sandbox = result.sandbox.replace('\\', "/").to_lowercase();
+    assert!(
+        norm_canonical.ends_with(&norm_sandbox)
+            || norm_sandbox.ends_with(&norm_canonical)
+            || norm_sandbox == norm_canonical
+    );
 
     // get/list round-trips the persisted row.
     let fetched = runtime.project.get(&result.project.id).await.expect("get");

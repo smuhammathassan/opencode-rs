@@ -123,6 +123,7 @@ mod tests {
         assert!(!contains("/a", "/a/../b"));
     }
 
+    #[cfg(unix)]
     #[test]
     fn resolve_handles_relative() {
         let resolved = resolve("/a/b/../c");

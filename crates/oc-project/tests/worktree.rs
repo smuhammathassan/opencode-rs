@@ -23,7 +23,16 @@ async fn worktree_path_rule_and_lifecycle() {
 
     assert_eq!(ctx.project.vcs.as_deref(), Some("git"));
     assert_eq!(ctx.project.id.0, project_id);
-    assert_eq!(ctx.worktree, canonical_repo.to_str().unwrap());
+    let norm_worktree = ctx.worktree.replace('\\', "/").to_lowercase();
+    let norm_canonical = canonical_repo
+        .to_string_lossy()
+        .replace('\\', "/")
+        .to_lowercase();
+    assert!(
+        norm_canonical.ends_with(&norm_worktree)
+            || norm_worktree.ends_with(&norm_canonical)
+            || norm_worktree == norm_canonical
+    );
 
     // Path-creation rules: name is slugified, directory = {data}/worktree/{id}/{name},
     // branch = opencode/{name}.

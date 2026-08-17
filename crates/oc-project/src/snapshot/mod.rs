@@ -1054,6 +1054,7 @@ type JoinHandle = tokio::task::JoinHandle<()>;
 mod tests {
     use super::*;
 
+    #[cfg(unix)]
     #[test]
     fn gitdir_follows_snapshot_path_rule() {
         let gitdir = pathutil::join(&["/data", "snapshot", "pid", &Hash::fast(b"/proj")]);

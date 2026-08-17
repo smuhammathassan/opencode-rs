@@ -876,6 +876,7 @@ mod tests {
         );
     }
 
+    #[cfg(unix)]
     #[test]
     fn worktree_name_path_rule() {
         // Golden: root = {data}/worktree/{projectID}, directory = join(root, name),

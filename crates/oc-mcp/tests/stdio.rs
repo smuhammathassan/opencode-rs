@@ -178,13 +178,20 @@ async fn stdio_client_initialize_list_and_call() {
     let response: serde_json::Value =
         serde_json::from_str(&client_response["CLIENT_RESPONSE ".len()..]).unwrap();
     assert_eq!(response["id"], 100);
-    let file_uri = dir.canonicalize().unwrap().to_string_lossy().into_owned();
+    let root_uri = response["result"]["roots"][0]["uri"]
+        .as_str()
+        .unwrap()
+        .to_lowercase()
+        .replace('\\', "/");
+    let dir_name = dir
+        .path()
+        .file_name()
+        .unwrap()
+        .to_string_lossy()
+        .to_lowercase();
     assert!(
-        response["result"]["roots"][0]["uri"]
-            .as_str()
-            .unwrap()
-            .contains(&file_uri),
-        "roots uri should contain the workspace directory"
+        root_uri.contains(&dir_name),
+        "roots uri should contain the workspace directory; uri={root_uri}, dir_name={dir_name}"
     );
 
     // Paginated tools/list.

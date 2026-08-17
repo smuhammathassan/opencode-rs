@@ -12,7 +12,8 @@ use oc_database::schema;
 use oc_database::sqlite::{Config, Sqlite};
 
 fn fixture_statements() -> Vec<String> {
-    let text = include_str!("fixtures/schema.sql");
+    let raw = include_str!("fixtures/schema.sql");
+    let text = raw.replace("\r\n", "\n");
     let mut out = Vec::new();
     for chunk in text.split("\n;\n") {
         let stmt: String = chunk
