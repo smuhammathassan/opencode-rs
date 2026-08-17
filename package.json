@@ -1,0 +1,8 @@
+{
+  "name": "opencode-rs-audit",
+  "private": true,
+  "description": "Differential testing and ESM module loader dependencies for opencode-rs TUI audit",
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
