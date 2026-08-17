@@ -1877,17 +1877,77 @@ impl App {
 
     fn show_status_dialog(&mut self) {
         let mut items = Vec::new();
-        for provider in &self.sync.providers {
-            items.push(DialogItem::new(format!(
-                "{} — {} models",
-                provider.name,
-                provider.models.len()
-            )));
+        // Providers & Models
+        if self.sync.providers.is_empty() {
+            items.push(
+                DialogItem::new("• 0 Providers connected")
+                    .with_description("Run /connect or select a model to connect"),
+            );
+        } else {
+            for provider in &self.sync.providers {
+                items.push(
+                    DialogItem::new(format!(
+                        "• {} — {} models",
+                        provider.name,
+                        provider.models.len()
+                    ))
+                    .with_description(format!("Provider: {}", provider.id)),
+                );
+            }
         }
+
+        // LSP Servers
+        items
+            .push(DialogItem::new("• 0 LSP Servers").with_description("No active language server"));
+
+        // Formatters
+        items.push(
+            DialogItem::new("• Formatters: default").with_description("Standard formatter suite"),
+        );
+
+        // Plugins
+        let plugin_count = self
+            .sync
+            .config
+            .plugin
+            .as_ref()
+            .map(|p| p.len())
+            .unwrap_or(0);
+        if plugin_count == 0 {
+            items.push(
+                DialogItem::new("• 0 Plugins loaded")
+                    .with_description("Extend OpenCode via config plugins"),
+            );
+        } else if let Some(plugins) = &self.sync.config.plugin {
+            for plugin in plugins {
+                items.push(
+                    DialogItem::new(format!("• Plugin: {plugin}"))
+                        .with_description("Enabled plugin"),
+                );
+            }
+        }
+
+        // Skills
+        if !self.sync.skills.is_empty() {
+            let names = self
+                .sync
+                .skills
+                .iter()
+                .map(|s| s.name.as_str())
+                .collect::<Vec<_>>()
+                .join(", ");
+            items.push(
+                DialogItem::new(format!("• {} Skills loaded", self.sync.skills.len()))
+                    .with_description(names),
+            );
+        }
+
+        // Sessions
         items.push(DialogItem::new(format!(
-            "Sessions: {}",
+            "Sessions: {} stored",
             self.sync.sessions.len()
         )));
+
         self.dialog = Some(DialogState::new(DialogKind::InfoItems {
             title: "Status".to_string(),
             items,
@@ -1898,6 +1958,21 @@ impl App {
         let mut items = Vec::new();
         items.push(DialogItem::new(format!("Version: {}", crate::version())));
         items.push(DialogItem::new(format!("CWD: {}", self.cwd.display())));
+        items.push(DialogItem::new(format!(
+            "Theme Mode: {:?}",
+            self.theme.mode
+        )));
+        if let Some(session_id) = self.current_session_id() {
+            items.push(DialogItem::new(format!("Active Session: {session_id}")));
+        }
+        items.push(DialogItem::new(format!(
+            "Total Sessions: {}",
+            self.sync.sessions.len()
+        )));
+        items.push(DialogItem::new(format!(
+            "Configured Agents: {}",
+            self.sync.agents.len()
+        )));
         self.dialog = Some(DialogState::new(DialogKind::InfoItems {
             title: "Debug".to_string(),
             items,
@@ -3054,7 +3129,20 @@ impl App {
                 self.dialog = None;
             }
             DialogKind::Help => self.dialog = None,
-            DialogKind::Rename => self.dialog = None,
+            DialogKind::Rename => {
+                let new_name = dialog.filter.trim().to_string();
+                if !new_name.is_empty() {
+                    if let Some(session_id) = self.current_session_id() {
+                        if let Some(session) =
+                            self.sync.sessions.iter_mut().find(|s| s.id == session_id)
+                        {
+                            session.title = new_name.clone();
+                            self.toasts.info(format!("Session renamed to: {new_name}"));
+                        }
+                    }
+                }
+                self.dialog = None;
+            }
             DialogKind::Confirm { .. } | DialogKind::Alert { .. } => self.dialog = None,
         }
     }
