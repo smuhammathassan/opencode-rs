@@ -22,6 +22,7 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 AUDIT_DIR = REPO_ROOT / "rust-port-audit" / "tui"
 TEST_MAPPING_CSV = AUDIT_DIR / "TUI-REFERENCE-TEST-MAPPING.csv"
 INVENTORY_CSV = AUDIT_DIR / "TUI-REFERENCE-INVENTORY.csv"
+COVERAGE_CSV = AUDIT_DIR / "REFERENCE-SOURCE-COVERAGE.csv"
 DIFF_DIR = AUDIT_DIR / "differential"
 
 REQUIRED_DOCS = [
@@ -29,6 +30,7 @@ REQUIRED_DOCS = [
     "TUI-FINAL-REPORT.md",
     "TUI-REFERENCE-INVENTORY.csv",
     "TUI-REFERENCE-TEST-MAPPING.csv",
+    "REFERENCE-SOURCE-COVERAGE.csv",
     "UNMAPPED-REFERENCE-FILES.txt",
     "UNMAPPED-REFERENCE-TESTS.txt",
 ]
@@ -233,6 +235,54 @@ def verify_differential_scenarios():
         return False
     return True
 
+def verify_source_coverage():
+    if not COVERAGE_CSV.exists():
+        print(f"ERROR: {COVERAGE_CSV} does not exist", file=sys.stderr)
+        return False
+
+    errors = []
+    total = 0
+    covered_files = set()
+
+    with open(COVERAGE_CSV, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            total += 1
+            ref_file = row.get("reference_file", "").strip()
+            status = row.get("status", "").strip()
+            rust_target = row.get("rust_target", "").strip()
+            method = row.get("verification_method", "").strip()
+            notes = row.get("notes", "").strip()
+
+            if not ref_file or not (REPO_ROOT / ref_file).exists():
+                errors.append(f"Coverage Row {total}: Reference file '{ref_file}' does not exist")
+            if status not in {"COVERED", "TRANSITIVE", "ADAPTED", "EXCLUDED"}:
+                errors.append(f"Coverage Row {total} ({ref_file}): Invalid status '{status}'")
+            if not rust_target or not method:
+                errors.append(f"Coverage Row {total} ({ref_file}): Missing rust_target or verification_method")
+            if status == "EXCLUDED" and not notes:
+                errors.append(f"Coverage Row {total} ({ref_file}): EXCLUDED status requires explanatory notes")
+
+            covered_files.add(ref_file)
+
+    # Check that all reference/packages/tui/src files are accounted for
+    tui_src = REPO_ROOT / "reference" / "packages" / "tui" / "src"
+    if tui_src.exists():
+        for root, _, files in os.walk(tui_src):
+            for file in files:
+                if (file.endswith(".ts") or file.endswith(".tsx")) and not (file.endswith(".test.ts") or file.endswith(".test.tsx") or file.endswith(".stories.tsx")):
+                    full_p = Path(root) / file
+                    rel = "reference/packages/tui/src/" + full_p.relative_to(tui_src).as_posix()
+                    if rel not in covered_files:
+                        errors.append(f"Unaccounted TUI source file missing from coverage CSV: {rel}")
+
+    print(f"Verified {total} source coverage classifications (100% accounted).")
+    if errors:
+        for err in errors:
+            print(f"  FAILED: {err}", file=sys.stderr)
+        return False
+    return True
+
 def verify_required_documents():
     errors = []
     for doc in REQUIRED_DOCS:
@@ -259,6 +309,8 @@ def main():
     if not verify_test_mappings():
         ok = False
     if not verify_inventory():
+        ok = False
+    if not verify_source_coverage():
         ok = False
     if not verify_differential_scenarios():
         ok = False
