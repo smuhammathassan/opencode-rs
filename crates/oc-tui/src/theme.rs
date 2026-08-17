@@ -425,6 +425,18 @@ pub fn tint(from: Color, to: Color, amount: f64) -> Color {
     }
 }
 
+pub fn has_theme(name: &str) -> bool {
+    Theme::ALL_THEMES.contains(&name)
+}
+
+pub fn all_themes() -> &'static [&'static str] {
+    Theme::ALL_THEMES
+}
+
+pub fn parse_hex_color(hex: &str) -> Option<Color> {
+    parse_hex(hex)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -100,6 +100,7 @@ impl Auth {
             std::fs::create_dir_all(parent)?;
         }
         let text = serde_json::to_string_pretty(data)?;
+        #[cfg(unix)]
         use std::io::Write;
         #[cfg(unix)]
         {

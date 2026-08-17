@@ -114,6 +114,12 @@ pub fn absolute_array_column_from_driver(input: &str) -> Result<Vec<String>> {
 mod tests {
     use super::*;
 
+    #[cfg(windows)]
+    #[test]
+    fn windows_paths_pass_through() {
+        assert_eq!(directory_column_to_driver("").unwrap(), "");
+    }
+
     #[cfg(not(windows))]
     #[test]
     fn posix_paths_pass_through() {

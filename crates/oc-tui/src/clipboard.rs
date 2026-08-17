@@ -185,3 +185,58 @@ mod tests {
             .any(|command| command.program == "xclip"));
     }
 }
+
+fn which_cmd(name: &str) -> bool {
+    if let Ok(path) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&path) {
+            let p = dir.join(name);
+            if p.is_file() {
+                return true;
+            }
+        }
+    }
+    false
+}
+
+/// From reference/packages/tui/src/clipboard.ts (`copyCommand`)
+pub fn copy_command(os: &str, is_wayland: bool) -> Option<Vec<String>> {
+    copy_command_with_lookup(os, is_wayland, which_cmd)
+}
+
+/// Parametric copy command resolver matching reference `copyCommand(os, wayland, has)`.
+pub fn copy_command_with_lookup(
+    os: &str,
+    is_wayland: bool,
+    has: impl Fn(&str) -> bool,
+) -> Option<Vec<String>> {
+    if (os == "darwin" || os == "macos") && has("osascript") {
+        return Some(vec!["osascript".to_string()]);
+    }
+    if os == "linux" && is_wayland && has("wl-copy") {
+        return Some(vec!["wl-copy".to_string()]);
+    }
+    if os == "linux" && has("xclip") {
+        return Some(vec![
+            "xclip".to_string(),
+            "-selection".to_string(),
+            "clipboard".to_string(),
+        ]);
+    }
+    if os == "linux" && has("xsel") {
+        return Some(vec![
+            "xsel".to_string(),
+            "--clipboard".to_string(),
+            "--input".to_string(),
+        ]);
+    }
+    if (os == "win32" || os == "windows") && has("powershell.exe") {
+        return Some(vec![
+            "powershell.exe".to_string(),
+            "-NonInteractive".to_string(),
+            "-NoProfile".to_string(),
+            "-Command".to_string(),
+            "[Console]::InputEncoding = [System.Text.Encoding]::UTF8; Set-Clipboard -Value ([Console]::In.ReadToEnd())".to_string(),
+        ]);
+    }
+    None
+}

@@ -45,9 +45,12 @@ pub async fn extract_zip(zip_path: &str, dest_dir: &str) -> Result<(), RunError>
 
 #[cfg(test)]
 mod tests {
+    #[cfg(not(windows))]
     use super::extract_zip;
+    #[cfg(not(windows))]
     use std::path::PathBuf;
 
+    #[cfg(not(windows))]
     fn tmp_dir(tag: &str) -> PathBuf {
         let dir =
             std::env::temp_dir().join(format!("oc-util-archive-{tag}-{}", std::process::id()));

@@ -531,6 +531,13 @@ pub fn mime_type(p: &str) -> String {
 mod tests {
     use super::*;
 
+    #[test]
+    fn contains_checks_relative_cross_platform() {
+        let root = std::path::Path::new("a").join("b");
+        let inside = root.join("c");
+        assert!(contains(&root, &inside));
+    }
+
     #[cfg(unix)]
     #[test]
     fn contains_checks_relative() {

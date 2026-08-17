@@ -5,7 +5,7 @@
 //! behavior through SIGTSTP: once the process is continued, raw mode and the
 //! alternate screen are restored before the next redraw.
 
-use std::io::{self, Write};
+use std::io::Write;
 
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
@@ -28,7 +28,7 @@ pub(crate) fn suspend<W: Write>(
         // Ctrl-Z. After `fg`, execution continues here and restores the TUI.
         let raised = unsafe { libc::raise(libc::SIGTSTP) };
         if raised != 0 {
-            let error = io::Error::last_os_error();
+            let error = std::io::Error::last_os_error();
             let _ = restore_interactive_mode(terminal, mouse_enabled);
             return Err(error.into());
         }

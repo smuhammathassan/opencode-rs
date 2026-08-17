@@ -459,4 +459,60 @@ mod tests {
         assert!(is_default_title("Child session - 2026-01-01T00:00:00.000Z"));
         assert!(!is_default_title("Custom title"));
     }
+
+    #[test]
+    fn sanitize_terminal_text_strips_dangerous_sequences() {
+        assert_eq!(
+            sanitize_terminal_text("\x1b]0;hacked-title\x07Normal Text"),
+            "Normal Text"
+        );
+        assert_eq!(
+            sanitize_terminal_text("\x1b]52;c;ZXhwbG9pdA==\x07Hello"),
+            "Hello"
+        );
+        assert_eq!(
+            sanitize_terminal_text("\x1b[38;2;255;0;0mRed Text\x1b[0m"),
+            "Red Text"
+        );
+    }
+}
+
+/// Sanitize untrusted terminal text by stripping dangerous ANSI escape sequences
+/// and control characters (such as OSC title changes, OSC 52 clipboard writes,
+/// and raw escape sequences) while preserving standard newlines and tabs.
+pub fn sanitize_terminal_text(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\x1b' {
+            if let Some(&next) = chars.peek() {
+                if next == ']' {
+                    chars.next();
+                    while let Some(oc) = chars.next() {
+                        if oc == '\x07' {
+                            break;
+                        }
+                        if oc == '\x1b' && chars.peek() == Some(&'\\') {
+                            chars.next();
+                            break;
+                        }
+                    }
+                    continue;
+                } else if next == '[' {
+                    chars.next();
+                    while let Some(cc) = chars.next() {
+                        if ('@'..='~').contains(&cc) {
+                            break;
+                        }
+                    }
+                    continue;
+                }
+            }
+            continue;
+        }
+        if c == '\n' || c == '\t' || c == '\r' || !c.is_control() {
+            out.push(c);
+        }
+    }
+    out
 }

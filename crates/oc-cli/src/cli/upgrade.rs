@@ -440,7 +440,7 @@ pub fn install_binary_atomic(destination: &Path, binary: &[u8]) -> Result<(), Up
             destination.display()
         )));
     }
-    let parent = destination.parent().ok_or_else(|| {
+    let _parent = destination.parent().ok_or_else(|| {
         UpgradeError::ExecutableUnavailable("executable has no parent directory".into())
     })?;
     let temporary = temp_path(destination)?;
