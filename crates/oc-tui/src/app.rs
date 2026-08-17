@@ -3410,7 +3410,10 @@ impl App {
         let subagent = self.route_is_subagent();
         let footer_height = 1u16;
         let prompt_height = 6u16;
-        let messages_height = size.height.saturating_sub(prompt_height + footer_height).max(1);
+        let messages_height = size
+            .height
+            .saturating_sub(prompt_height + footer_height)
+            .max(1);
 
         // Messages scroll view (scoped borrow of the view).
         let messages_rect = ratatui::layout::Rect::new(0, 0, size.width, messages_height);
@@ -3790,20 +3793,36 @@ impl App {
             .map(|p| p.len())
             .unwrap_or(0);
         if pending_perms > 0 {
-            let label = if pending_perms == 1 { "Permission" } else { "Permissions" };
-            right.push((format!("△ {pending_perms} {label}  "), Style::default().fg(theme.warning)));
+            let label = if pending_perms == 1 {
+                "Permission"
+            } else {
+                "Permissions"
+            };
+            right.push((
+                format!("△ {pending_perms} {label}  "),
+                Style::default().fg(theme.warning),
+            ));
         }
 
         // 2. LSP indicator
-        right.push(("• 0 LSP  ".to_string(), Style::default().fg(theme.text_muted)));
+        right.push((
+            "• 0 LSP  ".to_string(),
+            Style::default().fg(theme.text_muted),
+        ));
 
         // 3. Status or Connect shortcut
         let has_providers = !self.sync.providers.is_empty();
         if has_providers {
-            right.push(("/status ".to_string(), Style::default().fg(theme.text_muted)));
+            right.push((
+                "/status ".to_string(),
+                Style::default().fg(theme.text_muted),
+            ));
         } else {
             right.push(("Get started ".to_string(), Style::default().fg(theme.text)));
-            right.push(("/connect ".to_string(), Style::default().fg(theme.text_muted)));
+            right.push((
+                "/connect ".to_string(),
+                Style::default().fg(theme.text_muted),
+            ));
         }
 
         let left_len: usize = left.iter().map(|(s, _)| s.chars().count()).sum();
@@ -3811,7 +3830,10 @@ impl App {
 
         let mut full_line: StyledLine = left;
         if left_len + right_len < width {
-            full_line.push((" ".repeat(width.saturating_sub(left_len + right_len)), Style::default()));
+            full_line.push((
+                " ".repeat(width.saturating_sub(left_len + right_len)),
+                Style::default(),
+            ));
         }
         full_line.extend(right);
 
