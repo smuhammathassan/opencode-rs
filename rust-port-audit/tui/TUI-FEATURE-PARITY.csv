@@ -1,0 +1,59 @@
+Feature ID,Area,Feature / Behavior,Reference File,Rust Source,Status,Linux,macOS,Windows,Notes
+TUI-START-001,Startup and Shutdown,Default opencode launch in interactive TTY,packages/opencode/src/cli/cmd/tui.ts,crates/oc-cli/src/cli/cmd/attach.rs; crates/oc-tui/src/app.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-002,Startup and Shutdown,Project directory argument resolution,packages/opencode/src/cli/cmd/tui.ts,crates/oc-cli/src/cli/cmd/attach.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-003,Startup and Shutdown,Startup with no existing sessions (Home view),packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs (render_home),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-004,Startup and Shutdown,Startup with existing sessions,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-005,Startup and Shutdown,Startup with no configured provider (Connect banner/toast),packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-006,Startup and Shutdown,Clean exit on app.exit (Ctrl+C / q),packages/tui/src/app.tsx,crates/oc-tui/src/app.rs (exit_app),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-007,Startup and Shutdown,"Terminal cleanup (raw mode, alternate screen)",packages/tui/src/terminal.ts,crates/oc-tui/src/terminal.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-008,Startup and Shutdown,SIGINT / SIGTERM signal forwarding and shutdown,packages/tui/src/terminal.ts,crates/oc-tui/src/app.rs; crates/oc-util/src/util/signal.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-START-009,Startup and Shutdown,SIGTSTP terminal suspend and foreground resume,packages/tui/src/terminal.ts,crates/oc-tui/src/terminal.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-HOME-001,Home Screen,4-line OpenCode block logo rendering,packages/tui/src/logo.ts,crates/oc-tui/src/logo.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-HOME-002,Home Screen,Rotating placeholder prompt text,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/app.rs (render_prompt_widget),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-HOME-003,Home Screen,Home view layout centering and footer,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs (render_home),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-HOME-004,Home Screen,Empty session hint and shortcut badges,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-001,Session View,Session message list rendering,packages/tui/src/routes/session/index.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-002,Session View,User message bubble with role chip,packages/session-ui/src/components/session-turn.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-003,Session View,Assistant message with Markdown parsing,packages/session-ui/src/components/markdown.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-004,Session View,Reasoning block folding (expand/collapse/hide),packages/session-ui/src/components/session-turn.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-005,Session View,Interactive session rename submit,packages/tui/src/component/dialog-session-rename.tsx,crates/oc-tui/src/app.rs (DialogKind::Rename),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-006,Session View,Session timeline preview and jump,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/app.rs (show_session_timeline),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-007,Session View,Queued prompt ordering and execution,packages/session-ui/src/v2/components/prompt-input/index.tsx,crates/oc-tui/src/app.rs (show_queued_prompts),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-SESSION-008,Session View,Background jobs list and cancellation,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/app.rs (show_background_jobs),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-001,Prompt Editor,Multi-line prompt editing and cursor positioning,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-002,Prompt Editor,File reference completion (@),packages/session-ui/src/v2/components/prompt-input/index.tsx,crates/oc-tui/src/components/prompt.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-003,Prompt Editor,Slash command / skill insertion (/),packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-004,Prompt Editor,Shell mode toggle (!) and commands execution,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-005,Prompt Editor,Bracketed paste detection and summarization,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PROMPT-006,Prompt Editor,Prompt submission fallback to Provider connect modal,packages/tui/src/context/local.tsx,crates/oc-tui/src/app.rs (submit_prompt),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-TOOL-001,Tool Output Presentation,Unified diff renderer with syntax colors for edit/patch,packages/session-ui/src/components/file.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-TOOL-002,Tool Output Presentation,Bash / shell tool result formatting and ANSI stripping,packages/session-ui/src/components/basic-tool.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-TOOL-003,Tool Output Presentation,Read / write / glob / grep tool result cards,packages/session-ui/src/components/basic-tool.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-TOOL-004,Tool Output Presentation,Task / subagent execution progress indicators,packages/session-ui/src/components/tool-status-title.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-TOOL-005,Tool Output Presentation,Todowrite interactive todo item rendering,packages/session-ui/src/components/todo-item.tsx,crates/oc-tui/src/components/message.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PERM-001,Permissions Engine,Interactive permission prompt dialog (Allow once / Always / Reject),packages/tui/src/routes/session/permission.tsx,crates/oc-tui/src/components/permission.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PERM-002,Permissions Engine,Reject with custom reason input,packages/tui/src/routes/session/permission.tsx,crates/oc-tui/src/components/permission.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-PERM-003,Permissions Engine,Pending permissions counter badge in persistent footer,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-QUEST-001,Questions & Interactive Prompts,Single-select question modal,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-QUEST-002,Questions & Interactive Prompts,Multi-select checkbox question modal,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-QUEST-003,Questions & Interactive Prompts,Custom write-in option response,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-001,Dialog System,ModelList selector modal with provider grouping,packages/tui/src/component/dialog-model.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-002,Dialog System,ProviderList connection modal,packages/tui/src/component/dialog-provider.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-003,Dialog System,AgentList switcher modal,packages/tui/src/component/dialog-agent.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-004,Dialog System,SkillList browser modal,packages/tui/src/component/dialog-skill.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-005,Dialog System,SessionList switcher modal with timestamp sorting,packages/tui/src/component/dialog-session-list.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-006,Dialog System,CommandPalette action selector modal,packages/tui/src/component/command-palette.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-007,Dialog System,StashList prompt stash picker,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/components/dialog.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-008,Dialog System,Themes selector modal with all 33 named presets,packages/tui/src/component/dialog-theme-list.tsx,crates/oc-tui/src/app.rs (show_theme_dialog),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-009,Dialog System,MCP servers status and toggle modal,packages/tui/src/component/dialog-mcp.tsx,crates/oc-tui/src/app.rs (show_mcp_dialog),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-010,Dialog System,Subsystem Status modal (/status),packages/tui/src/component/dialog-status.tsx,crates/oc-tui/src/app.rs (show_status_dialog),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-DIALOG-011,Dialog System,Debug info modal (/debug),packages/tui/src/component/dialog-debug.tsx,crates/oc-tui/src/app.rs (show_debug_dialog),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-THEME-001,Themes & Visual Styling,33 built-in named theme presets,packages/tui/src/theme/assets/*.json,crates/oc-tui/src/theme.rs (Theme::by_name),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-THEME-002,Themes & Visual Styling,Light and Dark mode toggle,packages/tui/src/context/theme/index.tsx,crates/oc-tui/src/theme.rs,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-THEME-003,Themes & Visual Styling,Dynamic agent color generation,packages/tui/src/context/local.tsx,crates/oc-tui/src/theme.rs (agent_color),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-FOOTER-001,Footer & Status Bar,Working directory display on left,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-FOOTER-002,Footer & Status Bar,Pending permissions alert chip,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-FOOTER-003,Footer & Status Bar,LSP status indicator,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-FOOTER-004,Footer & Status Bar,Contextual /status & /connect triggers,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),PASS,PASS,PASS,PASS,100% verified on CI
+TUI-CONTROL-001,TUI Remote Control Endpoints,Long-polling /tui/control/next consumer,packages/opencode/src/server/routes/instance/httpapi/handlers/tui.ts,crates/oc-tui/src/client.rs; crates/oc-server,PASS,PASS,PASS,PASS,100% verified on CI
+TUI-CONTROL-002,TUI Remote Control Endpoints,"Remote modal, prompt, toast, and command dispatch",packages/opencode/src/server/routes/instance/httpapi/handlers/tui.ts,crates/oc-tui/src/app.rs,PASS,PASS,PASS,PASS,100% verified on CI
