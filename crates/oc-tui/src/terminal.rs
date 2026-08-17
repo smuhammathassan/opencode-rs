@@ -45,6 +45,7 @@ pub(crate) fn suspend<W: Write>(
     }
 }
 
+#[cfg(unix)]
 fn leave_interactive_mode<W: Write>(
     terminal: &mut Terminal<CrosstermBackend<W>>,
 ) -> anyhow::Result<()> {
@@ -60,6 +61,7 @@ fn leave_interactive_mode<W: Write>(
     Ok(())
 }
 
+#[cfg(unix)]
 fn restore_interactive_mode<W: Write>(
     terminal: &mut Terminal<CrosstermBackend<W>>,
     mouse_enabled: bool,

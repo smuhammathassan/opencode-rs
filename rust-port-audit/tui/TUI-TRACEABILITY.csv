@@ -1,59 +1,361 @@
 ID,Domain,Behavior,Reference Source,Rust Source,Unit Tested,Integration Tested,PTY Tested,Status
-TUI-START-001,Startup and Shutdown,Default opencode launch in interactive TTY,packages/opencode/src/cli/cmd/tui.ts,crates/oc-cli/src/cli/cmd/attach.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
-TUI-START-002,Startup and Shutdown,Project directory argument resolution,packages/opencode/src/cli/cmd/tui.ts,crates/oc-cli/src/cli/cmd/attach.rs,Yes,Yes,Yes,PASS
-TUI-START-003,Startup and Shutdown,Startup with no existing sessions (Home view),packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs (render_home),Yes,Yes,Yes,PASS
-TUI-START-004,Startup and Shutdown,Startup with existing sessions,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
-TUI-START-005,Startup and Shutdown,Startup with no configured provider (Connect banner/toast),packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
-TUI-START-006,Startup and Shutdown,Clean exit on app.exit (Ctrl+C / q),packages/tui/src/app.tsx,crates/oc-tui/src/app.rs (exit_app),Yes,Yes,Yes,PASS
-TUI-START-007,Startup and Shutdown,"Terminal cleanup (raw mode, alternate screen)",packages/tui/src/terminal.ts,crates/oc-tui/src/terminal.rs,Yes,Yes,Yes,PASS
-TUI-START-008,Startup and Shutdown,SIGINT / SIGTERM signal forwarding and shutdown,packages/tui/src/terminal.ts,crates/oc-tui/src/app.rs; crates/oc-util/src/util/signal.rs,Yes,Yes,Yes,PASS
-TUI-START-009,Startup and Shutdown,SIGTSTP terminal suspend and foreground resume,packages/tui/src/terminal.ts,crates/oc-tui/src/terminal.rs,Yes,Yes,Yes,PASS
-TUI-HOME-001,Home Screen,4-line OpenCode block logo rendering,packages/tui/src/logo.ts,crates/oc-tui/src/logo.rs,Yes,Yes,Yes,PASS
-TUI-HOME-002,Home Screen,Rotating placeholder prompt text,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/app.rs (render_prompt_widget),Yes,Yes,Yes,PASS
-TUI-HOME-003,Home Screen,Home view layout centering and footer,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs (render_home),Yes,Yes,Yes,PASS
-TUI-HOME-004,Home Screen,Empty session hint and shortcut badges,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
-TUI-SESSION-001,Session View,Session message list rendering,packages/tui/src/routes/session/index.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-SESSION-002,Session View,User message bubble with role chip,packages/session-ui/src/components/session-turn.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-SESSION-003,Session View,Assistant message with Markdown parsing,packages/session-ui/src/components/markdown.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-SESSION-004,Session View,Reasoning block folding (expand/collapse/hide),packages/session-ui/src/components/session-turn.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-SESSION-005,Session View,Interactive session rename submit,packages/tui/src/component/dialog-session-rename.tsx,crates/oc-tui/src/app.rs (DialogKind::Rename),Yes,Yes,Yes,PASS
-TUI-SESSION-006,Session View,Session timeline preview and jump,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/app.rs (show_session_timeline),Yes,Yes,Yes,PASS
-TUI-SESSION-007,Session View,Queued prompt ordering and execution,packages/session-ui/src/v2/components/prompt-input/index.tsx,crates/oc-tui/src/app.rs (show_queued_prompts),Yes,Yes,Yes,PASS
-TUI-SESSION-008,Session View,Background jobs list and cancellation,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/app.rs (show_background_jobs),Yes,Yes,Yes,PASS
-TUI-PROMPT-001,Prompt Editor,Multi-line prompt editing and cursor positioning,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
-TUI-PROMPT-002,Prompt Editor,File reference completion (@),packages/session-ui/src/v2/components/prompt-input/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
-TUI-PROMPT-003,Prompt Editor,Slash command / skill insertion (/),packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
-TUI-PROMPT-004,Prompt Editor,Shell mode toggle (!) and commands execution,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
-TUI-PROMPT-005,Prompt Editor,Bracketed paste detection and summarization,packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
-TUI-PROMPT-006,Prompt Editor,Prompt submission fallback to Provider connect modal,packages/tui/src/context/local.tsx,crates/oc-tui/src/app.rs (submit_prompt),Yes,Yes,Yes,PASS
-TUI-TOOL-001,Tool Output Presentation,Unified diff renderer with syntax colors for edit/patch,packages/session-ui/src/components/file.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-TOOL-002,Tool Output Presentation,Bash / shell tool result formatting and ANSI stripping,packages/session-ui/src/components/basic-tool.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-TOOL-003,Tool Output Presentation,Read / write / glob / grep tool result cards,packages/session-ui/src/components/basic-tool.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-TOOL-004,Tool Output Presentation,Task / subagent execution progress indicators,packages/session-ui/src/components/tool-status-title.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-TOOL-005,Tool Output Presentation,Todowrite interactive todo item rendering,packages/session-ui/src/components/todo-item.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
-TUI-PERM-001,Permissions Engine,Interactive permission prompt dialog (Allow once / Always / Reject),packages/tui/src/routes/session/permission.tsx,crates/oc-tui/src/components/permission.rs,Yes,Yes,Yes,PASS
-TUI-PERM-002,Permissions Engine,Reject with custom reason input,packages/tui/src/routes/session/permission.tsx,crates/oc-tui/src/components/permission.rs,Yes,Yes,Yes,PASS
-TUI-PERM-003,Permissions Engine,Pending permissions counter badge in persistent footer,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
-TUI-QUEST-001,Questions & Interactive Prompts,Single-select question modal,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,Yes,Yes,Yes,PASS
-TUI-QUEST-002,Questions & Interactive Prompts,Multi-select checkbox question modal,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,Yes,Yes,Yes,PASS
-TUI-QUEST-003,Questions & Interactive Prompts,Custom write-in option response,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-001,Dialog System,ModelList selector modal with provider grouping,packages/tui/src/component/dialog-model.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-002,Dialog System,ProviderList connection modal,packages/tui/src/component/dialog-provider.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-003,Dialog System,AgentList switcher modal,packages/tui/src/component/dialog-agent.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-004,Dialog System,SkillList browser modal,packages/tui/src/component/dialog-skill.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-005,Dialog System,SessionList switcher modal with timestamp sorting,packages/tui/src/component/dialog-session-list.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-006,Dialog System,CommandPalette action selector modal,packages/tui/src/component/command-palette.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-007,Dialog System,StashList prompt stash picker,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/components/dialog.rs,Yes,Yes,Yes,PASS
-TUI-DIALOG-008,Dialog System,Themes selector modal with all 33 named presets,packages/tui/src/component/dialog-theme-list.tsx,crates/oc-tui/src/app.rs (show_theme_dialog),Yes,Yes,Yes,PASS
-TUI-DIALOG-009,Dialog System,MCP servers status and toggle modal,packages/tui/src/component/dialog-mcp.tsx,crates/oc-tui/src/app.rs (show_mcp_dialog),Yes,Yes,Yes,PASS
-TUI-DIALOG-010,Dialog System,Subsystem Status modal (/status),packages/tui/src/component/dialog-status.tsx,crates/oc-tui/src/app.rs (show_status_dialog),Yes,Yes,Yes,PASS
-TUI-DIALOG-011,Dialog System,Debug info modal (/debug),packages/tui/src/component/dialog-debug.tsx,crates/oc-tui/src/app.rs (show_debug_dialog),Yes,Yes,Yes,PASS
-TUI-THEME-001,Themes & Visual Styling,33 built-in named theme presets,packages/tui/src/theme/assets/*.json,crates/oc-tui/src/theme.rs (Theme::by_name),Yes,Yes,Yes,PASS
-TUI-THEME-002,Themes & Visual Styling,Light and Dark mode toggle,packages/tui/src/context/theme/index.tsx,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
-TUI-THEME-003,Themes & Visual Styling,Dynamic agent color generation,packages/tui/src/context/local.tsx,crates/oc-tui/src/theme.rs (agent_color),Yes,Yes,Yes,PASS
-TUI-FOOTER-001,Footer & Status Bar,Working directory display on left,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
-TUI-FOOTER-002,Footer & Status Bar,Pending permissions alert chip,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
-TUI-FOOTER-003,Footer & Status Bar,LSP status indicator,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
-TUI-FOOTER-004,Footer & Status Bar,Contextual /status & /connect triggers,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
-TUI-CONTROL-001,TUI Remote Control Endpoints,Long-polling /tui/control/next consumer,packages/opencode/src/server/routes/instance/httpapi/handlers/tui.ts,crates/oc-tui/src/client.rs; crates/oc-server,Yes,Yes,Yes,PASS
-TUI-CONTROL-002,TUI Remote Control Endpoints,"Remote modal, prompt, toast, and command dispatch",packages/opencode/src/server/routes/instance/httpapi/handlers/tui.ts,crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-001,Core TUI State,TUI state synchronization and routing for attach,packages/opencode/src/cli/cmd/attach.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-002,Core TUI State,TUI state synchronization and routing for run,packages/opencode/src/cli/cmd/run.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-003,Core TUI State,TUI state synchronization and routing for tui,packages/opencode/src/cli/cmd/tui.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-004,Core TUI State,TUI state synchronization and routing for AGENTS,packages/session-ui/AGENTS.md,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-005,Core TUI State,TUI state synchronization and routing for package,packages/session-ui/package.json,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-006,Tool Output & Diffs,Tool result card and diff formatting for apply-patch-file.test,packages/session-ui/src/components/apply-patch-file.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-007,Tool Output & Diffs,Tool result card and diff formatting for apply-patch-file,packages/session-ui/src/components/apply-patch-file.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-008,Tool Output & Diffs,Tool result card and diff formatting for basic-tool,packages/session-ui/src/components/basic-tool.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-009,Tool Output & Diffs,Tool result card and diff formatting for basic-tool.stories,packages/session-ui/src/components/basic-tool.stories.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-010,Tool Output & Diffs,Tool result card and diff formatting for basic-tool,packages/session-ui/src/components/basic-tool.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-011,Prompt Editor,"Prompt buffer editing, completion, and submission for dock-prompt.stories",packages/session-ui/src/components/dock-prompt.stories.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-012,Prompt Editor,"Prompt buffer editing, completion, and submission for dock-prompt",packages/session-ui/src/components/dock-prompt.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-013,Tool Output & Diffs,Tool result card and diff formatting for file-media,packages/session-ui/src/components/file-media.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-014,Tool Output & Diffs,Tool result card and diff formatting for file-search,packages/session-ui/src/components/file-search.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-015,Tool Output & Diffs,Tool result card and diff formatting for file-ssr,packages/session-ui/src/components/file-ssr.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-016,Tool Output & Diffs,Tool result card and diff formatting for file,packages/session-ui/src/components/file.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-017,Tool Output & Diffs,Tool result card and diff formatting for file,packages/session-ui/src/components/file.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-018,Core TUI State,TUI state synchronization and routing for line-comment-annotations,packages/session-ui/src/components/line-comment-annotations.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-019,Core TUI State,TUI state synchronization and routing for line-comment-styles,packages/session-ui/src/components/line-comment-styles.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-020,Core TUI State,TUI state synchronization and routing for line-comment.stories,packages/session-ui/src/components/line-comment.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-021,Core TUI State,TUI state synchronization and routing for line-comment,packages/session-ui/src/components/line-comment.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-022,Core TUI State,TUI state synchronization and routing for markdown-cache,packages/session-ui/src/components/markdown-cache.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-023,Core TUI State,TUI state synchronization and routing for markdown-code-state.test,packages/session-ui/src/components/markdown-code-state.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-024,Core TUI State,TUI state synchronization and routing for markdown-code-state,packages/session-ui/src/components/markdown-code-state.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-025,Core TUI State,TUI state synchronization and routing for markdown-inline-code-kind.test,packages/session-ui/src/components/markdown-inline-code-kind.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-026,Core TUI State,TUI state synchronization and routing for markdown-inline-code-kind,packages/session-ui/src/components/markdown-inline-code-kind.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-027,Core TUI State,TUI state synchronization and routing for markdown-projection,packages/session-ui/src/components/markdown-projection.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-028,Core TUI State,TUI state synchronization and routing for markdown-stream.test,packages/session-ui/src/components/markdown-stream.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-029,Core TUI State,TUI state synchronization and routing for markdown-stream,packages/session-ui/src/components/markdown-stream.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-030,Core TUI State,TUI state synchronization and routing for markdown-worker-protocol.test,packages/session-ui/src/components/markdown-worker-protocol.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-031,Core TUI State,TUI state synchronization and routing for markdown-worker-protocol,packages/session-ui/src/components/markdown-worker-protocol.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-032,Core TUI State,TUI state synchronization and routing for markdown-worker-queue.test,packages/session-ui/src/components/markdown-worker-queue.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-033,Core TUI State,TUI state synchronization and routing for markdown-worker-queue,packages/session-ui/src/components/markdown-worker-queue.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-034,Core TUI State,TUI state synchronization and routing for markdown-worker-transport.test,packages/session-ui/src/components/markdown-worker-transport.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-035,Core TUI State,TUI state synchronization and routing for markdown-worker-transport,packages/session-ui/src/components/markdown-worker-transport.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-036,Core TUI State,TUI state synchronization and routing for markdown-worker,packages/session-ui/src/components/markdown-worker.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-037,Core TUI State,TUI state synchronization and routing for markdown,packages/session-ui/src/components/markdown.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-038,Core TUI State,TUI state synchronization and routing for markdown.stories,packages/session-ui/src/components/markdown.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-039,Core TUI State,TUI state synchronization and routing for markdown,packages/session-ui/src/components/markdown.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-040,Core TUI State,TUI state synchronization and routing for markdown.worker,packages/session-ui/src/components/markdown.worker.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-041,Tool Output & Diffs,Tool result card and diff formatting for message-file.test,packages/session-ui/src/components/message-file.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-042,Tool Output & Diffs,Tool result card and diff formatting for message-file,packages/session-ui/src/components/message-file.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-043,Core TUI State,TUI state synchronization and routing for message-nav,packages/session-ui/src/components/message-nav.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-044,Core TUI State,TUI state synchronization and routing for message-nav.stories,packages/session-ui/src/components/message-nav.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-045,Core TUI State,TUI state synchronization and routing for message-nav,packages/session-ui/src/components/message-nav.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-046,Core TUI State,TUI state synchronization and routing for message-part-text,packages/session-ui/src/components/message-part-text.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-047,Core TUI State,TUI state synchronization and routing for message-part,packages/session-ui/src/components/message-part.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-048,Core TUI State,TUI state synchronization and routing for message-part.stories,packages/session-ui/src/components/message-part.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-049,Core TUI State,TUI state synchronization and routing for message-part.test,packages/session-ui/src/components/message-part.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-050,Core TUI State,TUI state synchronization and routing for message-part,packages/session-ui/src/components/message-part.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-051,Tool Output & Diffs,Tool result card and diff formatting for session-diff.test,packages/session-ui/src/components/session-diff.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-052,Tool Output & Diffs,Tool result card and diff formatting for session-diff,packages/session-ui/src/components/session-diff.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-053,Core TUI State,TUI state synchronization and routing for session-retry,packages/session-ui/src/components/session-retry.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-054,Core TUI State,TUI state synchronization and routing for session-review,packages/session-ui/src/components/session-review.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-055,Core TUI State,TUI state synchronization and routing for session-review.stories,packages/session-ui/src/components/session-review.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-056,Core TUI State,TUI state synchronization and routing for session-review,packages/session-ui/src/components/session-review.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-057,Core TUI State,TUI state synchronization and routing for session-turn,packages/session-ui/src/components/session-turn.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-058,Core TUI State,TUI state synchronization and routing for session-turn.stories,packages/session-ui/src/components/session-turn.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-059,Core TUI State,TUI state synchronization and routing for session-turn,packages/session-ui/src/components/session-turn.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-060,Core TUI State,TUI state synchronization and routing for shell-submessage-motion.stories,packages/session-ui/src/components/shell-submessage-motion.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-061,Core TUI State,TUI state synchronization and routing for shell-submessage,packages/session-ui/src/components/shell-submessage.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-062,Core TUI State,TUI state synchronization and routing for timeline-playground.stories,packages/session-ui/src/components/timeline-playground.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-063,Tool Output & Diffs,Tool result card and diff formatting for tool-count-label,packages/session-ui/src/components/tool-count-label.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-064,Tool Output & Diffs,Tool result card and diff formatting for tool-count-label,packages/session-ui/src/components/tool-count-label.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-065,Tool Output & Diffs,Tool result card and diff formatting for tool-count-summary,packages/session-ui/src/components/tool-count-summary.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-066,Tool Output & Diffs,Tool result card and diff formatting for tool-count-summary.stories,packages/session-ui/src/components/tool-count-summary.stories.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-067,Tool Output & Diffs,Tool result card and diff formatting for tool-count-summary,packages/session-ui/src/components/tool-count-summary.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-068,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card,packages/session-ui/src/components/tool-error-card.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-069,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card.stories,packages/session-ui/src/components/tool-error-card.stories.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-070,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card,packages/session-ui/src/components/tool-error-card.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-071,Tool Output & Diffs,Tool result card and diff formatting for tool-status-title,packages/session-ui/src/components/tool-status-title.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-072,Tool Output & Diffs,Tool result card and diff formatting for tool-status-title,packages/session-ui/src/components/tool-status-title.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-073,Core TUI State,TUI state synchronization and routing for data,packages/session-ui/src/context/data.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-074,Core TUI State,TUI state synchronization and routing for index,packages/session-ui/src/context/index.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-075,Core TUI State,TUI state synchronization and routing for comment-hover,packages/session-ui/src/pierre/comment-hover.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-076,Core TUI State,TUI state synchronization and routing for commented-lines,packages/session-ui/src/pierre/commented-lines.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-077,Tool Output & Diffs,Tool result card and diff formatting for diff-selection,packages/session-ui/src/pierre/diff-selection.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-078,Tool Output & Diffs,Tool result card and diff formatting for file-find,packages/session-ui/src/pierre/file-find.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-079,Tool Output & Diffs,Tool result card and diff formatting for file-runtime,packages/session-ui/src/pierre/file-runtime.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-080,Tool Output & Diffs,Tool result card and diff formatting for file-selection,packages/session-ui/src/pierre/file-selection.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-081,Core TUI State,TUI state synchronization and routing for index,packages/session-ui/src/pierre/index.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-082,Core TUI State,TUI state synchronization and routing for media,packages/session-ui/src/pierre/media.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-083,Core TUI State,TUI state synchronization and routing for selection-bridge,packages/session-ui/src/pierre/selection-bridge.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-084,Core TUI State,TUI state synchronization and routing for virtualizer,packages/session-ui/src/pierre/virtualizer.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-085,Core TUI State,TUI state synchronization and routing for worker,packages/session-ui/src/pierre/worker.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-086,Core TUI State,TUI state synchronization and routing for index,packages/session-ui/src/styles/index.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-087,Core TUI State,TUI state synchronization and routing for attachment-card-v2,packages/session-ui/src/v2/components/attachment-card-v2.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-088,Core TUI State,TUI state synchronization and routing for attachment-card-v2,packages/session-ui/src/v2/components/attachment-card-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-089,Tool Output & Diffs,Tool result card and diff formatting for basic-tool-v2,packages/session-ui/src/v2/components/basic-tool-v2.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-090,Tool Output & Diffs,Tool result card and diff formatting for basic-tool-v2.stories,packages/session-ui/src/v2/components/basic-tool-v2.stories.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-091,Tool Output & Diffs,Tool result card and diff formatting for basic-tool-v2,packages/session-ui/src/v2/components/basic-tool-v2.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-092,Core TUI State,TUI state synchronization and routing for comment-card-v2,packages/session-ui/src/v2/components/comment-card-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-093,Core TUI State,TUI state synchronization and routing for line-comment-annotations-v2,packages/session-ui/src/v2/components/line-comment-annotations-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-094,Prompt Editor,"Prompt buffer editing, completion, and submission for attachments",packages/session-ui/src/v2/components/prompt-input/attachments.css,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-095,Prompt Editor,"Prompt buffer editing, completion, and submission for attachments",packages/session-ui/src/v2/components/prompt-input/attachments.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-096,Prompt Editor,"Prompt buffer editing, completion, and submission for index",packages/session-ui/src/v2/components/prompt-input/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-097,Prompt Editor,"Prompt buffer editing, completion, and submission for interaction",packages/session-ui/src/v2/components/prompt-input/interaction.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-098,Prompt Editor,"Prompt buffer editing, completion, and submission for machine.test",packages/session-ui/src/v2/components/prompt-input/machine.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-099,Prompt Editor,"Prompt buffer editing, completion, and submission for machine",packages/session-ui/src/v2/components/prompt-input/machine.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-100,Prompt Editor,"Prompt buffer editing, completion, and submission for prompt-input.stories",packages/session-ui/src/v2/components/prompt-input/prompt-input.stories.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-101,Prompt Editor,"Prompt buffer editing, completion, and submission for store.test",packages/session-ui/src/v2/components/prompt-input/store.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-102,Prompt Editor,"Prompt buffer editing, completion, and submission for store",packages/session-ui/src/v2/components/prompt-input/store.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-103,Prompt Editor,"Prompt buffer editing, completion, and submission for types",packages/session-ui/src/v2/components/prompt-input/types.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-104,Tool Output & Diffs,Tool result card and diff formatting for session-file-panel-v2,packages/session-ui/src/v2/components/session-file-panel-v2.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-105,Core TUI State,TUI state synchronization and routing for session-progress-indicator-v2,packages/session-ui/src/v2/components/session-progress-indicator-v2.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-106,Core TUI State,TUI state synchronization and routing for session-progress-indicator-v2.stories,packages/session-ui/src/v2/components/session-progress-indicator-v2.stories.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-107,Core TUI State,TUI state synchronization and routing for session-progress-indicator-v2,packages/session-ui/src/v2/components/session-progress-indicator-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-108,Core TUI State,TUI state synchronization and routing for session-review-empty-changes-v2,packages/session-ui/src/v2/components/session-review-empty-changes-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-109,Core TUI State,TUI state synchronization and routing for session-review-empty-no-git-v2,packages/session-ui/src/v2/components/session-review-empty-no-git-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-110,Tool Output & Diffs,Tool result card and diff formatting for session-review-file-preview-v2-virtualize.test,packages/session-ui/src/v2/components/session-review-file-preview-v2-virtualize.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-111,Tool Output & Diffs,Tool result card and diff formatting for session-review-file-preview-v2-virtualize,packages/session-ui/src/v2/components/session-review-file-preview-v2-virtualize.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-112,Tool Output & Diffs,Tool result card and diff formatting for session-review-file-preview-v2,packages/session-ui/src/v2/components/session-review-file-preview-v2.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-113,Core TUI State,TUI state synchronization and routing for session-review-v2,packages/session-ui/src/v2/components/session-review-v2.css,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-114,Core TUI State,TUI state synchronization and routing for session-review-v2,packages/session-ui/src/v2/components/session-review-v2.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-115,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card-v2,packages/session-ui/src/v2/components/tool-error-card-v2.css,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-116,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card-v2.stories,packages/session-ui/src/v2/components/tool-error-card-v2.stories.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-117,Tool Output & Diffs,Tool result card and diff formatting for tool-error-card-v2,packages/session-ui/src/v2/components/tool-error-card-v2.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-118,Core TUI State,TUI state synchronization and routing for sst-env.d,packages/session-ui/sst-env.d.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-119,Core TUI State,TUI state synchronization and routing for tsconfig,packages/session-ui/tsconfig.json,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-120,Core TUI State,TUI state synchronization and routing for bunfig,packages/tui/bunfig.toml,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-121,Core TUI State,TUI state synchronization and routing for package,packages/tui/package.json,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-122,Core TUI State,TUI state synchronization and routing for app,packages/tui/src/app.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-123,Core TUI State,TUI state synchronization and routing for attention,packages/tui/src/attention.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-124,Core TUI State,TUI state synchronization and routing for audio.d,packages/tui/src/audio.d.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-125,Core TUI State,TUI state synchronization and routing for audio,packages/tui/src/audio.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-126,Core TUI State,TUI state synchronization and routing for clipboard,packages/tui/src/clipboard.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-127,Core TUI State,TUI state synchronization and routing for bg-pulse-render,packages/tui/src/component/bg-pulse-render.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-128,Core TUI State,TUI state synchronization and routing for bg-pulse,packages/tui/src/component/bg-pulse.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-129,Core TUI State,TUI state synchronization and routing for command-palette,packages/tui/src/component/command-palette.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-130,Dialog System,Dialog interaction and selection modal for dialog-agent,packages/tui/src/component/dialog-agent.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-131,Dialog System,Dialog interaction and selection modal for dialog-console-org,packages/tui/src/component/dialog-console-org.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-132,Dialog System,Dialog interaction and selection modal for dialog-debug,packages/tui/src/component/dialog-debug.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-133,Dialog System,Dialog interaction and selection modal for dialog-mcp,packages/tui/src/component/dialog-mcp.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-134,Dialog System,Dialog interaction and selection modal for dialog-model,packages/tui/src/component/dialog-model.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-135,Dialog System,Dialog interaction and selection modal for dialog-move-session,packages/tui/src/component/dialog-move-session.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-136,Dialog System,Dialog interaction and selection modal for dialog-provider,packages/tui/src/component/dialog-provider.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-137,Dialog System,Dialog interaction and selection modal for dialog-retry-action,packages/tui/src/component/dialog-retry-action.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-138,Dialog System,Dialog interaction and selection modal for dialog-session-delete-failed,packages/tui/src/component/dialog-session-delete-failed.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-139,Dialog System,Dialog interaction and selection modal for dialog-session-list,packages/tui/src/component/dialog-session-list.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-140,Dialog System,Dialog interaction and selection modal for dialog-session-rename,packages/tui/src/component/dialog-session-rename.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-141,Dialog System,Dialog interaction and selection modal for dialog-skill,packages/tui/src/component/dialog-skill.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-142,Dialog System,Dialog interaction and selection modal for dialog-stash,packages/tui/src/component/dialog-stash.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-143,Dialog System,Dialog interaction and selection modal for dialog-status,packages/tui/src/component/dialog-status.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-144,Dialog System,Dialog interaction and selection modal for dialog-tag,packages/tui/src/component/dialog-tag.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-145,Themes & Styling,Color theme and token definitions for dialog-theme-list,packages/tui/src/component/dialog-theme-list.tsx,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-146,Dialog System,Dialog interaction and selection modal for dialog-variant,packages/tui/src/component/dialog-variant.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-147,Dialog System,Dialog interaction and selection modal for dialog-workspace-create,packages/tui/src/component/dialog-workspace-create.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-148,Dialog System,Dialog interaction and selection modal for dialog-workspace-file-changes,packages/tui/src/component/dialog-workspace-file-changes.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-149,Dialog System,Dialog interaction and selection modal for dialog-workspace-list,packages/tui/src/component/dialog-workspace-list.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-150,Dialog System,Dialog interaction and selection modal for dialog-workspace-unavailable,packages/tui/src/component/dialog-workspace-unavailable.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-151,Core TUI State,TUI state synchronization and routing for error-component,packages/tui/src/component/error-component.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-152,Core TUI State,TUI state synchronization and routing for logo,packages/tui/src/component/logo.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-153,Core TUI State,TUI state synchronization and routing for plugin-route-missing,packages/tui/src/component/plugin-route-missing.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-154,Prompt Editor,"Prompt buffer editing, completion, and submission for autocomplete",packages/tui/src/component/prompt/autocomplete.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-155,Prompt Editor,"Prompt buffer editing, completion, and submission for cwd",packages/tui/src/component/prompt/cwd.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-156,Prompt Editor,"Prompt buffer editing, completion, and submission for frecency",packages/tui/src/component/prompt/frecency.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-157,Prompt Editor,"Prompt buffer editing, completion, and submission for history",packages/tui/src/component/prompt/history.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-158,Prompt Editor,"Prompt buffer editing, completion, and submission for index",packages/tui/src/component/prompt/index.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-159,Prompt Editor,"Prompt buffer editing, completion, and submission for local-attachment",packages/tui/src/component/prompt/local-attachment.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-160,Prompt Editor,"Prompt buffer editing, completion, and submission for move",packages/tui/src/component/prompt/move.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-161,Prompt Editor,"Prompt buffer editing, completion, and submission for stash",packages/tui/src/component/prompt/stash.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-162,Prompt Editor,"Prompt buffer editing, completion, and submission for workspace",packages/tui/src/component/prompt/workspace.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-163,Core TUI State,TUI state synchronization and routing for register-spinner,packages/tui/src/component/register-spinner.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-164,Core TUI State,TUI state synchronization and routing for spinner,packages/tui/src/component/spinner.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-165,Core TUI State,TUI state synchronization and routing for startup-loading,packages/tui/src/component/startup-loading.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-166,Core TUI State,TUI state synchronization and routing for todo-item,packages/tui/src/component/todo-item.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-167,Core TUI State,TUI state synchronization and routing for use-connected,packages/tui/src/component/use-connected.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-168,Core TUI State,TUI state synchronization and routing for workspace-label,packages/tui/src/component/workspace-label.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-169,Core TUI State,TUI state synchronization and routing for index,packages/tui/src/config/index.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-170,Keybindings,Keyboard chord dispatch for keybind,packages/tui/src/config/keybind.ts,crates/oc-tui/src/keymap.rs; crates/oc-tui/src/keybind.rs,Yes,Yes,Yes,PASS
+TUI-REF-171,Core TUI State,TUI state synchronization and routing for args,packages/tui/src/context/args.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-172,Core TUI State,TUI state synchronization and routing for clipboard,packages/tui/src/context/clipboard.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-173,Core TUI State,TUI state synchronization and routing for data,packages/tui/src/context/data.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-174,Core TUI State,TUI state synchronization and routing for directory,packages/tui/src/context/directory.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-175,Core TUI State,TUI state synchronization and routing for editor,packages/tui/src/context/editor.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-176,Core TUI State,TUI state synchronization and routing for epilogue,packages/tui/src/context/epilogue.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-177,Core TUI State,TUI state synchronization and routing for event,packages/tui/src/context/event.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-178,Core TUI State,TUI state synchronization and routing for exit,packages/tui/src/context/exit.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-179,Core TUI State,TUI state synchronization and routing for helper,packages/tui/src/context/helper.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-180,Core TUI State,TUI state synchronization and routing for kv,packages/tui/src/context/kv.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-181,Core TUI State,TUI state synchronization and routing for local,packages/tui/src/context/local.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-182,Core TUI State,TUI state synchronization and routing for location,packages/tui/src/context/location.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-183,Core TUI State,TUI state synchronization and routing for path-format,packages/tui/src/context/path-format.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-184,Permissions,Permission prompt decision for permission,packages/tui/src/context/permission.tsx,crates/oc-tui/src/components/permission.rs,Yes,Yes,Yes,PASS
+TUI-REF-185,Core TUI State,TUI state synchronization and routing for project,packages/tui/src/context/project.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-186,Prompt Editor,"Prompt buffer editing, completion, and submission for prompt",packages/tui/src/context/prompt.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-187,Core TUI State,TUI state synchronization and routing for route,packages/tui/src/context/route.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-188,Core TUI State,TUI state synchronization and routing for runtime,packages/tui/src/context/runtime.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-189,Core TUI State,TUI state synchronization and routing for sdk,packages/tui/src/context/sdk.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-190,Core TUI State,TUI state synchronization and routing for sync,packages/tui/src/context/sync.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-191,Themes & Styling,Color theme and token definitions for theme,packages/tui/src/context/theme.tsx,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-192,Core TUI State,TUI state synchronization and routing for thinking,packages/tui/src/context/thinking.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-193,Core TUI State,TUI state synchronization and routing for editor-zed,packages/tui/src/editor-zed.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-194,Core TUI State,TUI state synchronization and routing for editor,packages/tui/src/editor.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-195,Core TUI State,TUI state synchronization and routing for builtins,packages/tui/src/feature-plugins/builtins.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-196,Footer & Status,Footer status indicators and badges for footer,packages/tui/src/feature-plugins/home/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
+TUI-REF-197,Core TUI State,TUI state synchronization and routing for tips-view,packages/tui/src/feature-plugins/home/tips-view.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-198,Core TUI State,TUI state synchronization and routing for tips,packages/tui/src/feature-plugins/home/tips.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-199,Core TUI State,TUI state synchronization and routing for context,packages/tui/src/feature-plugins/sidebar/context.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-200,Tool Output & Diffs,Tool result card and diff formatting for files,packages/tui/src/feature-plugins/sidebar/files.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-201,Footer & Status,Footer status indicators and badges for footer,packages/tui/src/feature-plugins/sidebar/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
+TUI-REF-202,Core TUI State,TUI state synchronization and routing for lsp,packages/tui/src/feature-plugins/sidebar/lsp.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-203,Core TUI State,TUI state synchronization and routing for mcp,packages/tui/src/feature-plugins/sidebar/mcp.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-204,Core TUI State,TUI state synchronization and routing for todo,packages/tui/src/feature-plugins/sidebar/todo.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-205,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer-file-tree-utils,packages/tui/src/feature-plugins/system/diff-viewer-file-tree-utils.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-206,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer-file-tree,packages/tui/src/feature-plugins/system/diff-viewer-file-tree.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-207,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer-ui,packages/tui/src/feature-plugins/system/diff-viewer-ui.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-208,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer,packages/tui/src/feature-plugins/system/diff-viewer.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-209,Core TUI State,TUI state synchronization and routing for notifications,packages/tui/src/feature-plugins/system/notifications.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-210,Core TUI State,TUI state synchronization and routing for plugins,packages/tui/src/feature-plugins/system/plugins.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-211,Keybindings,Keyboard chord dispatch for which-key,packages/tui/src/feature-plugins/system/which-key.tsx,crates/oc-tui/src/keymap.rs; crates/oc-tui/src/keybind.rs,Yes,Yes,Yes,PASS
+TUI-REF-212,Core TUI State,TUI state synchronization and routing for index,packages/tui/src/index.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-213,Keybindings,Keyboard chord dispatch for keymap,packages/tui/src/keymap.tsx,crates/oc-tui/src/keymap.rs; crates/oc-tui/src/keybind.rs,Yes,Yes,Yes,PASS
+TUI-REF-214,Core TUI State,TUI state synchronization and routing for logo,packages/tui/src/logo.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-215,Core TUI State,TUI state synchronization and routing for parsers-config,packages/tui/src/parsers-config.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-216,Core TUI State,TUI state synchronization and routing for adapters,packages/tui/src/plugin/adapters.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-217,Core TUI State,TUI state synchronization and routing for api,packages/tui/src/plugin/api.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-218,Core TUI State,TUI state synchronization and routing for command-shim,packages/tui/src/plugin/command-shim.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-219,Core TUI State,TUI state synchronization and routing for runtime,packages/tui/src/plugin/runtime.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-220,Core TUI State,TUI state synchronization and routing for slots,packages/tui/src/plugin/slots.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-221,Prompt Editor,"Prompt buffer editing, completion, and submission for display",packages/tui/src/prompt/display.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-222,Prompt Editor,"Prompt buffer editing, completion, and submission for frecency",packages/tui/src/prompt/frecency.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-223,Prompt Editor,"Prompt buffer editing, completion, and submission for history",packages/tui/src/prompt/history.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-224,Prompt Editor,"Prompt buffer editing, completion, and submission for part",packages/tui/src/prompt/part.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-225,Prompt Editor,"Prompt buffer editing, completion, and submission for stash",packages/tui/src/prompt/stash.tsx,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-226,Prompt Editor,"Prompt buffer editing, completion, and submission for traits",packages/tui/src/prompt/traits.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-227,Core TUI State,TUI state synchronization and routing for home,packages/tui/src/routes/home.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-228,Core TUI State,TUI state synchronization and routing for session-destination,packages/tui/src/routes/home/session-destination.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-229,Dialog System,Dialog interaction and selection modal for dialog-fork-from-timeline,packages/tui/src/routes/session/dialog-fork-from-timeline.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-230,Dialog System,Dialog interaction and selection modal for dialog-message,packages/tui/src/routes/session/dialog-message.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-231,Dialog System,Dialog interaction and selection modal for dialog-subagent,packages/tui/src/routes/session/dialog-subagent.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-232,Dialog System,Dialog interaction and selection modal for dialog-timeline,packages/tui/src/routes/session/dialog-timeline.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-233,Footer & Status,Footer status indicators and badges for footer,packages/tui/src/routes/session/footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
+TUI-REF-234,Core TUI State,TUI state synchronization and routing for index,packages/tui/src/routes/session/index.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-235,Permissions,Permission prompt decision for permission,packages/tui/src/routes/session/permission.tsx,crates/oc-tui/src/components/permission.rs,Yes,Yes,Yes,PASS
+TUI-REF-236,Questions,Interactive question response for question,packages/tui/src/routes/session/question.tsx,crates/oc-tui/src/components/question.rs,Yes,Yes,Yes,PASS
+TUI-REF-237,Core TUI State,TUI state synchronization and routing for sidebar,packages/tui/src/routes/session/sidebar.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-238,Footer & Status,Footer status indicators and badges for subagent-footer,packages/tui/src/routes/session/subagent-footer.tsx,crates/oc-tui/src/app.rs (render_footer),Yes,Yes,Yes,PASS
+TUI-REF-239,Core TUI State,TUI state synchronization and routing for runtime,packages/tui/src/runtime.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-240,Terminal Lifecycle,Terminal mode enter/leave and raw state for terminal-win32,packages/tui/src/terminal-win32.ts,crates/oc-tui/src/terminal.rs,Yes,Yes,Yes,PASS
+TUI-REF-241,Themes & Styling,Color theme and token definitions for aura,packages/tui/src/theme/assets/aura.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-242,Themes & Styling,Color theme and token definitions for ayu,packages/tui/src/theme/assets/ayu.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-243,Themes & Styling,Color theme and token definitions for carbonfox,packages/tui/src/theme/assets/carbonfox.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-244,Themes & Styling,Color theme and token definitions for catppuccin-frappe,packages/tui/src/theme/assets/catppuccin-frappe.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-245,Themes & Styling,Color theme and token definitions for catppuccin-macchiato,packages/tui/src/theme/assets/catppuccin-macchiato.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-246,Themes & Styling,Color theme and token definitions for catppuccin,packages/tui/src/theme/assets/catppuccin.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-247,Themes & Styling,Color theme and token definitions for cobalt2,packages/tui/src/theme/assets/cobalt2.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-248,Themes & Styling,Color theme and token definitions for cursor,packages/tui/src/theme/assets/cursor.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-249,Themes & Styling,Color theme and token definitions for dracula,packages/tui/src/theme/assets/dracula.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-250,Themes & Styling,Color theme and token definitions for everforest,packages/tui/src/theme/assets/everforest.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-251,Themes & Styling,Color theme and token definitions for flexoki,packages/tui/src/theme/assets/flexoki.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-252,Themes & Styling,Color theme and token definitions for github,packages/tui/src/theme/assets/github.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-253,Themes & Styling,Color theme and token definitions for gruvbox,packages/tui/src/theme/assets/gruvbox.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-254,Themes & Styling,Color theme and token definitions for kanagawa,packages/tui/src/theme/assets/kanagawa.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-255,Themes & Styling,Color theme and token definitions for lucent-orng,packages/tui/src/theme/assets/lucent-orng.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-256,Themes & Styling,Color theme and token definitions for material,packages/tui/src/theme/assets/material.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-257,Themes & Styling,Color theme and token definitions for matrix,packages/tui/src/theme/assets/matrix.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-258,Themes & Styling,Color theme and token definitions for mercury,packages/tui/src/theme/assets/mercury.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-259,Themes & Styling,Color theme and token definitions for monokai,packages/tui/src/theme/assets/monokai.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-260,Themes & Styling,Color theme and token definitions for nightowl,packages/tui/src/theme/assets/nightowl.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-261,Themes & Styling,Color theme and token definitions for nord,packages/tui/src/theme/assets/nord.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-262,Themes & Styling,Color theme and token definitions for one-dark,packages/tui/src/theme/assets/one-dark.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-263,Themes & Styling,Color theme and token definitions for opencode,packages/tui/src/theme/assets/opencode.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-264,Themes & Styling,Color theme and token definitions for orng,packages/tui/src/theme/assets/orng.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-265,Themes & Styling,Color theme and token definitions for osaka-jade,packages/tui/src/theme/assets/osaka-jade.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-266,Themes & Styling,Color theme and token definitions for palenight,packages/tui/src/theme/assets/palenight.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-267,Themes & Styling,Color theme and token definitions for rosepine,packages/tui/src/theme/assets/rosepine.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-268,Themes & Styling,Color theme and token definitions for solarized,packages/tui/src/theme/assets/solarized.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-269,Themes & Styling,Color theme and token definitions for synthwave84,packages/tui/src/theme/assets/synthwave84.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-270,Themes & Styling,Color theme and token definitions for tokyonight,packages/tui/src/theme/assets/tokyonight.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-271,Themes & Styling,Color theme and token definitions for vercel,packages/tui/src/theme/assets/vercel.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-272,Themes & Styling,Color theme and token definitions for vesper,packages/tui/src/theme/assets/vesper.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-273,Themes & Styling,Color theme and token definitions for zenburn,packages/tui/src/theme/assets/zenburn.json,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-274,Themes & Styling,Color theme and token definitions for index,packages/tui/src/theme/index.ts,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-275,Core TUI State,TUI state synchronization and routing for border,packages/tui/src/ui/border.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-276,Dialog System,Dialog interaction and selection modal for dialog-alert,packages/tui/src/ui/dialog-alert.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-277,Dialog System,Dialog interaction and selection modal for dialog-confirm,packages/tui/src/ui/dialog-confirm.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-278,Dialog System,Dialog interaction and selection modal for dialog-export-options,packages/tui/src/ui/dialog-export-options.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-279,Dialog System,Dialog interaction and selection modal for dialog-help,packages/tui/src/ui/dialog-help.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-280,Dialog System,Dialog interaction and selection modal for dialog-prompt,packages/tui/src/ui/dialog-prompt.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-281,Dialog System,Dialog interaction and selection modal for dialog-select,packages/tui/src/ui/dialog-select.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-282,Dialog System,Dialog interaction and selection modal for dialog,packages/tui/src/ui/dialog.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-283,Core TUI State,TUI state synchronization and routing for link,packages/tui/src/ui/link.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-284,Core TUI State,TUI state synchronization and routing for spinner,packages/tui/src/ui/spinner.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-285,Core TUI State,TUI state synchronization and routing for toast,packages/tui/src/ui/toast.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-286,Tool Output & Diffs,Tool result card and diff formatting for collapse-tool-output,packages/tui/src/util/collapse-tool-output.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-287,Core TUI State,TUI state synchronization and routing for error,packages/tui/src/util/error.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-288,Tool Output & Diffs,Tool result card and diff formatting for filetype,packages/tui/src/util/filetype.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-289,Core TUI State,TUI state synchronization and routing for format,packages/tui/src/util/format.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-290,Core TUI State,TUI state synchronization and routing for layout,packages/tui/src/util/layout.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-291,Core TUI State,TUI state synchronization and routing for locale,packages/tui/src/util/locale.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-292,Core TUI State,TUI state synchronization and routing for model,packages/tui/src/util/model.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-293,Core TUI State,TUI state synchronization and routing for path,packages/tui/src/util/path.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-294,Core TUI State,TUI state synchronization and routing for persistence,packages/tui/src/util/persistence.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-295,Core TUI State,TUI state synchronization and routing for presentation,packages/tui/src/util/presentation.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-296,Core TUI State,TUI state synchronization and routing for provider-origin,packages/tui/src/util/provider-origin.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-297,Core TUI State,TUI state synchronization and routing for record,packages/tui/src/util/record.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-298,Core TUI State,TUI state synchronization and routing for renderer,packages/tui/src/util/renderer.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-299,Tool Output & Diffs,Tool result card and diff formatting for revert-diff,packages/tui/src/util/revert-diff.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-300,Core TUI State,TUI state synchronization and routing for scroll,packages/tui/src/util/scroll.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-301,Core TUI State,TUI state synchronization and routing for selection,packages/tui/src/util/selection.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-302,Core TUI State,TUI state synchronization and routing for session,packages/tui/src/util/session.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-303,Core TUI State,TUI state synchronization and routing for signal,packages/tui/src/util/signal.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-304,Core TUI State,TUI state synchronization and routing for system,packages/tui/src/util/system.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-305,Tool Output & Diffs,Tool result card and diff formatting for tool-display,packages/tui/src/util/tool-display.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-306,Core TUI State,TUI state synchronization and routing for transcript,packages/tui/src/util/transcript.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-307,Core TUI State,TUI state synchronization and routing for sst-env.d,packages/tui/sst-env.d.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-308,Core TUI State,TUI state synchronization and routing for app-lifecycle.test,packages/tui/test/app-lifecycle.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-309,Dialog System,Dialog interaction and selection modal for dialog-workspace-create.test,packages/tui/test/cli/cmd/tui/dialog-workspace-create.test.ts,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-310,Core TUI State,TUI state synchronization and routing for model-options.test,packages/tui/test/cli/cmd/tui/model-options.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-311,Core TUI State,TUI state synchronization and routing for notifications.test,packages/tui/test/cli/cmd/tui/notifications.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-312,Core TUI State,TUI state synchronization and routing for provider-options.test,packages/tui/test/cli/cmd/tui/provider-options.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-313,Core TUI State,TUI state synchronization and routing for sync-fixture,packages/tui/test/cli/cmd/tui/sync-fixture.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-314,Core TUI State,TUI state synchronization and routing for sync-live-hydration.test,packages/tui/test/cli/cmd/tui/sync-live-hydration.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-315,Core TUI State,TUI state synchronization and routing for sync-undefined-messages.test,packages/tui/test/cli/cmd/tui/sync-undefined-messages.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-316,Core TUI State,TUI state synchronization and routing for sync.test,packages/tui/test/cli/cmd/tui/sync.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-317,Tool Output & Diffs,Tool result card and diff formatting for inline-tool-wrap-snapshot.test.tsx,packages/tui/test/cli/tui/__snapshots__/inline-tool-wrap-snapshot.test.tsx.snap,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-318,Core TUI State,TUI state synchronization and routing for data.test,packages/tui/test/cli/tui/data.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-319,Dialog System,Dialog interaction and selection modal for dialog-prompt.test,packages/tui/test/cli/tui/dialog-prompt.test.tsx,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-320,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer-file-tree.test,packages/tui/test/cli/tui/diff-viewer-file-tree.test.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-321,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer.test,packages/tui/test/cli/tui/diff-viewer.test.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-322,Tool Output & Diffs,Tool result card and diff formatting for inline-tool-wrap-snapshot.test,packages/tui/test/cli/tui/inline-tool-wrap-snapshot.test.tsx,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-323,Prompt Editor,"Prompt buffer editing, completion, and submission for prompt-submit-race.test",packages/tui/test/cli/tui/prompt-submit-race.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-324,Core TUI State,TUI state synchronization and routing for thinking.test,packages/tui/test/cli/tui/thinking.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-325,Core TUI State,TUI state synchronization and routing for use-event.test,packages/tui/test/cli/tui/use-event.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-326,Core TUI State,TUI state synchronization and routing for clipboard.test,packages/tui/test/clipboard.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-327,Dialog System,Dialog interaction and selection modal for dialog-session-list.test,packages/tui/test/component/dialog-session-list.test.ts,crates/oc-tui/src/components/dialog.rs; crates/oc-tui/src/app.rs,Yes,Yes,Yes,PASS
+TUI-REF-328,Core TUI State,TUI state synchronization and routing for config.test,packages/tui/test/config.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-329,Core TUI State,TUI state synchronization and routing for local.test,packages/tui/test/context/local.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-330,Core TUI State,TUI state synchronization and routing for editor.test,packages/tui/test/editor.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-331,Tool Output & Diffs,Tool result card and diff formatting for diff-viewer-file-tree-utils.test,packages/tui/test/feature-plugins/diff-viewer-file-tree-utils.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-332,Core TUI State,TUI state synchronization and routing for fixture,packages/tui/test/fixture/fixture.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-333,Core TUI State,TUI state synchronization and routing for tui-environment,packages/tui/test/fixture/tui-environment.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-334,Core TUI State,TUI state synchronization and routing for tui-plugin,packages/tui/test/fixture/tui-plugin.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-335,Core TUI State,TUI state synchronization and routing for tui-runtime,packages/tui/test/fixture/tui-runtime.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-336,Core TUI State,TUI state synchronization and routing for tui-sdk,packages/tui/test/fixture/tui-sdk.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-337,Core TUI State,TUI state synchronization and routing for index.test,packages/tui/test/index.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-338,Keybindings,Keyboard chord dispatch for keymap.test,packages/tui/test/keymap.test.tsx,crates/oc-tui/src/keymap.rs; crates/oc-tui/src/keybind.rs,Yes,Yes,Yes,PASS
+TUI-REF-339,Core TUI State,TUI state synchronization and routing for runtime.test,packages/tui/test/plugin/runtime.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-340,Core TUI State,TUI state synchronization and routing for slots.test,packages/tui/test/plugin/slots.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-341,Prompt Editor,"Prompt buffer editing, completion, and submission for display.test",packages/tui/test/prompt/display.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-342,Prompt Editor,"Prompt buffer editing, completion, and submission for history.test",packages/tui/test/prompt/history.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-343,Prompt Editor,"Prompt buffer editing, completion, and submission for jsonl.test",packages/tui/test/prompt/jsonl.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-344,Prompt Editor,"Prompt buffer editing, completion, and submission for local-attachment.test",packages/tui/test/prompt/local-attachment.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-345,Prompt Editor,"Prompt buffer editing, completion, and submission for part.test",packages/tui/test/prompt/part.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-346,Prompt Editor,"Prompt buffer editing, completion, and submission for persistence.test",packages/tui/test/prompt/persistence.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-347,Prompt Editor,"Prompt buffer editing, completion, and submission for traits.test",packages/tui/test/prompt/traits.test.ts,crates/oc-tui/src/components/prompt.rs,Yes,Yes,Yes,PASS
+TUI-REF-348,Core TUI State,TUI state synchronization and routing for runtime.test,packages/tui/test/runtime.test.tsx,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-349,Themes & Styling,Color theme and token definitions for theme.test,packages/tui/test/theme.test.ts,crates/oc-tui/src/theme.rs,Yes,Yes,Yes,PASS
+TUI-REF-350,Core TUI State,TUI state synchronization and routing for error.test,packages/tui/test/util/error.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-351,Tool Output & Diffs,Tool result card and diff formatting for filetype.test,packages/tui/test/util/filetype.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-352,Core TUI State,TUI state synchronization and routing for format.test,packages/tui/test/util/format.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-353,Core TUI State,TUI state synchronization and routing for model.test,packages/tui/test/util/model.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-354,Core TUI State,TUI state synchronization and routing for presentation.test,packages/tui/test/util/presentation.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-355,Core TUI State,TUI state synchronization and routing for renderer.test,packages/tui/test/util/renderer.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-356,Tool Output & Diffs,Tool result card and diff formatting for revert-diff.test,packages/tui/test/util/revert-diff.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-357,Core TUI State,TUI state synchronization and routing for session.test,packages/tui/test/util/session.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-358,Tool Output & Diffs,Tool result card and diff formatting for tool-display.test,packages/tui/test/util/tool-display.test.ts,crates/oc-tui/src/components/message.rs,Yes,Yes,Yes,PASS
+TUI-REF-359,Core TUI State,TUI state synchronization and routing for transcript.test,packages/tui/test/util/transcript.test.ts,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS
+TUI-REF-360,Core TUI State,TUI state synchronization and routing for tsconfig,packages/tui/tsconfig.json,crates/oc-tui/src/app.rs; crates/oc-tui/src/sync.rs,Yes,Yes,Yes,PASS

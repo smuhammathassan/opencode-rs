@@ -21,6 +21,7 @@ pub(crate) enum ShareMode {
     Unavailable,
 }
 
+#[allow(dead_code)]
 impl ShareMode {
     pub(crate) const fn as_str(self) -> &'static str {
         match self {
@@ -86,6 +87,7 @@ pub(crate) enum ShareEndpoint {
     },
 }
 
+#[allow(dead_code)]
 impl ShareEndpoint {
     pub(crate) fn mode(&self) -> ShareMode {
         match self {

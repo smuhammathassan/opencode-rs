@@ -21,6 +21,7 @@ use oc_provider::provider::auth::{
 };
 
 /// Build the provider-auth registry advertised by successfully loaded plugins.
+#[allow(dead_code)]
 pub fn from_plugin_reports(
     manager: Arc<PluginManager>,
     reports: &[PluginLoadReport],

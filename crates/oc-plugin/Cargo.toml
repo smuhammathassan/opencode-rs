@@ -16,3 +16,7 @@ directories = { workspace = true }
 tar = "0.4"
 flate2 = "1"
 semver = "1"
+
+[build-dependencies]
+cc = "1.0"
+

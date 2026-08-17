@@ -6,7 +6,7 @@ use oc_schema::session_v1::{
     self, AgentPart, Assistant, CompactionPart, FilePart, FilePartSource, Format, Info,
     OutputFormatJsonSchema, OutputLengthError, Part, PartDelta, RetryPart, SnapshotPart,
     StepFinishPart, StepStartPart, SubtaskPart, TextPart, ToolPart, ToolState, ToolStateCompleted,
-    ToolStateError, ToolStatePending, ToolStateRunning, User, WithParts,
+    ToolStateError, ToolStatePending, User, WithParts,
 };
 use oc_schema::v1::permission as v1permission;
 use oc_schema::v1::question as v1question;

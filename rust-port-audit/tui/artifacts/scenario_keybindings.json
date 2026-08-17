@@ -1,0 +1,14 @@
+{
+  "scenario": "leader_chord_dispatch",
+  "leader": "ctrl+x",
+  "window_ms": 2000,
+  "chords": {
+    "ctrl+x s": "show_status_dialog",
+    "ctrl+x d": "show_debug_dialog",
+    "ctrl+x r": "dialog_rename_session",
+    "ctrl+x t": "show_session_timeline",
+    "ctrl+x q": "show_queued_prompts",
+    "ctrl+x b": "show_background_jobs"
+  },
+  "status": "PASS"
+}

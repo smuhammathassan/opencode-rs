@@ -131,9 +131,7 @@ pub(crate) fn authenticated_provider_ids() -> serde_json::Map<String, serde_json
 /// Build the connected provider registry from the embedded models.dev catalog
 /// and the process environment. Config/auth stores can be layered in here as
 /// they become server-scoped services.
-/// Build the provider registry with the active `opencode.json` provider layer.
-/// The registry already models custom providers and allowlists; this adapter
-/// keeps server catalogs consistent with the resolved `/config` projection.
+#[allow(dead_code)]
 pub(crate) fn provider_values_from_config(config: &serde_json::Value) -> Vec<serde_json::Value> {
     provider_catalog_from_config(config)
         .unwrap_or_default()
@@ -159,6 +157,7 @@ pub(crate) fn provider_values_from_state_config(
 /// Build the typed, public provider catalog used by the v2 provider/model
 /// endpoints. The registry owns models.dev conversion and config merging; the
 /// server only supplies the current config, environment, and persisted auth.
+#[allow(dead_code)]
 pub(crate) fn provider_catalog_from_config(
     config: &serde_json::Value,
 ) -> Result<Vec<oc_provider::provider::Info>, ApiError> {

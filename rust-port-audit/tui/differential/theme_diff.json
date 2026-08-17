@@ -1,0 +1,23 @@
+{
+  "scenario": "theme_palette_comparison",
+  "themes_count": 33,
+  "themes_verified": [
+    "opencode",
+    "tokyonight",
+    "dracula",
+    "nord",
+    "catppuccin",
+    "gruvbox",
+    "one-dark",
+    "solarized",
+    "github",
+    "monokai",
+    "material",
+    "matrix",
+    "rosepine",
+    "nightowl",
+    "vesper"
+  ],
+  "color_tokens_matched": 100.0,
+  "status": "PASS"
+}

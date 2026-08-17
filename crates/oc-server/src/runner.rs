@@ -2328,6 +2328,7 @@ fn append_tool_permission_rules(value: Option<&Value>, rules: &mut oc_session::v
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 struct ToolPermissionRequest {
     permission: String,
@@ -2336,6 +2337,7 @@ struct ToolPermissionRequest {
     metadata: Value,
 }
 
+#[allow(dead_code)]
 fn tool_permission_request(name: &str, input: &Value) -> Option<ToolPermissionRequest> {
     let path = input
         .get("path")
@@ -2426,6 +2428,7 @@ fn tool_permission_request(name: &str, input: &Value) -> Option<ToolPermissionRe
     })
 }
 
+#[allow(dead_code)]
 fn tool_external_paths(name: &str, input: &Value) -> Vec<(String, bool)> {
     let path = |key: &str| {
         input
@@ -2472,6 +2475,7 @@ fn tool_external_paths(name: &str, input: &Value) -> Vec<(String, bool)> {
     }
 }
 
+#[allow(dead_code)]
 fn external_directory_pattern(location: &str, path: &str, directory: bool) -> String {
     let resolved = if Path::new(path).is_absolute() {
         PathBuf::from(path)

@@ -21,6 +21,7 @@ fn registry() -> ToolRegistry {
     )
 }
 
+#[allow(dead_code)]
 fn schema_of(schema: &Schema) -> serde_json::Value {
     oc_tool::jsonschema::from_schema(schema)
 }

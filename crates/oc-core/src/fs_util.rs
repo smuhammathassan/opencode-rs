@@ -228,6 +228,7 @@ impl FSUtilService {
         }
         #[cfg(not(unix))]
         {
+            let _ = (path, mode);
             // No-op on Windows: `PermissionsExt::set_mode` is Unix-only.
             Ok(())
         }

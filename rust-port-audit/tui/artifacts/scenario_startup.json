@@ -1,0 +1,14 @@
+{
+  "scenario": "interactive_tui_startup",
+  "reference_version": "v1.18.13",
+  "rust_version": "0.1.0",
+  "terminal_dimensions": {
+    "width": 80,
+    "height": 24
+  },
+  "view": "home",
+  "logo_rendered": true,
+  "footer_visible": true,
+  "theme": "opencode",
+  "mode": "dark"
+}
