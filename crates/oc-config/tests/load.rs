@@ -5,7 +5,6 @@
 mod common;
 
 use common::{EnvGuard, TestHome};
-use oc_config::load::{load_instance_state, LoadOptions};
 use oc_config::v1::config::{Compaction, Share};
 use serde_json::json;
 
