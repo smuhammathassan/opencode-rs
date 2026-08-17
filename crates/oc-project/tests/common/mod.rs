@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Shared helpers for oc-project integration tests. Each test file runs in its
 //! own process; `OPENCODE_TEST_HOME` is set once per file via `test_home`.
 use std::path::{Path, PathBuf};
