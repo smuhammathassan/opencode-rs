@@ -908,6 +908,7 @@ pub enum AssistantRole {
 }
 
 /// `Message` (`SessionV1.Info`) — tagged union on `role`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Info {

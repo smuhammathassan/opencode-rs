@@ -13,19 +13,15 @@ use tokio::process::Child;
 
 use crate::util::signal::Signal;
 
+#[derive(Default)]
 pub enum Env {
-    /// `env: undefined` — inherit the parent environment.
+    /// `env: true` — inherit the current process's environment.
+    #[default]
     Inherit,
-    /// `env: null` — an empty environment.
+    /// `env: false` — drop inherited environment (except platform essentials).
     Empty,
     /// `env: {...}` — the parent environment merged with the overrides.
     Override(HashMap<String, String>),
-}
-
-impl Default for Env {
-    fn default() -> Self {
-        Env::Inherit
-    }
 }
 
 #[derive(Clone, Copy, Default)]
@@ -36,16 +32,12 @@ pub enum Stdio {
     Inherit,
 }
 
+#[derive(Default)]
 pub enum Shell {
+    #[default]
     Disabled,
     System,
     Program(String),
-}
-
-impl Default for Shell {
-    fn default() -> Self {
-        Shell::Disabled
-    }
 }
 
 #[derive(Default)]
@@ -290,15 +282,8 @@ pub fn spawn(cmd: &[String], opts: &Options) -> std::result::Result<Child, std::
 
 pub async fn wait(child: &mut Child) -> std::io::Result<i32> {
     let status = child.wait().await?;
-    Ok(status.code().unwrap_or_else(|| {
-        // Unix: a signal-terminated child has no exit code; report 1 like the
-        // shell convention. Windows `ExitStatus` has no `signal` accessor.
-        if cfg!(unix) {
-            1
-        } else {
-            0
-        }
-    }))
+    let default_code = if cfg!(unix) { 1 } else { 0 };
+    Ok(status.code().unwrap_or(default_code))
 }
 
 pub async fn run(cmd: &[String], opts: &RunOptions) -> std::result::Result<Result, RunError> {

@@ -335,6 +335,7 @@ pub enum AssistantReasoningType {
 }
 
 /// `Session.Message.Assistant.Content` — tagged union on `type`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum AssistantContent {
@@ -414,6 +415,7 @@ pub enum CompactionType {
 }
 
 /// `Session.Message` — tagged union on `type`.
+#[allow(clippy::large_enum_variant)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[serde(untagged)]
 pub enum Message {

@@ -103,7 +103,8 @@ impl_callback! { A1 }
 impl_callback! { A1 A2 }
 impl_callback! { A1 A2 A3 }
 
-type WrappedCallback = dyn Fn(c_int, *mut q::JSValue) -> q::JSValue + Send + Sync;
+type WrappedCallback =
+    dyn Fn(*mut q::JSContext, c_int, *mut q::JSValue) -> q::JSValue + Send + Sync;
 type CallbackRegistry = Vec<Arc<WrappedCallback>>;
 type CallbackRegistryHandle = Arc<Mutex<CallbackRegistry>>;
 
@@ -135,7 +136,7 @@ unsafe extern "C" fn callback_trampoline(
         Err(_) => None,
     };
     match callback {
-        Some(callback) => callback(argc, argv),
+        Some(callback) => callback(ctx, argc, argv),
         None => callback_exception(ctx, "plugin callback handle is no longer registered"),
     }
 }
@@ -497,26 +498,23 @@ impl Runtime {
     /// call without invalidating the callback.
     pub fn add_callback<F>(&self, name: &str, callback: impl Callback<F>) -> Result<(), JsError> {
         let argcount = callback.argument_count() as c_int;
-        let ctx = self.ctx;
-        let _rt = self.rt;
-        let callbacks = self.callbacks.clone();
-        let _ = (_rt, &callbacks);
-        let wrapper = move |argc: c_int, argv: *mut q::JSValue| -> q::JSValue {
-            match exec_callback(ctx, argc, argv, &callback) {
-                Ok(value) => unsafe { value.into_inner() },
-                Err(err) => {
-                    let message = err.to_string();
-                    let js_exception = serialize_value(ctx, JsValue::String(message)).unwrap();
-                    unsafe {
-                        q::JS_Throw(ctx, js_exception.into_inner());
-                    }
-                    q::JSValue {
-                        u: q::JSValueUnion { int32: 0 },
-                        tag: TAG_EXCEPTION,
+        let wrapper =
+            move |ctx: *mut q::JSContext, argc: c_int, argv: *mut q::JSValue| -> q::JSValue {
+                match exec_callback(ctx, argc, argv, &callback) {
+                    Ok(value) => unsafe { value.into_inner() },
+                    Err(err) => {
+                        let message = err.to_string();
+                        let js_exception = serialize_value(ctx, JsValue::String(message)).unwrap();
+                        unsafe {
+                            q::JS_Throw(ctx, js_exception.into_inner());
+                        }
+                        q::JSValue {
+                            u: q::JSValueUnion { int32: 0 },
+                            tag: TAG_EXCEPTION,
+                        }
                     }
                 }
-            }
-        };
+            };
         let index = {
             let mut callbacks = self.callbacks.lock().unwrap();
             let index = i32::try_from(callbacks.len())
