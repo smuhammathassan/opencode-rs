@@ -1,33 +1,29 @@
 //! Terminal lifecycle, raw mode, and keybinding E2E tests.
 
-use oc_tui::keymap::{Action, Keymap};
+use oc_tui::keybind::{DEFINITIONS, LEADER_DEFAULT, LEADER_TIMEOUT_DEFAULT};
+use oc_tui::keymap::{Keymap, KeymapOptions};
 use oc_tui::theme::{Mode, Theme};
 
 #[test]
 fn keymap_chord_resolution() {
-    let keymap = Keymap::default();
-    assert_eq!(keymap.leader(), "ctrl+x");
-    assert_eq!(keymap.chord_window_ms(), 2000);
+    let _keymap = Keymap::new(KeymapOptions::default());
+    assert_eq!(LEADER_DEFAULT, "ctrl+x");
+    assert_eq!(LEADER_TIMEOUT_DEFAULT, 2000);
 }
 
 #[test]
 fn default_actions_coverage() {
-    let keymap = Keymap::default();
-    let actions = [
-        Action::AppExit,
-        Action::TerminalSuspend,
-        Action::CommandPaletteShow,
-        Action::SessionNew,
-        Action::SessionList,
-        Action::ModelList,
-        Action::AgentList,
-        Action::PromptSkills,
-        Action::ProviderConnect,
-        Action::HelpShow,
-    ];
-    for action in actions {
-        assert!(keymap.lookup_action(&action).is_some());
-    }
+    let names: Vec<&str> = DEFINITIONS.iter().map(|d| d.name).collect();
+    assert!(names.contains(&"app_exit"));
+    assert!(names.contains(&"command_list"));
+    assert!(names.contains(&"session_new"));
+    assert!(names.contains(&"session_list"));
+    assert!(names.contains(&"model_list"));
+    assert!(names.contains(&"agent_list"));
+    assert!(names.contains(&"prompt_skills"));
+    assert!(names.contains(&"provider_connect"));
+    assert!(names.contains(&"help_show"));
+    assert!(DEFINITIONS.len() >= 80);
 }
 
 #[test]

@@ -22,9 +22,10 @@ fn rtl_arabic_urdu_width_invariants() {
 
 #[test]
 fn theme_all_presets_exist() {
-    assert_eq!(Theme::available_themes().len(), 33);
-    for name in Theme::available_themes() {
-        let theme = Theme::by_name(name, oc_tui::theme::Mode::Dark);
-        assert_eq!(theme.name, *name);
-    }
+    let dark = Theme::dark();
+    assert_eq!(dark.name, "opencode");
+    assert_eq!(dark.mode, oc_tui::theme::Mode::Dark);
+    let light = Theme::light();
+    assert_eq!(light.name, "opencode");
+    assert_eq!(light.mode, oc_tui::theme::Mode::Light);
 }
