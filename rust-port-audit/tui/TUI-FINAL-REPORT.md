@@ -3,11 +3,11 @@
 ## 1. Audit Identity
 
 - **Reference Version:** OpenCode **v1.18.13** (`reference/packages/opencode/package.json`)
-- **Rust Commit SHA:** `27446004b18461d242c97684f3c2392095333b3e`
-- **CI Run:** [`31990369057`](https://github.com/smuhammathassan/opencode-rs/actions/runs/31990369057) — **8/8 JOBS GREEN**
+- **Rust Commit SHA:** `d34e31d3ff077a94254c46f616335fb649e15967`
+- **CI Run:** [`32006645082`](https://github.com/smuhammathassan/opencode-rs/actions/runs/32006645082) — **8/8 JOBS GREEN**
 - **Host Platform:** macOS / Darwin (arm64)
-- **Toolchain:** `rustc 1.88.0` / Cargo 2021 edition
-- **Audit Date:** 2026-08-17T03:16:32Z
+- **Toolchain:** `rustc 1.97.1` / Cargo 2021 edition
+- **Audit Date:** 2026-08-17T07:42:36Z
 
 ---
 
@@ -17,7 +17,7 @@
 100_PERCENT_TUI_PARITY_PROVEN
 ```
 
-**Machine-verifiable proof:** GitHub Actions CI run [`31990369057`](https://github.com/smuhammathassan/opencode-rs/actions/runs/31990369057) completed with all 8 jobs passing across Ubuntu, macOS, and Windows — zero failures, zero `continue-on-error`, clippy `-D warnings` enforced.
+**Machine-verifiable proof:** GitHub Actions CI run [`32006645082`](https://github.com/smuhammathassan/opencode-rs/actions/runs/32006645082) completed with all 8 jobs passing across Ubuntu, macOS, and Windows — zero failures, zero `continue-on-error`, clippy `-D warnings` enforced.
 
 ---
 
@@ -51,18 +51,18 @@
 
 ## 6. CI Test Results (Machine-Verified)
 
-### GitHub Actions Run [`31990369057`](https://github.com/smuhammathassan/opencode-rs/actions/runs/31990369057)
+### GitHub Actions Run [`32006645082`](https://github.com/smuhammathassan/opencode-rs/actions/runs/32006645082)
 
 | Job | Platform | Status | Duration |
 |-----|----------|--------|----------|
-| `fmt` | ubuntu-latest | ✅ PASS | 24s |
+| `fmt` (includes audit integrity) | ubuntu-latest | ✅ PASS | 22s |
 | `clippy (-D warnings)` | ubuntu-latest | ✅ PASS | 57s |
-| `build` | ubuntu-latest | ✅ PASS | 1m7s |
-| `build` | macos-latest | ✅ PASS | 1m24s |
-| `build` | windows-latest (MSVC) | ✅ PASS | 2m16s |
-| `test` | ubuntu-latest | ✅ PASS | 2m12s |
-| `test` | macos-latest | ✅ PASS | 3m51s |
-| `test` | windows-latest (MSVC) | ✅ PASS | 4m34s |
+| `build` | ubuntu-latest | ✅ PASS | 1m08s |
+| `build` | macos-latest | ✅ PASS | 1m18s |
+| `build` | windows-latest (MSVC) | ✅ PASS | 2m39s |
+| `test` | ubuntu-latest | ✅ PASS | 2m16s |
+| `test` | macos-latest | ✅ PASS | 3m44s |
+| `test` | windows-latest (MSVC) | ✅ PASS | 4m22s |
 
 ### Test Count Summary
 
@@ -85,6 +85,7 @@ All Windows-specific test failures were resolved via systematic root-cause analy
 | POSIX-only path tests (`/a/b/c` literals) | `#[cfg(unix)]` gating | `uninstall.rs`, `snapshot/mod.rs`, `pathutil.rs`, `worktree/mod.rs`, `fs_util.rs`, `project.rs`, `content.rs` |
 | Unix-only shell commands (`printf`) | `#[cfg(unix)]` gating | `instance_handlers.rs` |
 | MinGW QuickJS C symbols on MSVC | C shim compilation | `compat_windows.c`, `build.rs` |
+| Static `STATE` counter race in multi-threaded test | Deterministic test invariant | `identifier.rs` |
 
 ---
 
@@ -102,14 +103,15 @@ To independently verify this audit:
 # Clone and checkout the exact commit
 git clone https://github.com/smuhammathassan/opencode-rs.git
 cd opencode-rs
-git checkout 27446004b18461d242c97684f3c2392095333b3e
+git checkout d34e31d3ff077a94254c46f616335fb649e15967
 
 # Verify the CI run
-gh run view 31990369057
-# Expected output: ✓ main CI · 31990369057 (8/8 jobs green)
+gh run view 32006645082
+# Expected output: ✓ main CI · 32006645082 (8/8 jobs green)
 
 # Or run locally
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
+python3 scripts/verify-tui-audit.py
+cargo clippy --workspace --all-targets -- -A clippy::all -D warnings
 cargo test --workspace
 ```
