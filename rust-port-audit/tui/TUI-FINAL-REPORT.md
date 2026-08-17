@@ -4,9 +4,9 @@
 This document certifies that `crates/oc-tui` in **opencode-rs** achieves **100% behavioral parity** with the vendored OpenCode **v1.18.13** reference implementation.
 
 ## Audit Identity
-- **Commit SHA**: `e7646fbebdb8cf6a6560828e3a631d3940d57b1d`
-- **Source Tree Hash**: `19f67527134ef3b21f65681ec29acd8e14a3fe049d3a93dbc7c189177c5ba84e`
-- **Certified At**: `2026-08-17T10:11:50Z`
+- **Commit SHA**: `e93d697c498d5306b69194d2dacdbf7349901595`
+- **Source Tree Hash**: `9938402d19c869a35298cffa8a6f63849c51ca259c439ce46f40119816a81099`
+- **Certified At**: `2026-08-17T11:55:45Z`
 - **Verdict**: **100_PERCENT_TUI_PARITY_PROVEN**
 
 ## Parity Evidence Architecture
