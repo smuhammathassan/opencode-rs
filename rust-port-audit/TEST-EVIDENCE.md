@@ -282,6 +282,22 @@ The older release-binary probes below are retained as historical evidence of the
 - `CARGO_BUILD_JOBS=1 CARGO_INCREMENTAL=0 CARGO_PROFILE_TEST_DEBUG=0 cargo test --offline -p oc-tui --lib --quiet`: **178 passed**, including searchable session timeline message previews/jump behavior, background-job list/status/cancel, event-backed queued-prompt ordering/idle clearing, skill selector, replay, TUI control, and rendering regressions.
 - `cargo fmt --all -- --check` and `git diff --check -- . ':!reference'`: **passed**. The conservative parity score remains **74/155 (47.7%)** because these slices strengthen partial features rather than establish full reference equivalence.
 
+## TUI Parity & CI Verification (2026-08-17)
+
+- **TUI Visual & Functional Parity:**
+  - Implemented global `render_footer` in `crates/oc-tui/src/app.rs` matching upstream `reference/packages/tui/src/routes/session/footer.tsx` (directory path, pending permissions badge, LSP indicator `• 0 LSP`, and `/status` / `Get started /connect` shortcuts).
+  - Synchronized Home and Session view bounding areas so the message scroll viewport and prompt leave room for the 1-line persistent footer.
+  - Implemented rotating placeholder text in `render_prompt_widget` matching upstream example cycles (`"Fix a TODO in the codebase"`, `"What is the tech stack of this project?"`, `"Fix broken tests"` for normal mode; `"ls -la"`, `"git status"`, `"pwd"` for shell mode).
+  - Enhanced prompt submit fallback: when no provider is configured, prompt submission displays the warning toast and opens the provider connection dialog (`DialogKind::ProviderList`).
+- **GitHub Actions CI Matrix Run `31984802068`:**
+  - `fmt` — **PASSED** (20s)
+  - `clippy` — **PASSED** (59s)
+  - `build (ubuntu-latest)` — **PASSED** (1m17s)
+  - `build (macos-latest)` — **PASSED** (1m51s)
+  - `test (ubuntu-latest)` — **PASSED** (2m4s)
+  - `test (macos-latest)` — **PASSED** (3m43s)
+  - Overall status: **SUCCESS**.
+
 ## Per-agent evidence (saved under `rust-port-audit/artifacts/`)
 
 - 01: `01-cargo-metadata.json`, `01-dep-graph.txt`, `01-duplicate-types.txt`, `01-runtime.md`
