@@ -129,6 +129,7 @@ pub(crate) struct IntegrationAttempt {
     pub status: IntegrationAttemptStatus,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub(crate) enum IntegrationAttemptStatus {
     Pending,

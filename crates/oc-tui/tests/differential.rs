@@ -4,9 +4,9 @@ use oc_tui::logo;
 
 #[test]
 fn logo_lines_parity() {
-    let lines = logo::LOGO_LINES;
+    let lines = logo::LOGO.lines();
     assert_eq!(lines.len(), 4);
-    assert!(lines[0].contains("██"));
+    assert_eq!(lines[1], "█▀▀█ █▀▀█ █▀▀█ █▀▀▄ █▀▀▀ █▀▀█ █▀▀█ █▀▀█");
 }
 
 #[test]

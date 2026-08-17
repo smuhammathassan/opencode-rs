@@ -586,6 +586,7 @@ mod tests {
     use crate::sdk::{AssistantMessage, CacheTokens, Message, TextPart, Tokens};
     use serde_json::Map;
 
+    #[allow(dead_code)]
     fn message_response() -> SessionMessageResponse {
         SessionMessageResponse {
             info: Message::Assistant(AssistantMessage {

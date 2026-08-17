@@ -44,6 +44,7 @@ pub(crate) struct ShareCapability {
     pub reason: Option<String>,
 }
 
+#[allow(dead_code)]
 impl ShareCapability {
     pub(crate) fn from_config(config: &Value) -> Self {
         match resolve_with(config, |name| std::env::var(name).ok()) {
