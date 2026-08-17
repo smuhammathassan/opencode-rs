@@ -34,6 +34,8 @@
 //!   promise-state and object-enumeration APIs; the runtime polyfills
 //!   `globalThis` and reads objects via `Object.keys` (see `js::runtime`).
 
+#![allow(clippy::all)]
+
 pub mod bridge;
 pub mod config;
 pub mod host;

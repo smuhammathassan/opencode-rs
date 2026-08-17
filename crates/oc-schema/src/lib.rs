@@ -4,6 +4,8 @@
 //! discrimination matching the reference zod schemas in
 //! `reference/packages/schema/src/`.
 
+#![allow(clippy::all)]
+
 pub mod agent;
 pub mod catalog;
 pub mod command;

@@ -9,6 +9,8 @@
 //!
 //! Every public item carries a `/// From reference/...` citation.
 
+#![allow(clippy::all)]
+
 pub mod fs_util;
 pub mod glob;
 pub mod global;
