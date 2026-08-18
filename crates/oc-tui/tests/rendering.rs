@@ -14,7 +14,7 @@ use serde_json::json;
 fn session_fixture() -> SyncState {
     let mut sync = SyncState::default();
     sync.agents = serde_json::from_value(json!([
-        { "name": "build", "mode": "primary", "permission": [], "options": {} }
+        { "name": "build", "mode": "primary", "permission": {}, "options": {} }
     ]))
     .unwrap();
     sync.providers = serde_json::from_value(json!([
