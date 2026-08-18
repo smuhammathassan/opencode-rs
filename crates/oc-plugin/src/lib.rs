@@ -38,6 +38,7 @@
 
 pub mod bridge;
 pub mod config;
+pub mod default_plugins;
 pub mod host;
 pub mod install;
 pub mod js;
@@ -46,6 +47,7 @@ pub mod loader;
 pub mod manager;
 pub mod meta;
 pub mod npm;
+pub mod npm_config;
 pub mod paths;
 pub mod polyfill;
 pub mod registration;
@@ -56,7 +58,7 @@ pub use host::{
     PluginAuthMethodType, PluginAuthOptionSummary, PluginAuthPromptSummary, PluginAuthSummary,
     PluginAuthWhenSummary, PluginBuilder, PluginHost, PluginToolCancellation, ToolInfo,
 };
-pub use js::{JsError, JsValue};
+pub use js::{JsError, JsValue, RuntimeLimits};
 pub use loader::ModuleResolver;
 pub use manager::{
     AuthAuthorizeRequest, AuthCallbackRequest, AuthValidateRequest, PluginLoadReport, PluginManager,

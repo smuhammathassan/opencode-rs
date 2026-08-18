@@ -719,8 +719,8 @@ export default define({
   id: "v2-test",
   setup: async (ctx) => {
     await ctx.agent.transform((draft) => {
+      draft.update("build", { model: "primary" })
       draft.added = true
-      draft.agent = "primary"
     })
     await ctx.command.transform((draft) => {
       draft.commands = ["init"]
@@ -732,10 +732,10 @@ export default define({
     load_code(&mut plugin, source, "v2.ts");
 
     let draft = plugin
-        .v2_transform("agent", serde_json::json!({ "id": "build" }))
+        .v2_transform("agent", serde_json::json!({ "agents": [] }))
         .expect("v2 transform failed");
-    assert_eq!(draft["added"], true);
-    assert_eq!(draft["agent"], "primary");
+    assert_eq!(draft["agents"][0]["id"], "build");
+    assert_eq!(draft["agents"][0]["model"], "primary");
 
     let commands = plugin
         .v2_transform("command", serde_json::json!({}))
@@ -777,4 +777,481 @@ export default {
         .expect("shell/tui polyfill imports should register a tool");
     assert_eq!(tool.description, "hello\\ world:false");
     assert_eq!(tool.schema["required"], serde_json::json!(["value"]));
+}
+
+// ---------------------------------------------------------------------------
+// F125: request lifecycle — request ids, multiplexed responses, cancellation
+// ---------------------------------------------------------------------------
+
+#[test]
+fn client_calls_carry_distinct_request_ids_and_multiplex() {
+    struct MultiplexHost {
+        ids: Mutex<Vec<String>>,
+    }
+
+    impl PluginHost for MultiplexHost {
+        fn client_rpc(&self, request: &ClientRpcRequest) -> Result<serde_json::Value, String> {
+            assert!(request.request_id.is_some(), "request id must be set");
+            let id = request.request_id.clone().unwrap();
+            assert!(
+                !self.ids.lock().unwrap().contains(&id),
+                "request ids must be unique"
+            );
+            self.ids.lock().unwrap().push(id);
+            match request.method.as_str() {
+                "session.get" => Ok(serde_json::json!({
+                    "data": { "id": request.args["sessionID"] }
+                })),
+                "config.get" => Ok(serde_json::json!({ "data": { "theme": "dark" } })),
+                other => panic!("unexpected client method: {other}"),
+            }
+        }
+    }
+
+    let host = Arc::new(MultiplexHost {
+        ids: Mutex::new(Vec::new()),
+    });
+    let source = r#"
+export default {
+  server: async ({ client }) => {
+    // Two concurrent calls multiplex through the same bridge with distinct
+    // request ids and both resolve independently.
+    const [session, config] = await Promise.all([
+      client.session.get({ sessionID: "ses_mux" }),
+      client.config.get(),
+    ])
+    if (session.id !== "ses_mux") throw new Error("session response mismatch")
+    if (config.theme !== "dark") throw new Error("config response mismatch")
+    return {}
+  },
+}
+"#;
+    let mut plugin = build_plugin_with_host(host.clone());
+    load_code(&mut plugin, source, "multiplex.ts");
+    let ids = host.ids.lock().unwrap();
+    assert_eq!(ids.len(), 2);
+    assert_ne!(ids[0], ids[1]);
+}
+
+#[test]
+fn client_cancel_rejects_the_inflight_request() {
+    struct CancelHost {
+        seen: Mutex<Vec<String>>,
+        cancelled: Mutex<Vec<String>>,
+    }
+
+    impl PluginHost for CancelHost {
+        fn client_rpc(&self, request: &ClientRpcRequest) -> Result<serde_json::Value, String> {
+            self.seen
+                .lock()
+                .unwrap()
+                .push(request.request_id.clone().unwrap_or_default());
+            match request.method.as_str() {
+                "session.get" => Ok(serde_json::json!({
+                    "data": { "id": request.args["sessionID"] }
+                })),
+                other => panic!("unexpected client method: {other}"),
+            }
+        }
+        fn client_cancel(&self, request_id: &str) {
+            self.cancelled.lock().unwrap().push(request_id.to_string());
+        }
+    }
+
+    let host = Arc::new(CancelHost {
+        seen: Mutex::new(Vec::new()),
+        cancelled: Mutex::new(Vec::new()),
+    });
+    let source = r#"
+export default {
+  server: async ({ client }) => {
+    // A completed call first, so the host observes its request id.
+    const first = await client.session.get({ sessionID: "ses_ok" })
+    if (first.id !== "ses_ok") throw new Error("first call failed")
+    // A second call is cancelled before its bridge round-trip settles.
+    const pending = client.session.get({ sessionID: "ses_cancel" })
+    if (!pending.requestID) throw new Error("promise did not expose requestID")
+    const cancelled = client.cancel(pending.requestID)
+    if (!cancelled) throw new Error("cancel returned false for in-flight request")
+    const rejected = await pending.then(
+      () => false,
+      (error) => error.name === "AbortError",
+    )
+    if (!rejected) throw new Error("cancelled request did not reject with AbortError")
+    return {}
+  },
+}
+"#;
+    let mut plugin = build_plugin_with_host(host.clone());
+    load_code(&mut plugin, source, "cancel.ts");
+    let seen = host.seen.lock().unwrap();
+    let cancelled = host.cancelled.lock().unwrap();
+    // The completed call reached the host with its request id; the cancelled
+    // call was aborted before its bridge round-trip and the host still saw the
+    // cancellation routed for the same request id.
+    assert_eq!(seen.len(), 1);
+    assert!(
+        seen[0].starts_with("req_"),
+        "unexpected request id {seen:?}"
+    );
+    assert_eq!(cancelled.len(), 1);
+    assert_eq!(
+        cancelled[0], "req_2",
+        "cancel must target the second request"
+    );
+}
+
+#[test]
+fn execute_tool_timeout_aborts_runaway_plugin() {
+    let path = std::env::temp_dir().join(format!("oc-plugin-spin-{}.ts", std::process::id()));
+    std::fs::write(
+        &path,
+        r#"
+export default {
+  server: async () => ({
+    tool: {
+      spin: {
+        description: "spins forever",
+        args: {},
+        execute: async () => {
+          // The loop runs inside a promise job so the QuickJS interrupt
+          // handler can abort it cleanly (see js::runtime docs).
+          await Promise.resolve()
+          while (true) { /* runaway */ }
+        },
+      },
+    },
+  }),
+}
+"#,
+    )
+    .unwrap();
+
+    let manager = PluginManager::with_host(Arc::new(RecordingHost::default()));
+    let report = manager.load_local(
+        format!("file://{}", path.display()),
+        serde_json::json!({}),
+        None,
+    );
+    assert!(report.error.is_none(), "spin fixture failed: {report:?}");
+
+    // The tool runs through the manager on the owner thread; the QuickJS
+    // interrupt handler aborts the infinite loop and the manager surfaces it.
+    let result = manager.execute_tool_with_timeout(
+        "spin",
+        serde_json::json!({}),
+        serde_json::json!({ "callID": "spin-1" }),
+        std::time::Duration::from_millis(300),
+    );
+    assert!(result.is_err(), "runaway tool should not return a value");
+    assert!(
+        result.as_ref().unwrap_err().contains("budget"),
+        "limit error should describe the budget, got {result:?}"
+    );
+    // The manager stays healthy after the abort.
+    let summary = manager.load_local(
+        format!(
+            "file://{}/tests/fixtures/example.ts",
+            env!("CARGO_MANIFEST_DIR")
+        ),
+        serde_json::json!({}),
+        None,
+    );
+    assert!(summary.error.is_none());
+    manager.dispose().unwrap();
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn sse_stream_exposes_backpressure_stats() {
+    let host = Arc::new(RecordingHost::default());
+    let source = r#"
+let stream
+export default async ({ client }) => {
+  stream = client.sse.stream("/global/event")
+  const stats = stream.backpressure()
+  if (typeof stats.pending !== "number") throw new Error("missing pending stat")
+  if (typeof stats.dropped !== "number") throw new Error("missing dropped stat")
+  if (!(stats.max >= 1)) throw new Error("missing max stat")
+  stream.on("message", () => stream.done())
+}
+"#;
+    let mut plugin = build_plugin_with_host(host.clone());
+    load_code(&mut plugin, source, "backpressure.ts");
+    plugin
+        .stream_event(serde_json::json!({ "type": "session.updated" }))
+        .expect("stream event delivery failed");
+    plugin.dispose().expect("dispose after stream failed");
+}
+
+#[test]
+fn manager_stream_event_accepts_backpressure_contract() {
+    // The manager's stream queue is bounded; normal delivery still succeeds
+    // and repeated delivery does not grow the queue without bound.
+    let host = Arc::new(RecordingHost::default());
+    let manager = PluginManager::with_host(host.clone());
+    let spec = format!(
+        "file://{}/tests/fixtures/stream.ts",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let report = manager.load_local(spec, serde_json::json!({}), None);
+    assert!(report.error.is_none(), "stream fixture failed: {report:?}");
+
+    for _ in 0..200 {
+        manager
+            .stream_event(serde_json::json!({ "type": "session.updated" }))
+            .expect("stream event should enqueue");
+    }
+    for _ in 0..500 {
+        let logs = host.logs.lock().unwrap();
+        let delivered = logs
+            .iter()
+            .filter(|message| message.as_str() == "stream:session.updated")
+            .count();
+        if delivered >= 200 {
+            manager.dispose().expect("dispose after stream failed");
+            return;
+        }
+        drop(logs);
+        std::thread::sleep(std::time::Duration::from_millis(2));
+    }
+    manager.dispose().expect("dispose after stream failed");
+    panic!("queued stream events were not delivered");
+}
+
+// ---------------------------------------------------------------------------
+// F127: remaining SDK surface + v2 effect module semantics
+// ---------------------------------------------------------------------------
+
+#[test]
+fn client_inventory_covers_remaining_sdk_methods() {
+    struct ClientHost;
+
+    impl PluginHost for ClientHost {
+        fn client_rpc(&self, request: &ClientRpcRequest) -> Result<serde_json::Value, String> {
+            match request.method.as_str() {
+                "session.update" => {
+                    assert_eq!(request.args["sessionID"], "ses_u");
+                    Ok(serde_json::json!({ "data": { "id": "ses_u" } }))
+                }
+                "session.permission" => {
+                    assert_eq!(request.args["sessionID"], "ses_p");
+                    assert_eq!(request.args["permissionID"], "perm_1");
+                    Ok(serde_json::json!({ "data": { "status": "allow" } }))
+                }
+                "project.current" => Ok(serde_json::json!({
+                    "data": { "id": "prj_1", "directory": "/tmp" }
+                })),
+                "app.skills" => Ok(serde_json::json!({
+                    "data": [{ "name": "rust", "description": "Rust helpers" }]
+                })),
+                other => panic!("unexpected client method: {other}"),
+            }
+        }
+    }
+
+    let source = r#"
+export default {
+  server: async ({ client }) => {
+    const updated = await client.session.update({ sessionID: "ses_u", info: { title: "t" } })
+    if (updated.id !== "ses_u") throw new Error("session.update not unwrapped")
+    const permission = await client.session.permission({ sessionID: "ses_p", permissionID: "perm_1", input: {} })
+    if (permission.status !== "allow") throw new Error("session.permission not unwrapped")
+    const project = await client.project.current()
+    if (project.directory !== "/tmp") throw new Error("project.current not unwrapped")
+    const skills = await client.app.skills()
+    if (!Array.isArray(skills) || skills[0].name !== "rust") throw new Error("app.skills not unwrapped")
+    const stream = client.event.subscribe("/global/event")
+    if (!stream || typeof stream.on !== "function") throw new Error("event.subscribe is not an SSE stream")
+    stream.done()
+    return {}
+  },
+}
+"#;
+    let mut plugin = build_plugin_with_host(Arc::new(ClientHost));
+    load_code(&mut plugin, source, "remaining-client.ts");
+}
+
+#[test]
+fn v2_agent_transform_exposes_draft_semantics() {
+    let source = r#"
+import { define } from "opencode/plugin/v2/promise"
+export default define({
+  id: "v2-agent",
+  setup: async (ctx) => {
+    await ctx.agent.transform((draft) => {
+      if (!Array.isArray(draft.list())) throw new Error("draft.list must be an array")
+      draft.update("a1", { model: "small" })
+      draft.update("a2", { temperature: 0.2 })
+      draft.remove("a1")
+      draft.default("a2")
+      const got = draft.get("a2")
+      if (!got || got.temperature !== 0.2) throw new Error("draft.get did not see the update")
+    })
+    await ctx.catalog.transform((draft) => {
+      draft.provider.update("acme", (provider) => {
+        provider.npm = "@acme/provider"
+        provider.api = { type: "aisdk", package: "@ai-sdk/openai-compatible", url: "https://api.acme.test/v1" }
+        provider.request = { headers: {} }
+      })
+      draft.model.update("acme", "m1", (model) => { model.cost = { input: 1 } })
+      draft.model.default.set("acme", "m1")
+      const def = draft.model.default.get()
+      if (!def || def.modelID !== "m1") throw new Error("catalog default.get mismatch")
+    })
+    await ctx.reference.transform((draft) => {
+      draft.add("codebase", { type: "directory", path: "/src" })
+      if (draft.list().indexOf("codebase") === -1) throw new Error("reference.list missing")
+    })
+    await ctx.skill.transform((draft) => {
+      draft.source({ name: "rust", description: "Rust helpers" })
+      if (draft.list().length !== 1) throw new Error("skill.list empty")
+    })
+  },
+})
+"#;
+    let mut plugin = build_plugin();
+    load_code(&mut plugin, source, "v2-semantics.ts");
+
+    let draft = plugin
+        .v2_transform("agent", serde_json::json!({ "agents": [] }))
+        .expect("agent transform failed");
+    // a1 was removed; a2 updated and made default.
+    assert_eq!(draft["agents"].as_array().unwrap().len(), 1);
+    assert_eq!(draft["agents"][0]["id"], "a2");
+    assert_eq!(draft["agents"][0]["temperature"], 0.2);
+    assert_eq!(draft["defaultAgent"], "a2");
+
+    let draft = plugin
+        .v2_transform("catalog", serde_json::json!({}))
+        .expect("catalog transform failed");
+    assert_eq!(draft["providers"][0]["provider"]["id"], "acme");
+    assert_eq!(draft["providers"][0]["provider"]["npm"], "@acme/provider");
+    assert_eq!(draft["providers"][0]["models"]["m1"]["cost"]["input"], 1);
+    assert_eq!(draft["defaultModel"]["modelID"], "m1");
+
+    let draft = plugin
+        .v2_transform("reference", serde_json::json!({}))
+        .expect("reference transform failed");
+    assert_eq!(draft["references"]["codebase"]["type"], "directory");
+
+    let draft = plugin
+        .v2_transform("skill", serde_json::json!({}))
+        .expect("skill transform failed");
+    assert_eq!(draft["sources"][0]["name"], "rust");
+}
+
+#[test]
+fn v2_plugin_add_routes_through_registration_sink() {
+    let sink = InMemoryRegistrationSink::default();
+    let host = Arc::new(RegistrationHost { sink: sink.clone() });
+    let source = r#"
+import { define } from "opencode/plugin/v2/promise"
+export default define({
+  id: "v2-plugin-host",
+  setup: async (ctx) => {
+    await ctx.plugin.add({ id: "child-plugin", effect: {} })
+    await ctx.plugin.remove("child-plugin")
+  },
+})
+"#;
+    let mut plugin = build_plugin_with_host(host.clone());
+    load_code(&mut plugin, source, "v2-plugin.ts");
+
+    let registrations = sink.snapshot();
+    assert_eq!(registrations.len(), 2);
+    assert_eq!(registrations[0].kind, "plugin");
+    assert_eq!(registrations[0].input["id"], "child-plugin");
+    assert_eq!(registrations[1].kind, "plugin.remove");
+}
+
+// ---------------------------------------------------------------------------
+// F128/F129: default plugins — skill lifecycle + provider catalog plugins
+// ---------------------------------------------------------------------------
+
+#[test]
+fn default_skill_registration_reaches_the_typed_sink() {
+    use oc_plugin::default_plugins::customize_opencode_skill_registration;
+
+    let sink = InMemoryRegistrationSink::default();
+    let content = "# Customizing opencode\n\nSummary body for the built-in skill.";
+    let registration = customize_opencode_skill_registration(Some("skill-plugin"), content);
+    sink.register(registration.clone())
+        .expect("sink accepts skill");
+
+    let skills = sink.registrations_for("skill");
+    assert_eq!(skills.len(), 1);
+    assert_eq!(
+        skills[0].input["name"],
+        oc_plugin::default_plugins::CUSTOMIZE_OPENCODE_SKILL_NAME
+    );
+    assert_eq!(skills[0].input["content"], content);
+    // The skill registration carries the embedded-source hook shape the server
+    // projections consume (name/description/location/content).
+    for key in ["name", "description", "location", "content"] {
+        assert!(
+            skills[0].input.get(key).is_some(),
+            "skill registration is missing {key}"
+        );
+    }
+}
+
+#[test]
+fn default_provider_plugins_match_the_v2_catalog_hook_shape() {
+    use oc_plugin::default_plugins::apply_all_provider_plugins;
+
+    // The catalog draft shaped exactly as the v2 `catalog` transform bridge
+    // produces (provider items with `provider`/`models`).
+    let mut draft = serde_json::json!({
+        "providers": [
+            {
+                "provider": {
+                    "id": "nvidia",
+                    "api": { "type": "aisdk", "package": "@ai-sdk/openai-compatible", "url": "https://integrate.api.nvidia.com/v1" },
+                    "request": { "headers": {} },
+                },
+                "models": { "gpt-4o": { "enabled": true } },
+            },
+            {
+                "provider": {
+                    "id": "openrouter",
+                    "api": { "type": "aisdk", "package": "@openrouter/ai-sdk-provider", "url": "https://openrouter.ai/api/v1" },
+                    "request": { "headers": {} },
+                },
+                "models": {
+                    "gpt-5-chat-latest": { "enabled": true },
+                    "openai/gpt-5-chat": { "enabled": true },
+                    "anthropic/claude": { "enabled": true },
+                },
+            },
+            {
+                "provider": {
+                    "id": "custom",
+                    "api": { "type": "aisdk", "package": "@ai-sdk/openai-compatible", "url": "https://custom.test/v1" },
+                    "request": { "headers": {} },
+                },
+                "models": { "x": { "enabled": true } },
+            },
+        ]
+    });
+    apply_all_provider_plugins(&mut draft);
+
+    let nvidia = &draft["providers"][0]["provider"]["request"]["headers"];
+    assert_eq!(nvidia["HTTP-Referer"], "https://opencode.ai/");
+    assert_eq!(nvidia["X-BILLING-INVOKE-ORIGIN"], "OpenCode");
+
+    let openrouter = &draft["providers"][1];
+    assert_eq!(
+        openrouter["provider"]["request"]["headers"]["X-Title"],
+        "opencode"
+    );
+    assert_eq!(openrouter["models"]["gpt-5-chat-latest"]["enabled"], false);
+    assert_eq!(openrouter["models"]["openai/gpt-5-chat"]["enabled"], false);
+    assert_eq!(openrouter["models"]["anthropic/claude"]["enabled"], true);
+
+    // Unrelated providers keep their shape.
+    assert_eq!(
+        draft["providers"][2]["provider"]["request"]["headers"],
+        serde_json::json!({})
+    );
 }

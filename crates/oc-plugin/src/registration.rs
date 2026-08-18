@@ -120,8 +120,15 @@ impl PluginRegistrationSink for InMemoryRegistrationSink {
 /// without depending on JavaScript's nested client object shape.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ClientRpcRequest {
+    /// The client method (`session.get`, `config.get`, ...).
     pub method: String,
+    /// The method arguments.
     pub args: Value,
+    /// A per-call request id generated on the JS side. It lets the host
+    /// correlate responses when several client calls are in flight and lets
+    /// plugin code cancel an individual request by id.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub request_id: Option<String>,
 }
 
 impl ClientRpcRequest {
@@ -129,6 +136,19 @@ impl ClientRpcRequest {
         Self {
             method: method.into(),
             args,
+            request_id: None,
+        }
+    }
+
+    pub fn with_request_id(
+        method: impl Into<String>,
+        args: Value,
+        request_id: impl Into<String>,
+    ) -> Self {
+        Self {
+            method: method.into(),
+            args,
+            request_id: Some(request_id.into()),
         }
     }
 }

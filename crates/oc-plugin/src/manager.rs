@@ -65,7 +65,12 @@ enum Request {
         args: Value,
         context: Value,
         cancellation: Option<PluginToolCancellation>,
+        timeout: Option<std::time::Duration>,
         response: mpsc::Sender<Result<Value, String>>,
+    },
+    ClientCancel {
+        request_id: String,
+        response: mpsc::Sender<Result<(), String>>,
     },
     AuthValidate {
         request: AuthValidateRequest,
@@ -92,9 +97,14 @@ enum Request {
     Shutdown,
 }
 
+/// The request queue capacity. The channel is bounded so a burst of stream
+/// events cannot grow without bound; the stream-event path uses [`Request::try_send`]
+/// and reports backpressure instead of blocking the server event fan-out.
+const REQUEST_QUEUE_CAPACITY: usize = 1024;
+
 /// A cloneable handle to the thread that owns all loaded QuickJS plugins.
 pub struct PluginManager {
-    sender: mpsc::Sender<Request>,
+    sender: mpsc::SyncSender<Request>,
     join: Arc<Mutex<Option<thread::JoinHandle<()>>>>,
 }
 
@@ -115,7 +125,7 @@ impl PluginManager {
     }
 
     pub fn with_host(host: Arc<dyn PluginHost>) -> Self {
-        let (sender, receiver) = mpsc::channel();
+        let (sender, receiver) = mpsc::sync_channel(REQUEST_QUEUE_CAPACITY);
         let join = thread::Builder::new()
             .name("opencode-plugin-host".into())
             // QuickJS's interpreter and promise machinery use substantially
@@ -185,19 +195,7 @@ impl PluginManager {
         args: Value,
         context: Value,
     ) -> Result<Value, String> {
-        let (response, receiver) = mpsc::channel();
-        self.sender
-            .send(Request::Tool {
-                name: name.into(),
-                args,
-                context,
-                cancellation: None,
-                response,
-            })
-            .map_err(|_| "plugin host thread is unavailable".to_string())?;
-        receiver
-            .recv()
-            .unwrap_or_else(|_| Err("plugin host thread stopped before tool execution".into()))
+        self.execute_tool_inner(name, args, context, None, None)
     }
 
     /// Execute a plugin tool while exposing `cancellation` to
@@ -210,13 +208,37 @@ impl PluginManager {
         context: Value,
         cancellation: PluginToolCancellation,
     ) -> Result<Value, String> {
+        self.execute_tool_inner(name, args, context, Some(cancellation), None)
+    }
+
+    /// Execute a plugin tool with a wall-clock budget. Runaway plugin code is
+    /// aborted by the QuickJS interrupt handler and reported as a limit error.
+    pub fn execute_tool_with_timeout(
+        &self,
+        name: impl Into<String>,
+        args: Value,
+        context: Value,
+        timeout: std::time::Duration,
+    ) -> Result<Value, String> {
+        self.execute_tool_inner(name, args, context, None, Some(timeout))
+    }
+
+    fn execute_tool_inner(
+        &self,
+        name: impl Into<String>,
+        args: Value,
+        context: Value,
+        cancellation: Option<PluginToolCancellation>,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<Value, String> {
         let (response, receiver) = mpsc::channel();
         self.sender
             .send(Request::Tool {
                 name: name.into(),
                 args,
                 context,
-                cancellation: Some(cancellation),
+                cancellation,
+                timeout,
                 response,
             })
             .map_err(|_| "plugin host thread is unavailable".to_string())?;
@@ -239,10 +261,32 @@ impl PluginManager {
 
     /// Queue one event for the QuickJS-owned SSE handlers without blocking
     /// the server event fan-out on plugin callback execution.
+    ///
+    /// The queue is bounded: when the plugin owner thread is saturated, the
+    /// event is dropped and a backpressure error is returned instead of
+    /// growing the queue without bound.
     pub fn stream_event(&self, event: Value) -> Result<(), String> {
         self.sender
-            .send(Request::StreamEvent { event })
-            .map_err(|_| "plugin host thread is unavailable".to_string())
+            .try_send(Request::StreamEvent { event })
+            .map_err(|_| {
+                "plugin SSE stream is at capacity; event dropped (backpressure)".to_string()
+            })
+    }
+
+    /// Cancel an in-flight client request identified by its request id. The
+    /// request id originates on the JS side (`__oc_client_call`) and is
+    /// forwarded to the host's [`PluginHost::client_cancel`].
+    pub fn client_cancel(&self, request_id: &str) -> Result<(), String> {
+        let (response, receiver) = mpsc::channel();
+        self.sender
+            .send(Request::ClientCancel {
+                request_id: request_id.to_string(),
+                response,
+            })
+            .map_err(|_| "plugin host thread is unavailable".to_string())?;
+        receiver
+            .recv()
+            .unwrap_or_else(|_| Err("plugin host thread stopped before client cancellation".into()))
     }
 
     /// Run a plugin auth prompt validator on the QuickJS owner thread.
@@ -327,10 +371,18 @@ fn worker(receiver: mpsc::Receiver<Request>, host: Arc<dyn PluginHost>) {
                 args,
                 context,
                 cancellation,
+                timeout,
                 response,
             } => {
-                let result = execute_tool(&plugins, &name, args, context, cancellation);
+                let result = execute_tool(&plugins, &name, args, context, cancellation, timeout);
                 let _ = response.send(result);
+            }
+            Request::ClientCancel {
+                request_id,
+                response,
+            } => {
+                host.client_cancel(&request_id);
+                let _ = response.send(Ok(()));
             }
             Request::AuthValidate { request, response } => {
                 let result = dispatch_auth_validate(&plugins, &request);
@@ -442,14 +494,20 @@ fn execute_tool(
     args: Value,
     context: Value,
     cancellation: Option<PluginToolCancellation>,
+    timeout: Option<std::time::Duration>,
 ) -> Result<Value, String> {
     let plugin = plugins
         .iter()
         .find(|plugin| plugin.tool_names().iter().any(|tool| tool == name))
         .ok_or_else(|| format!("plugin tool '{name}' is not registered"))?;
-    plugin
-        .execute_tool_with_cancellation(name, args, context, cancellation)
-        .map_err(|error| error.to_string())
+    match timeout {
+        Some(timeout) => plugin
+            .execute_tool_with_timeout(name, args, context, timeout)
+            .map_err(|error| error.to_string()),
+        None => plugin
+            .execute_tool_with_cancellation(name, args, context, cancellation)
+            .map_err(|error| error.to_string()),
+    }
 }
 
 fn deliver_event(plugins: &[LoadedPlugin], event: Value) -> Result<(), String> {

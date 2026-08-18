@@ -77,8 +77,13 @@ function errorMessage(err) {
 // Streams keep their callbacks inside QuickJS. Rust only sends serialized
 // events back to the owner thread through `__oc_stream_emit`, which avoids
 // ever moving a JS function across the FFI boundary.
+//
+// Backpressure: each stream owns a bounded pending-event queue. The Rust host
+// also bounds its cross-thread stream channel (see PluginManager), so an
+// overloaded plugin cannot make the server event fan-out grow without bound.
 const __oc_streams = Object.create(null);
 let __oc_stream_sequence = 0;
+const __OC_STREAM_MAX_PENDING = 1024;
 
 function __oc_stream_matches(stream, event) {
   if (!stream.path || stream.path === "/global/event") return true;
@@ -91,14 +96,20 @@ function __oc_stream_emit(event) {
   Object.keys(__oc_streams).forEach(function (id) {
     const stream = __oc_streams[id];
     if (!stream || stream.closed || !__oc_stream_matches(stream, event)) return;
+    // Apply the bounded pending queue: an event beyond the cap evicts the
+    // oldest undelivered event and is counted on the stream's stats.
+    stream.pending.push(event);
+    if (stream.pending.length > stream.maxPending) {
+      stream.pending.shift();
+      stream.dropped++;
+    }
     stream.handlers.slice().forEach(function (handler) {
-      try {
-        pending.push(Promise.resolve().then(function () { return handler(event); }).catch(function () {
-          // A subscriber must not stop delivery to other plugin streams.
-          return undefined;
-        }));
-      } catch (_) {}
+      pending.push(Promise.resolve().then(function () { return handler(event); }).catch(function () {
+        // A subscriber must not stop delivery to other plugin streams.
+        return undefined;
+      }));
     });
+    stream.pending = [];
   });
   return Promise.all(pending).then(function () { return true; });
 }
@@ -109,6 +120,9 @@ function __oc_make_sse_stream(path) {
     id: id,
     path: typeof path === "string" ? path : "/global/event",
     handlers: [],
+    pending: [],
+    maxPending: __OC_STREAM_MAX_PENDING,
+    dropped: 0,
     closed: false,
     on: function (eventOrHandler, maybeHandler) {
       const handler = typeof eventOrHandler === "function" ? eventOrHandler : maybeHandler;
@@ -124,8 +138,13 @@ function __oc_make_sse_stream(path) {
     done: function () {
       stream.closed = true;
       stream.handlers = [];
+      stream.pending = [];
       delete __oc_streams[id];
       return Promise.resolve(true);
+    },
+    // Backpressure introspection for hosts and tests.
+    backpressure: function () {
+      return { pending: stream.pending.length, dropped: stream.dropped, max: stream.maxPending };
     },
   };
   __oc_streams[id] = stream;
@@ -659,19 +678,20 @@ function __oc_make_client() {
   const client = {};
   const methods = [
     "pty.list", "pty.create", "pty.remove", "pty.get", "pty.update", "pty.connect",
-    "session.list", "session.create", "session.get", "session.remove",
+    "session.list", "session.create", "session.get", "session.remove", "session.update",
     "session.prompt", "session.messages", "session.count", "session.event",
     "session.status",
     "session.delete", "session.children", "session.todo", "session.init",
     "session.fork", "session.abort", "session.unshare", "session.share",
     "session.diff", "session.summarize", "session.message", "session.promptAsync",
     "session.command", "session.shell", "session.revert", "session.unrevert",
+    "session.permission",
     "message.create", "message.get", "message.update", "message.remove",
     "message.parts", "message.reasoning",
     "part.create", "part.get", "part.update", "part.remove", "part.meta",
     "session.data",
     "config.get", "config.set", "config.update", "config.providers",
-    "project.get", "project.update", "project.list",
+    "project.get", "project.update", "project.list", "project.current",
     "model.get", "model.list", "provider.list", "provider.auth",
     "provider.oauth.authorize", "provider.oauth.callback",
     "tool.list", "tool.get", "tool.ids",
@@ -679,12 +699,12 @@ function __oc_make_client() {
     "command.list",
     "find.text", "find.files", "find.symbols",
     "file.get", "file.list", "file.read", "file.status",
-    "app.version", "app.log", "app.agents",
+    "app.version", "app.log", "app.agents", "app.skills",
     "skill.list",
     "mcp.status", "mcp.add", "mcp.connect", "mcp.disconnect",
     "mcp.auth.remove", "mcp.auth.start", "mcp.auth.callback", "mcp.auth.authenticate",
     "lsp.status", "formatter.status",
-    "global.event",
+    "global.event", "event.subscribe",
     "tui.appendPrompt", "tui.openHelp", "tui.openSessions", "tui.openThemes",
     "tui.openModels", "tui.submitPrompt", "tui.clearPrompt", "tui.executeCommand",
     "tui.showToast", "tui.publish", "tui.control.next", "tui.control.response",
@@ -713,12 +733,48 @@ function __oc_make_client() {
   client.sse = { stream: __oc_make_sse_stream };
   client.global.event = function (path) { return __oc_make_sse_stream(path || "/global/event"); };
   client.session.event = function (path) { return __oc_make_sse_stream(path || "/global/event"); };
+  client.event.subscribe = function (path) { return __oc_make_sse_stream(path || "/global/event"); };
+  // Cancel an in-flight request by id (see `__oc_client_cancel`).
+  client.cancel = __oc_client_cancel;
   return client;
 }
 
+// ---------------------------------------------------------------------------
+// Client request lifecycle
+// ---------------------------------------------------------------------------
+
+// Every client call gets a monotonically increasing request id so the host can
+// correlate responses when several calls are in flight and plugin code can
+// cancel an individual request. The reference SDK performs the same
+// correlation implicitly over HTTP; the in-process bridge needs the explicit
+// id because a host may multiplex requests on its own transport.
+let __oc_client_sequence = 0;
+const __oc_client_inflight = Object.create(null);
+
 function __oc_client_call(path, args) {
-  return Promise.resolve().then(function () {
-    const result = __oc_bridge_sync("client", { method: path, args: args === undefined ? null : args });
+  const requestID = "req_" + (++__oc_client_sequence);
+  // Register the request synchronously so it can be cancelled before the
+  // bridge round-trip settles.
+  __oc_client_inflight[requestID] = true;
+  const promise = Promise.resolve().then(function () {
+    if (__oc_client_inflight[requestID] === "cancelled") {
+      delete __oc_client_inflight[requestID];
+      const err = new Error("client " + path + " was cancelled");
+      err.name = "AbortError";
+      throw err;
+    }
+    const result = __oc_bridge_sync("client", {
+      method: path,
+      args: args === undefined ? null : args,
+      requestID: requestID,
+    });
+    if (result && result.cancelled === true) {
+      delete __oc_client_inflight[requestID];
+      const err = new Error("client " + path + " was cancelled");
+      err.name = "AbortError";
+      throw err;
+    }
+    delete __oc_client_inflight[requestID];
     if (result && result.ok === false) {
       const err = new Error(result.error && result.error.message ? result.error.message : "client " + path + " failed");
       err.status = result.error && result.error.status;
@@ -726,6 +782,20 @@ function __oc_client_call(path, args) {
     }
     return result && result.data !== undefined ? result.data : null;
   });
+  // Expose the request id on the promise so plugin code can cancel the call.
+  promise.requestID = requestID;
+  return promise;
+}
+
+// Cancel an in-flight client request by id. The host's `client_cancel` is
+// invoked for the request id and the request's promise rejects with an
+// AbortError. Without an id the most recent in-flight request is cancelled.
+function __oc_client_cancel(requestID) {
+  const target = requestID || Object.keys(__oc_client_inflight).pop();
+  if (!target || !__oc_client_inflight[target]) return false;
+  __oc_client_inflight[target] = "cancelled";
+  __oc_bridge_sync("client.cancel", { requestID: String(target) });
+  return true;
 }
 
 // The v1 PluginInput passed to plugin functions.
@@ -790,8 +860,14 @@ function __oc_make_v2_context() {
       language: function () { return { dispose: function () {} }; },
     },
     plugin: {
-      add: function () { return Promise.resolve(); },
-      remove: function () { return Promise.resolve(); },
+      add: function (input) {
+        __oc_bridge_sync("v1.register", { kind: "plugin", input: input, pluginId: __oc_plugin.pluginId });
+        return Promise.resolve();
+      },
+      remove: function (id) {
+        __oc_bridge_sync("v1.register", { kind: "plugin.remove", input: { id: id }, pluginId: __oc_plugin.pluginId });
+        return Promise.resolve();
+      },
     },
   };
 }
@@ -1128,6 +1204,11 @@ function __oc_workspace_adapter(payload) {
 }
 
 // Promise entrypoint: run a v2 domain transform callback with a mutable draft.
+// Each domain wraps the raw draft with the reference's typed surface
+// (reference/packages/core/src/plugin/host.ts): read operations like `list` /
+// `get` and mutations like `update` / `remove` / `default` operate on the
+// shared draft object, so a plugin's transforms shape the same JSON document
+// the Rust host handed in.
 function __oc_v2_transform(payload) {
   const callbacks = (__oc_plugin.v2Callbacks = __oc_plugin.v2Callbacks || Object.create(null));
   const callback = callbacks[payload.domain];
@@ -1135,7 +1216,170 @@ function __oc_v2_transform(payload) {
     throw new Error("No v2 transform callback registered for domain '" + payload.domain + "'");
   }
   const draft = payload.draft === undefined || payload.draft === null ? {} : payload.draft;
-  return Promise.resolve(callback(draft)).then(function () { return draft; });
+  return Promise.resolve(callback(__oc_v2_wrap_draft(payload.domain, draft))).then(function () { return draft; });
+}
+
+// The reference host hands each domain callback a scoped API over the draft.
+// This mirrors the wrapper construction in reference/packages/core/src/plugin/host.ts
+// so `ctx.agent.transform((draft) => draft.update(...))` has real semantics.
+function __oc_v2_wrap_draft(domain, draft) {
+  if (domain === "command") return draft; // command transforms receive the raw draft
+  const data = draft;
+  switch (domain) {
+    case "agent": {
+      return {
+        list: function () { return data.agents || []; },
+        get: function (id) {
+          return (data.agents || []).find(function (agent) { return agent.id === id; });
+        },
+        default: function (id) {
+          if (id === undefined) return data.defaultAgent;
+          data.defaultAgent = id;
+        },
+        update: function (id, update) {
+          const agents = (data.agents = data.agents || []);
+          const index = agents.findIndex(function (agent) { return agent.id === id; });
+          if (index === -1) agents.push(Object.assign({ id: id }, update));
+          else agents[index] = Object.assign({}, agents[index], update);
+        },
+        remove: function (id) {
+          data.agents = (data.agents || []).filter(function (agent) { return agent.id !== id; });
+        },
+      };
+    }
+    case "skill": {
+      return {
+        source: function (source) {
+          const sources = (data.sources = data.sources || []);
+          sources.push(source);
+        },
+        list: function () { return data.sources || []; },
+      };
+    }
+    case "reference": {
+      return {
+        add: function (name, source) {
+          data.references = data.references || {};
+          data.references[name] = source;
+        },
+        remove: function (name) {
+          if (data.references) delete data.references[name];
+        },
+        list: function () {
+          return Object.keys(data.references || {});
+        },
+      };
+    }
+    case "catalog": {
+      // Catalog items mirror the reference: `{ provider, models }` where
+      // `models` is a map of model id -> model. `provider.update` /
+      // `model.update` accept either a mutation function or a plain object.
+      const itemFor = function (providerID) {
+        return (data.providers || []).find(function (item) {
+          return item && item.provider && item.provider.id === providerID;
+        });
+      };
+      const apply = function (target, update) {
+        if (typeof update === "function") update(target);
+        else if (update && typeof update === "object") Object.assign(target, update);
+      };
+      return {
+        provider: {
+          list: function () { return data.providers || []; },
+          get: function (id) {
+            const item = itemFor(id);
+            return item ? item.provider : undefined;
+          },
+          update: function (id, update) {
+            const providers = (data.providers = data.providers || []);
+            let item = itemFor(id);
+            if (!item) {
+              item = { provider: { id: id }, models: {} };
+              providers.push(item);
+            }
+            apply(item.provider, update);
+          },
+          remove: function (id) {
+            data.providers = (data.providers || []).filter(function (item) {
+              return !item || !item.provider || item.provider.id !== id;
+            });
+          },
+        },
+        model: {
+          get: function (providerID, modelID) {
+            const item = itemFor(providerID);
+            return item && item.models ? item.models[modelID] : undefined;
+          },
+          update: function (providerID, modelID, update) {
+            const providers = (data.providers = data.providers || []);
+            let item = itemFor(providerID);
+            if (!item) {
+              item = { provider: { id: providerID }, models: {} };
+              providers.push(item);
+            }
+            item.models = item.models || {};
+            if (!item.models[modelID]) item.models[modelID] = { id: modelID };
+            apply(item.models[modelID], update);
+          },
+          remove: function (providerID, modelID) {
+            const item = itemFor(providerID);
+            if (item && item.models) delete item.models[modelID];
+          },
+          default: {
+            get: function () { return data.defaultModel; },
+            set: function (providerID, modelID) {
+              data.defaultModel = { providerID: providerID, modelID: modelID };
+            },
+          },
+        },
+      };
+    }
+    case "integration": {
+      return {
+        list: function () { return data.integrations || []; },
+        get: function (id) {
+          return (data.integrations || []).find(function (integration) { return integration.id === id; });
+        },
+        update: function (id, update) {
+          const integrations = (data.integrations = data.integrations || []);
+          const index = integrations.findIndex(function (integration) { return integration.id === id; });
+          if (index === -1) integrations.push(Object.assign({ id: id }, update));
+          else integrations[index] = Object.assign({}, integrations[index], update);
+        },
+        remove: function (id) {
+          data.integrations = (data.integrations || []).filter(function (integration) { return integration.id !== id; });
+        },
+        method: {
+          list: function (id) {
+            const integration = (data.integrations || []).find(function (candidate) { return candidate.id === id; });
+            return (integration && integration.methods) || [];
+          },
+          update: function (input) {
+            const integration = (data.integrations || []).find(function (candidate) { return candidate.id === (input && input.integrationID); });
+            if (integration) {
+              integration.methods = integration.methods || [];
+              const method = input && input.method;
+              const existing = integration.methods.find(function (candidate) {
+                return candidate.id && method && candidate.id === method.id;
+              });
+              if (existing && method) Object.assign(existing, method);
+              else if (method) integration.methods.push(method);
+            }
+          },
+          remove: function (id, method) {
+            const integration = (data.integrations || []).find(function (candidate) { return candidate.id === id; });
+            if (integration) {
+              integration.methods = (integration.methods || []).filter(function (candidate) {
+                return !method || !method.id || candidate.id !== method.id;
+              });
+            }
+          },
+        },
+      };
+    }
+    default:
+      return data;
+  }
 }
 
 // ---------------------------------------------------------------------------

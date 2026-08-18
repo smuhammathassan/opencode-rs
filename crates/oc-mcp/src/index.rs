@@ -1041,6 +1041,7 @@ impl Mcp {
         let events = self.events.clone();
         let name = name.to_string();
         let watched_client = client.clone();
+        let name_for_tools = name.clone();
         client
             .set_notification_handler("notifications/tools/list_changed", {
                 let client = Arc::clone(client);
@@ -1048,7 +1049,7 @@ impl Mcp {
                     let client = Arc::clone(&client);
                     let state = Arc::clone(&state);
                     let events = events.clone();
-                    let name = name.clone();
+                    let name = name_for_tools.clone();
                     let watched_client = Arc::clone(&watched_client);
                     tokio::spawn(async move {
                         let Ok(Some(defs)) = catalog::defs(client, timeout).await else {
@@ -1067,6 +1068,99 @@ impl Mcp {
                             .unwrap_or(false);
                         if connected && is_connected {
                             guard.defs.insert(name.clone(), defs);
+                            if let Some(events) = events {
+                                let _ = events.send(McpEvent::ToolsChanged { server: name });
+                            }
+                        }
+                    });
+                })
+            })
+            .await;
+
+        // `notifications/resources/list_changed` and
+        // `notifications/prompts/list_changed`: resources and prompts are
+        // fetched lazily (not cached) so there is nothing to invalidate
+        // locally, but the server is signaling its catalog changed. Re-assert
+        // the connection is still the current one and emit a change event so
+        // consumers re-list. Mirrors the reference SDK's per-kind list-changed
+        // handlers wired in `MCP.watch`.
+        let resources_state = self.state.clone();
+        let resources_events = self.events.clone();
+        let resources_name = name.clone();
+        let resources_watched = client.clone();
+        let resources_label = format!("resources/{name}");
+        client
+            .set_notification_handler("notifications/resources/list_changed", {
+                Arc::new(move |_params: Option<serde_json::Value>| {
+                    let state = Arc::clone(&resources_state);
+                    let events = resources_events.clone();
+                    let name = resources_name.clone();
+                    let watched = Arc::clone(&resources_watched);
+                    let label = resources_label.clone();
+                    tokio::spawn(async move {
+                        let (connected, is_connected) = {
+                            let guard = state.read().await;
+                            (
+                                guard
+                                    .clients
+                                    .get(&name)
+                                    .map(|stored| Arc::ptr_eq(stored, &watched))
+                                    .unwrap_or(false),
+                                guard
+                                    .status
+                                    .get(&name)
+                                    .map(|status| status.is_connected())
+                                    .unwrap_or(false),
+                            )
+                        };
+                        if connected && is_connected {
+                            debug!(
+                                message = "MCP resources list changed",
+                                server = tracing::field::display(label)
+                            );
+                            if let Some(events) = events {
+                                let _ = events.send(McpEvent::ToolsChanged { server: name });
+                            }
+                        }
+                    });
+                })
+            })
+            .await;
+
+        let prompts_state = self.state.clone();
+        let prompts_events = self.events.clone();
+        let prompts_name = name.clone();
+        let prompts_watched = client.clone();
+        let prompts_label = format!("prompts/{name}");
+        client
+            .set_notification_handler("notifications/prompts/list_changed", {
+                Arc::new(move |_params: Option<serde_json::Value>| {
+                    let state = Arc::clone(&prompts_state);
+                    let events = prompts_events.clone();
+                    let name = prompts_name.clone();
+                    let watched = Arc::clone(&prompts_watched);
+                    let label = prompts_label.clone();
+                    tokio::spawn(async move {
+                        let (connected, is_connected) = {
+                            let guard = state.read().await;
+                            (
+                                guard
+                                    .clients
+                                    .get(&name)
+                                    .map(|stored| Arc::ptr_eq(stored, &watched))
+                                    .unwrap_or(false),
+                                guard
+                                    .status
+                                    .get(&name)
+                                    .map(|status| status.is_connected())
+                                    .unwrap_or(false),
+                            )
+                        };
+                        if connected && is_connected {
+                            debug!(
+                                message = "MCP prompts list changed",
+                                server = tracing::field::display(label)
+                            );
                             if let Some(events) = events {
                                 let _ = events.send(McpEvent::ToolsChanged { server: name });
                             }

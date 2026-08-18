@@ -1650,6 +1650,7 @@ name = "oc-mcp"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "axum 0.7.9",
  "directories",
  "futures",
  "indexmap",
@@ -1661,6 +1662,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.20",
  "tokio",
+ "tower",
  "tracing",
  "url",
  "uuid",
@@ -1838,6 +1840,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "bytes",
  "futures",
  "oc-core",
  "oc-database",

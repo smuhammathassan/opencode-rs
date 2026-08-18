@@ -3,8 +3,10 @@
 //! The reference installs plugins with `@npmcli/arborist` (a full npm client)
 //! into `<cache>/packages/<pkg>/node_modules`. There is no JS toolchain in the
 //! environment, so this module fetches the registry metadata and tarball
-//! directly and unpacks the single package into the same layout.
+//! directly, resolves the package's runtime `dependencies` from the same
+//! registry (version-pinned), and unpacks the tree into the same layout.
 
+use std::collections::{BTreeMap, HashSet};
 use std::io;
 use std::path::{Component, Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -12,6 +14,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use serde_json::Value;
 
 use crate::loader::sanitize_package;
+use crate::npm_config::NpmConfig;
 use crate::paths::GlobalPaths;
 
 #[derive(Debug, thiserror::Error)]
@@ -30,18 +33,73 @@ pub enum NpmError {
     InvalidPackage { pkg: String, message: String },
 }
 
-fn registry_url(pkg: &str) -> String {
+/// The name of the small lock marker written next to a package once its
+/// runtime dependencies are installed. Mirrors npm's `package-lock.json`
+/// purpose (version-pinned dependency pins) without requiring a full lockfile
+/// format.
+pub const DEPS_MARKER: &str = ".oc-deps.json";
+
+fn registry_url(pkg: &str, config: &NpmConfig) -> String {
+    let registry = config.registry_for(pkg);
     if pkg.starts_with('@') {
         // scoped: @scope/name → encode the slash
         let (scope, name) = pkg.split_once('/').unwrap_or((pkg, ""));
-        format!(
-            "https://registry.npmjs.org/{}/{}",
-            scope.replace('@', "%40"),
-            name
-        )
+        format!("{registry}/{}/{}", scope.replace('@', "%40"), name)
     } else {
-        format!("https://registry.npmjs.org/{pkg}")
+        format!("{registry}/{pkg}")
     }
+}
+
+/// A `reqwest::blocking` client with sensible plugin-install timeouts.
+fn install_client() -> Result<reqwest::blocking::Client, NpmError> {
+    reqwest::blocking::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| NpmError::Metadata {
+            pkg: "client".to_string(),
+            message: format!("failed to build registry client: {e}"),
+        })
+}
+
+fn fetch_json(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    config: &NpmConfig,
+    pkg: &str,
+) -> Result<Value, NpmError> {
+    let mut request = client.get(url);
+    if let Some(token) = config.token_for(url) {
+        request = request.header("authorization", format!("Bearer {token}"));
+    }
+    request
+        .send()
+        .and_then(|res| res.error_for_status())
+        .and_then(|res| res.json::<Value>())
+        .map_err(|e| NpmError::Metadata {
+            pkg: pkg.to_string(),
+            message: format!("{url}: {e}"),
+        })
+}
+
+fn fetch_bytes(
+    client: &reqwest::blocking::Client,
+    url: &str,
+    config: &NpmConfig,
+    pkg: &str,
+) -> Result<Vec<u8>, NpmError> {
+    let mut request = client.get(url);
+    if let Some(token) = config.token_for(url) {
+        request = request.header("authorization", format!("Bearer {token}"));
+    }
+    request
+        .send()
+        .and_then(|res| res.error_for_status())
+        .and_then(|res| res.bytes())
+        .map(|bytes| bytes.to_vec())
+        .map_err(|e| NpmError::Tarball {
+            pkg: pkg.to_string(),
+            message: format!("{url}: {e}"),
+        })
 }
 
 fn version_tarball(metadata: &Value, version: &str) -> Option<(String, String)> {
@@ -120,6 +178,18 @@ fn git_url(spec: &str) -> Option<String> {
 /// Add a plugin package to the cache, returning the resolved plugin directory.
 /// Mirrors `Npm.add` in reference/packages/core/src/npm.ts.
 pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
+    let config = NpmConfig::load(None);
+    add_with_config(spec, paths, &config)
+}
+
+/// [`add`] with an explicit npm configuration (registry base + auth tokens),
+/// used by the mock-registry tests and any embedding application that manages
+/// its own npm configuration.
+pub fn add_with_config(
+    spec: &str,
+    paths: &GlobalPaths,
+    config: &NpmConfig,
+) -> Result<PathBuf, NpmError> {
     let (parsed_pkg, requested) = crate::loader::parse_plugin_specifier(spec);
     let git = git_url(spec);
     let pkg = if valid_package_name(&parsed_pkg) {
@@ -157,16 +227,9 @@ pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
         return add_git(&url, &target, &pkg);
     }
 
-    let client = reqwest::blocking::Client::new();
-    let metadata = client
-        .get(registry_url(&pkg))
-        .send()
-        .and_then(|res| res.error_for_status())
-        .and_then(|res| res.json::<Value>())
-        .map_err(|e| NpmError::Metadata {
-            pkg: pkg.clone(),
-            message: e.to_string(),
-        })?;
+    let client = install_client()?;
+    let metadata_url = registry_url(&pkg, config);
+    let metadata = fetch_json(&client, &metadata_url, config, &pkg)?;
 
     let version = pick_version(&metadata, &requested).ok_or_else(|| NpmError::VersionNotFound {
         pkg: pkg.clone(),
@@ -177,15 +240,7 @@ pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
         version: version.clone(),
     })?;
 
-    let bytes = client
-        .get(&tarball)
-        .send()
-        .and_then(|res| res.error_for_status())
-        .and_then(|res| res.bytes())
-        .map_err(|e| NpmError::Tarball {
-            pkg: pkg.clone(),
-            message: e.to_string(),
-        })?;
+    let bytes = fetch_bytes(&client, &tarball, config, &pkg)?;
 
     std::fs::create_dir_all(&dir).map_err(|e| NpmError::Unpack {
         pkg: pkg.clone(),
@@ -193,8 +248,143 @@ pub fn add(spec: &str, paths: &GlobalPaths) -> Result<PathBuf, NpmError> {
     })?;
     unpack_tarball(&bytes, &target, &pkg)?;
     validate_package(&target, Some(&pkg), Some(&version))?;
+    install_dependencies(&client, &target, config, &pkg)?;
 
     Ok(target)
+}
+
+/// Install the runtime `dependencies` of the package at `target`, resolving
+/// each from the registry, downloading version-pinned tarballs into the
+/// package's `node_modules`, and recursing into nested dependencies. The
+/// resolved pins are recorded in a small `.oc-deps.json` marker.
+fn install_dependencies(
+    client: &reqwest::blocking::Client,
+    target: &Path,
+    config: &NpmConfig,
+    pkg: &str,
+) -> Result<(), NpmError> {
+    let manifest = read_package_json(target)?;
+    let mut visited = HashSet::new();
+    let mut resolved = BTreeMap::new();
+    resolve_and_install_deps(
+        client,
+        config,
+        &manifest,
+        target,
+        &mut visited,
+        &mut resolved,
+    )?;
+    let marker = target.join(DEPS_MARKER);
+    let contents = serde_json::to_string_pretty(&serde_json::json!({
+        "dependencies": resolved,
+    }))
+    .map_err(|e| NpmError::InvalidPackage {
+        pkg: pkg.to_string(),
+        message: format!("serialize dependency marker: {e}"),
+    })?;
+    std::fs::write(&marker, format!("{contents}\n")).map_err(|e| NpmError::Unpack {
+        pkg: pkg.to_string(),
+        message: format!("write dependency marker {}: {e}", marker.display()),
+    })
+}
+
+fn resolve_and_install_deps(
+    client: &reqwest::blocking::Client,
+    config: &NpmConfig,
+    manifest: &Value,
+    target: &Path,
+    visited: &mut HashSet<String>,
+    resolved: &mut BTreeMap<String, String>,
+) -> Result<(), NpmError> {
+    let Some(dependencies) = manifest.get("dependencies").and_then(Value::as_object) else {
+        return Ok(());
+    };
+    for (dep_name, spec) in dependencies {
+        // Guard against dependency cycles (npm allows `a` -> `b` -> `a`).
+        if !visited.insert(dep_name.clone()) {
+            continue;
+        }
+        let Some(range) = spec.as_str() else {
+            continue; // object specs (npm aliases) are not resolvable here
+        };
+        if !is_registry_spec(range) {
+            continue; // git/file/workspace/link/http specs are out of scope
+        }
+        let dep_version = resolve_dependency_version(client, config, dep_name, range)?;
+        let dep_dir = target.join("node_modules").join(pkg_name_dir(dep_name));
+        if !cached_package_is_valid(&dep_dir, dep_name, &dep_version) {
+            if dep_dir.exists() {
+                std::fs::remove_dir_all(&dep_dir).map_err(|e| NpmError::Unpack {
+                    pkg: dep_name.clone(),
+                    message: format!("remove stale dependency: {e}"),
+                })?;
+            }
+            let metadata_url = registry_url(dep_name, config);
+            let metadata = fetch_json(client, &metadata_url, config, dep_name)?;
+            let (_, tarball) =
+                version_tarball(&metadata, &dep_version).ok_or_else(|| NpmError::NoTarball {
+                    pkg: dep_name.clone(),
+                    version: dep_version.clone(),
+                })?;
+            let bytes = fetch_bytes(client, &tarball, config, dep_name)?;
+            unpack_tarball(&bytes, &dep_dir, dep_name)?;
+            validate_package(&dep_dir, Some(dep_name), Some(&dep_version))?;
+        }
+        resolved.insert(dep_name.clone(), dep_version);
+        // Recursively resolve the dependency's own runtime dependencies.
+        let nested = read_package_json(&dep_dir)?;
+        resolve_and_install_deps(client, config, &nested, &dep_dir, visited, resolved)?;
+    }
+    Ok(())
+}
+
+/// Resolve the exact, version-pinned version for a dependency range without
+/// downloading it (used both for the download step and the cache check).
+fn resolve_dependency_version(
+    client: &reqwest::blocking::Client,
+    config: &NpmConfig,
+    dep_name: &str,
+    range: &str,
+) -> Result<String, NpmError> {
+    let metadata_url = registry_url(dep_name, config);
+    let metadata = fetch_json(client, &metadata_url, config, dep_name)?;
+    pick_version(&metadata, range).ok_or_else(|| NpmError::VersionNotFound {
+        pkg: dep_name.to_string(),
+        version: range.to_string(),
+    })
+}
+
+/// Whether `spec` is a registry-resolvable version range. Git, file,
+/// workspace, link, alias (`npm:`) and http(s) specs are not resolvable
+/// through the metadata endpoint.
+fn is_registry_spec(spec: &str) -> bool {
+    !(spec.starts_with("git+")
+        || spec.starts_with("github:")
+        || spec.starts_with("git:")
+        || spec.starts_with("file:")
+        || spec.starts_with("workspace:")
+        || spec.starts_with("link:")
+        || spec.starts_with("npm:")
+        || spec.contains("://")
+        || spec.starts_with('.'))
+}
+
+fn read_package_json(dir: &Path) -> Result<Value, NpmError> {
+    let path = dir.join("package.json");
+    let text = std::fs::read_to_string(&path).map_err(|e| NpmError::InvalidPackage {
+        pkg: dir
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "plugin".into()),
+        message: format!("failed to read {}: {e}", path.display()),
+    })?;
+    serde_json::from_str(&text).map_err(|e| NpmError::InvalidPackage {
+        pkg: dir
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| "plugin".into()),
+        message: format!("invalid JSON in {}: {e}", path.display()),
+    })
 }
 
 fn valid_package_name(pkg: &str) -> bool {
@@ -248,12 +438,15 @@ fn cache_dir(paths: &GlobalPaths, pkg: &str, requested: &str) -> PathBuf {
 
 fn cached_package_is_valid(target: &Path, pkg: &str, requested: &str) -> bool {
     let expected_version = semver::Version::parse(requested).ok();
-    validate_package(
+    let valid = validate_package(
         target,
         Some(pkg),
         expected_version.as_ref().map(|_| requested),
     )
-    .is_ok()
+    .is_ok();
+    // Dependency installation is part of the cache contract: a package is
+    // cached only once its `.oc-deps.json` marker exists.
+    valid && target.join(DEPS_MARKER).exists()
 }
 
 fn validate_package(
@@ -337,15 +530,54 @@ fn add_git(url: &str, target: &std::path::Path, pkg: &str) -> Result<PathBuf, Np
 
 #[cfg(test)]
 mod tests {
+    use std::io::{Read, Write};
+    use std::sync::{Arc, Mutex};
+
     use super::*;
+
+    fn test_config() -> NpmConfig {
+        NpmConfig::from_registry("https://registry.npmjs.org", None::<String>)
+    }
 
     #[test]
     fn parses_registry_url() {
-        assert_eq!(registry_url("foo"), "https://registry.npmjs.org/foo");
+        let config = test_config();
         assert_eq!(
-            registry_url("@scope/name"),
+            registry_url("foo", &config),
+            "https://registry.npmjs.org/foo"
+        );
+        assert_eq!(
+            registry_url("@scope/name", &config),
             "https://registry.npmjs.org/%40scope/name"
         );
+    }
+
+    #[test]
+    fn parses_registry_url_from_configured_registry() {
+        let config = NpmConfig::from_registry("http://127.0.0.1:4321", None::<String>);
+        assert_eq!(registry_url("foo", &config), "http://127.0.0.1:4321/foo");
+    }
+
+    #[test]
+    fn parses_scoped_registry_url() {
+        let config = NpmConfig::from_registry("http://127.0.0.1:4321", None::<String>);
+        assert_eq!(
+            registry_url("@scope/name", &config),
+            "http://127.0.0.1:4321/%40scope/name"
+        );
+    }
+
+    #[test]
+    fn skips_non_registry_dependency_specs() {
+        assert!(is_registry_spec("^1.2.3"));
+        assert!(is_registry_spec("latest"));
+        assert!(is_registry_spec("1.2.x"));
+        assert!(!is_registry_spec("git+https://github.com/x/y.git"));
+        assert!(!is_registry_spec("github:user/repo"));
+        assert!(!is_registry_spec("file:../local"));
+        assert!(!is_registry_spec("workspace:*"));
+        assert!(!is_registry_spec("npm:alias@1.0.0"));
+        assert!(!is_registry_spec("https://example.test/pkg.tgz"));
     }
 
     #[test]
@@ -526,6 +758,349 @@ mod tests {
         assert!(matches!(result, Err(NpmError::Unpack { .. })));
         assert!(!target.exists());
         std::fs::remove_dir_all(root).ok();
+    }
+
+    // -----------------------------------------------------------------------
+    // Mock npm registry (in-process blocking HTTP server)
+    // -----------------------------------------------------------------------
+
+    /// A tiny in-process HTTP server serving npm-style metadata + tarballs.
+    struct MockRegistry {
+        addr: std::net::SocketAddr,
+        authorizations: Arc<Mutex<Vec<String>>>,
+        handle: Option<std::thread::JoinHandle<()>>,
+        stop: Arc<std::sync::atomic::AtomicBool>,
+    }
+
+    /// Build a gzipped npm tarball with a `package/` prefix.
+    fn make_tarball(package_json: &str, files: &[(&str, &str)]) -> Vec<u8> {
+        let mut tar_buf = Vec::new();
+        {
+            let encoder =
+                flate2::write::GzEncoder::new(&mut tar_buf, flate2::Compression::default());
+            let mut builder = tar::Builder::new(encoder);
+            let mut manifest = tar::Header::new_ustar();
+            manifest.set_path("package/package.json").unwrap();
+            manifest.set_size(package_json.len() as u64);
+            manifest.set_mode(0o644);
+            manifest.set_cksum();
+            builder.append(&manifest, package_json.as_bytes()).unwrap();
+            for (path, contents) in files {
+                let mut file = tar::Header::new_ustar();
+                file.set_path(format!("package/{path}")).unwrap();
+                file.set_size(contents.len() as u64);
+                file.set_mode(0o644);
+                file.set_cksum();
+                builder.append(&file, contents.as_bytes()).unwrap();
+            }
+            builder.finish().unwrap();
+            builder.into_inner().unwrap().finish().unwrap();
+        }
+        tar_buf
+    }
+
+    impl MockRegistry {
+        /// A package published at `name`, with `versions` → `(package_json, files)`.
+        fn new(packages: &[(&str, &[(&str, &str, &[(&str, &str)])])]) -> Self {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("bind mock registry");
+            listener.set_nonblocking(false).expect("blocking listener");
+            let addr = listener.local_addr().expect("mock registry address");
+            let authorizations: std::sync::Arc<Mutex<Vec<String>>> =
+                std::sync::Arc::new(Mutex::new(Vec::new()));
+            let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+
+            // Pre-build the tarballs and metadata so request handling is cheap.
+            let mut tarballs: std::collections::HashMap<String, Vec<u8>> =
+                std::collections::HashMap::new();
+            let mut metadata: serde_json::Map<String, Value> = serde_json::Map::new();
+            for (name, versions) in packages {
+                let mut versions_map = serde_json::Map::new();
+                let mut latest_version: Option<String> = None;
+                for (version, package_json, files) in *versions {
+                    let tarball_name = format!(
+                        "{}-{}.tgz",
+                        name.rsplit('/').next().unwrap_or(name),
+                        version
+                    );
+                    let tarball_path = format!("/{name}/-/{tarball_name}");
+                    let bytes = make_tarball(package_json, files);
+                    tarballs.insert(tarball_path.clone(), bytes);
+                    versions_map.insert(
+                        version.to_string(),
+                        serde_json::json!({ "dist": { "tarball": format!("http://{addr}{tarball_path}") } }),
+                    );
+                    latest_version = Some(version.to_string());
+                }
+                let mut dist_tags = serde_json::Map::new();
+                if let Some(version) = latest_version {
+                    dist_tags.insert("latest".into(), Value::String(version));
+                }
+                let entry = serde_json::json!({
+                    "name": name,
+                    "dist-tags": dist_tags,
+                    "versions": versions_map,
+                });
+                metadata.insert(name.to_string(), entry);
+            }
+
+            let auths = authorizations.clone();
+            let stop_flag = stop.clone();
+            let handle = std::thread::spawn(move || {
+                for stream in listener.incoming() {
+                    if stop_flag.load(std::sync::atomic::Ordering::Relaxed) {
+                        break;
+                    }
+                    let Ok(mut stream) = stream else { continue };
+                    let mut buffer = [0u8; 8192];
+                    let Ok(read) = stream.read(&mut buffer) else {
+                        continue;
+                    };
+                    let request = String::from_utf8_lossy(&buffer[..read]).to_string();
+                    let mut lines = request.lines();
+                    let request_line = lines.next().unwrap_or_default().to_string();
+                    let mut parts = request_line.split_whitespace();
+                    let method = parts.next().unwrap_or_default();
+                    let path = parts.next().unwrap_or_default();
+                    for line in lines {
+                        if line.to_ascii_lowercase().starts_with("authorization:") {
+                            let value = line
+                                .split_once(':')
+                                .map(|(_, v)| v.trim().to_string())
+                                .unwrap_or_default();
+                            auths.lock().unwrap().push(value);
+                        }
+                        if line.is_empty() {
+                            break;
+                        }
+                    }
+                    let decoded = percent_decode(path);
+                    let body: Vec<u8>;
+                    let status;
+                    let content_type;
+                    let metadata_key = decoded.trim_start_matches('/').to_string();
+                    if method == "GET" && metadata.contains_key(&metadata_key) {
+                        body = serde_json::to_vec(&metadata[&metadata_key]).unwrap();
+                        status = "200 OK";
+                        content_type = "application/json";
+                    } else if method == "GET" && tarballs.contains_key(&decoded) {
+                        body = tarballs[&decoded].clone();
+                        status = "200 OK";
+                        content_type = "application/octet-stream";
+                    } else {
+                        body = b"not found".to_vec();
+                        status = "404 Not Found";
+                        content_type = "text/plain";
+                    }
+                    let response = format!(
+                        "HTTP/1.1 {status}\r\nContent-Type: {content_type}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
+                    let _ = stream.write_all(response.as_bytes());
+                    let _ = stream.write_all(&body);
+                    let _ = stream.flush();
+                }
+            });
+
+            Self {
+                addr,
+                authorizations,
+                handle: Some(handle),
+                stop,
+            }
+        }
+
+        fn config(&self, token: Option<&str>) -> NpmConfig {
+            NpmConfig::from_registry(format!("http://{}", self.addr), token)
+        }
+
+        fn auth_headers(&self) -> Vec<String> {
+            self.authorizations.lock().unwrap().clone()
+        }
+    }
+
+    impl Drop for MockRegistry {
+        fn drop(&mut self) {
+            self.stop.store(true, std::sync::atomic::Ordering::Relaxed);
+            // A final connection wakes the accept loop so it can observe the flag.
+            let _ = std::net::TcpStream::connect(self.addr);
+            if let Some(handle) = self.handle.take() {
+                let _ = handle.join();
+            }
+        }
+    }
+
+    /// Decode the percent-encoded package path (`%40scope/name` -> `@scope/name`).
+    fn percent_decode(path: &str) -> String {
+        let bytes = path.as_bytes();
+        let mut out = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' && i + 2 < bytes.len() {
+                if let Ok(hex) = u8::from_str_radix(&path[i + 1..i + 3], 16) {
+                    out.push(hex);
+                    i += 3;
+                    continue;
+                }
+            }
+            out.push(bytes[i]);
+            i += 1;
+        }
+        String::from_utf8_lossy(&out).into_owned()
+    }
+
+    fn test_paths(name: &str) -> (GlobalPaths, std::path::PathBuf) {
+        let cache_root =
+            std::env::temp_dir().join(format!("oc-npm-mock-{}-{name}", std::process::id()));
+        let paths = GlobalPaths {
+            home: cache_root.clone(),
+            data: cache_root.join("data"),
+            cache: cache_root.join("cache"),
+            config: cache_root.join("config"),
+            state: cache_root.join("state"),
+            tmp: cache_root.join("tmp"),
+        };
+        (paths, cache_root)
+    }
+
+    #[test]
+    fn installs_nested_dependencies_from_mock_registry() {
+        // app depends on helper-a (^1.0.0) which depends on helper-b (2.x).
+        let app_json =
+            r#"{"name":"oc-app","version":"1.0.0","dependencies":{"helper-a":"^1.0.0"}}"#;
+        let helper_a_json =
+            r#"{"name":"helper-a","version":"1.2.0","dependencies":{"helper-b":"2.x"}}"#;
+        let helper_b_json = r#"{"name":"helper-b","version":"2.1.0","main":"index.js"}"#;
+        let registry = MockRegistry::new(&[
+            (
+                "oc-app",
+                &[("1.0.0", app_json, &[("index.js", "module.exports = 1")])],
+            ),
+            (
+                "helper-a",
+                &[
+                    (
+                        "1.1.0",
+                        r#"{"name":"helper-a","version":"1.1.0","dependencies":{"helper-b":"2.x"}}"#,
+                        &[("index.js", "old")],
+                    ),
+                    ("1.2.0", helper_a_json, &[("index.js", "new")]),
+                ],
+            ),
+            (
+                "helper-b",
+                &[("2.1.0", helper_b_json, &[("index.js", "b")])],
+            ),
+        ]);
+        let (paths, cache_root) = test_paths("nested");
+        let config = registry.config(None);
+        let target = add_with_config("oc-app@1.0.0", &paths, &config).expect("install root");
+
+        // Root package is installed.
+        assert!(target.join("package.json").exists());
+        // Dependency tree is installed and version-pinned to the highest match.
+        let helper_a = target.join("node_modules/helper-a");
+        assert!(helper_a.join("package.json").exists());
+        assert_eq!(
+            std::fs::read_to_string(helper_a.join("index.js")).unwrap(),
+            "new"
+        );
+        let helper_b = helper_a.join("node_modules/helper-b");
+        assert!(helper_b.join("package.json").exists());
+        // The marker records the pinned versions.
+        let marker: Value =
+            serde_json::from_str(&std::fs::read_to_string(target.join(DEPS_MARKER)).unwrap())
+                .unwrap();
+        assert_eq!(marker["dependencies"]["helper-a"], "1.2.0");
+
+        // A second add hits the cache (no additional metadata requests needed to
+        // re-download; it returns the same directory).
+        let again = add_with_config("oc-app@1.0.0", &paths, &config).expect("cached add");
+        assert_eq!(again, target);
+
+        std::fs::remove_dir_all(&cache_root).ok();
+    }
+
+    #[test]
+    fn sends_registry_auth_token_on_metadata_and_tarball_requests() {
+        let app_json =
+            r#"{"name":"private-app","version":"1.0.0","dependencies":{"private-dep":"1.0.0"}}"#;
+        let dep_json = r#"{"name":"private-dep","version":"1.0.0"}"#;
+        let registry = MockRegistry::new(&[
+            ("private-app", &[("1.0.0", app_json, &[("index.js", "x")])]),
+            ("private-dep", &[("1.0.0", dep_json, &[("index.js", "y")])]),
+        ]);
+        let (paths, cache_root) = test_paths("auth");
+        let config = registry.config(Some("secret-token"));
+        let target = add_with_config("private-app", &paths, &config).expect("install private");
+
+        assert!(target
+            .join("node_modules/private-dep/package.json")
+            .exists());
+        let headers = registry.auth_headers();
+        // Metadata for both packages + both tarballs carry the token.
+        assert!(
+            headers.len() >= 4,
+            "expected authed requests, got {headers:?}"
+        );
+        assert!(
+            headers.iter().all(|h| h == "Bearer secret-token"),
+            "unexpected auth headers: {headers:?}"
+        );
+        std::fs::remove_dir_all(&cache_root).ok();
+    }
+
+    #[test]
+    fn installs_scoped_packages_from_mock_registry() {
+        let app_json = r#"{"name":"@acme/plugin","version":"0.3.0","dependencies":{}}"#;
+        let registry = MockRegistry::new(&[(
+            "@acme/plugin",
+            &[("0.3.0", app_json, &[("index.js", "scoped")])],
+        )]);
+        let (paths, cache_root) = test_paths("scoped");
+        let config = registry.config(None);
+        let target =
+            add_with_config("@acme/plugin@0.3.0", &paths, &config).expect("install scoped");
+        assert_eq!(
+            std::fs::read_to_string(target.join("index.js")).unwrap(),
+            "scoped"
+        );
+        std::fs::remove_dir_all(&cache_root).ok();
+    }
+
+    #[test]
+    fn resolves_highest_version_in_range_from_mock_registry() {
+        let app_json = r#"{"name":"ranged","version":"1.0.0","dependencies":{"lib":"^1.0.0"}}"#;
+        let registry = MockRegistry::new(&[
+            ("ranged", &[("1.0.0", app_json, &[("index.js", "r")])]),
+            (
+                "lib",
+                &[
+                    (
+                        "1.0.0",
+                        r#"{"name":"lib","version":"1.0.0"}"#,
+                        &[("index.js", "old")],
+                    ),
+                    (
+                        "1.5.0",
+                        r#"{"name":"lib","version":"1.5.0"}"#,
+                        &[("index.js", "new")],
+                    ),
+                ],
+            ),
+        ]);
+        let (paths, cache_root) = test_paths("range");
+        let config = registry.config(None);
+        let target = add_with_config("ranged", &paths, &config).expect("install ranged");
+        let lib = target.join("node_modules/lib");
+        assert_eq!(
+            std::fs::read_to_string(lib.join("index.js")).unwrap(),
+            "new"
+        );
+        let marker: Value =
+            serde_json::from_str(&std::fs::read_to_string(target.join(DEPS_MARKER)).unwrap())
+                .unwrap();
+        assert_eq!(marker["dependencies"]["lib"], "1.5.0");
+        std::fs::remove_dir_all(&cache_root).ok();
     }
 }
 

@@ -574,6 +574,21 @@ impl Workspace {
     /// `syncList` from the reference: discover workspaces from adapters and
     /// insert the ones not already known.
     pub async fn sync_list(&self, project_id: &str) -> anyhow::Result<()> {
+        self.sync_list_with_target(project_id, None).await
+    }
+
+    /// [`Workspace::sync_list`] with an explicit fallback target.
+    ///
+    /// Adapters that need a remote endpoint (the builtin `remote`/`console`
+    /// adapters) are skipped on first use because no existing workspace of
+    /// that type can supply a URL. Supplying a base target here makes
+    /// first-use discovery possible — the caller provides the control-plane
+    /// endpoint the adapter should list.
+    pub async fn sync_list_with_target(
+        &self,
+        project_id: &str,
+        target: Option<Target>,
+    ) -> anyhow::Result<()> {
         let known_workspaces = self.list(project_id).await;
         let mut names: std::collections::HashSet<String> = known_workspaces
             .iter()
@@ -584,15 +599,23 @@ impl Workspace {
         for (ty, adapter) in adapters::registered_adapters(project_id) {
             // Adapter `list` has no WorkspaceInfo parameter, so use an
             // existing workspace of the same type to supply the remote
-            // endpoint. This keeps local adapters unchanged and avoids
-            // guessing a URL for a remote/console adapter on first use.
-            let target = match known_workspaces.iter().find(|workspace| workspace.ty == ty) {
-                Some(workspace) => adapter_runtime::target(&WorkspaceInfo::from(workspace))
-                    .await
-                    .ok(),
-                None => None,
-            };
-            match adapter_runtime::list_with_api(&adapter, self.inner.api.clone(), target).await {
+            // endpoint, falling back to the caller-supplied base target on
+            // first use.
+            let mut target_for_type = None;
+            for workspace in &known_workspaces {
+                if workspace.ty == ty {
+                    target_for_type = adapter_runtime::target(&WorkspaceInfo::from(workspace))
+                        .await
+                        .ok();
+                    break;
+                }
+            }
+            if target_for_type.is_none() {
+                target_for_type = target.clone();
+            }
+            match adapter_runtime::list_with_api(&adapter, self.inner.api.clone(), target_for_type)
+                .await
+            {
                 Ok(items) => discovered.extend(items.into_iter().map(|item| (ty.clone(), item))),
                 Err(error) => {
                     tracing::warn!(r#type = %ty, error = %error, "workspace adapter list failed");

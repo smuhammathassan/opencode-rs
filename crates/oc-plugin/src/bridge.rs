@@ -80,7 +80,21 @@ pub fn dispatch(
         "client" => {
             let method = payload.get("method").and_then(Value::as_str).unwrap_or("");
             let args = payload.get("args").cloned().unwrap_or(Value::Null);
-            host.client_rpc(&ClientRpcRequest::new(method, args))
+            let request_id = payload
+                .get("requestID")
+                .and_then(Value::as_str)
+                .map(str::to_owned);
+            let mut request = ClientRpcRequest::new(method, args);
+            request.request_id = request_id;
+            host.client_rpc(&request)
+        }
+        "client.cancel" => {
+            let request_id = payload
+                .get("requestID")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            host.client_cancel(request_id);
+            Ok(Value::Null)
         }
         "tool.metadata" => Ok(Value::Null),
         "tool.ask" => {

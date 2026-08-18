@@ -6,6 +6,7 @@ pub mod adapters;
 pub mod deps;
 pub mod dev;
 pub mod global_bus;
+pub mod memory_transport;
 pub mod move_session;
 pub mod slug;
 pub mod sse;

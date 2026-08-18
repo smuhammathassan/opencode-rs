@@ -61,7 +61,7 @@ pub struct ReplayResponse {
 }
 
 /// `SessionPayload` from the reference: `{ sessionID }`.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionPayload {
     #[serde(rename = "sessionID")]
     pub session_id: String,

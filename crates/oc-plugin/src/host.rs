@@ -8,10 +8,12 @@
 use std::process::Command;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 
 use serde_json::Value;
 
-use crate::js::{JsError, JsValue, Runtime};
+use crate::js::runtime::{Runtime, RuntimeLimits};
+use crate::js::value::{JsError, JsValue};
 use crate::registration::{ClientRpcRequest, PluginRegistrationSink};
 
 /// Cooperative cancellation state for one plugin tool invocation.
@@ -60,6 +62,11 @@ pub trait PluginHost: Send + Sync {
     fn client_rpc(&self, request: &ClientRpcRequest) -> Result<Value, String> {
         self.client(&request.method, &request.args)
     }
+    /// Cancel an in-flight client request identified by its request id. The
+    /// JS bridge tracks outstanding request ids so plugin code can abort an
+    /// individual call; hosts that multiplex requests on a separate transport
+    /// should interrupt the underlying request here. Defaults to a no-op.
+    fn client_cancel(&self, _request_id: &str) {}
     /// HTTP fetch used by the `fetch` polyfill.
     fn fetch(
         &self,
@@ -594,6 +601,7 @@ pub struct LoadedPlugin {
     runtime: Runtime,
     summary: LoadedSummary,
     active_cancellation: Arc<Mutex<Option<PluginToolCancellation>>>,
+    execution_timeout: Option<Duration>,
 }
 
 impl LoadedPlugin {
@@ -646,6 +654,41 @@ impl LoadedPlugin {
         context: Value,
         cancellation: Option<PluginToolCancellation>,
     ) -> Result<Value, JsError> {
+        self.execute_tool_with(name, args, context, cancellation, None)
+    }
+
+    /// Execute a tool with an optional per-call wall-clock budget. Runaway
+    /// plugin code is aborted by the QuickJS interrupt handler and surfaced as
+    /// a [`JsError::Limit`].
+    pub fn execute_tool_with_timeout(
+        &self,
+        name: &str,
+        args: Value,
+        context: Value,
+        timeout: Duration,
+    ) -> Result<Value, JsError> {
+        self.execute_tool_with(name, args, context, None, Some(timeout))
+    }
+
+    /// The default wall-clock budget applied to every plugin execution on this
+    /// context (for example, a hook or tool call).
+    pub fn execution_timeout(&self) -> Option<Duration> {
+        self.execution_timeout
+    }
+
+    /// Change the default execution budget for future calls on this context.
+    pub fn set_execution_timeout(&mut self, timeout: Option<Duration>) {
+        self.execution_timeout = timeout;
+    }
+
+    fn execute_tool_with(
+        &self,
+        name: &str,
+        args: Value,
+        context: Value,
+        cancellation: Option<PluginToolCancellation>,
+        timeout: Option<Duration>,
+    ) -> Result<Value, JsError> {
         let payload = serde_json::json!({ "name": name, "args": args, "context": context });
         {
             let mut active = self
@@ -654,7 +697,7 @@ impl LoadedPlugin {
                 .map_err(|_| JsError::Internal("plugin cancellation state is poisoned".into()))?;
             *active = cancellation;
         }
-        let result = self.async_call("__oc_tool_execute", payload);
+        let result = self.async_call_with_timeout("__oc_tool_execute", payload, timeout);
         if let Ok(mut active) = self.active_cancellation.lock() {
             *active = None;
         }
@@ -762,10 +805,23 @@ impl LoadedPlugin {
     }
 
     fn async_call(&self, name: &str, payload: Value) -> Result<Value, JsError> {
+        self.async_call_with_timeout(name, payload, None)
+    }
+
+    fn async_call_with_timeout(
+        &self,
+        name: &str,
+        payload: Value,
+        timeout: Option<Duration>,
+    ) -> Result<Value, JsError> {
         let payload = json_string(&payload)?;
         self.runtime.set_global_null("__oc_pending")?;
         let active_cancellation = Arc::clone(&self.active_cancellation);
-        self.runtime.call_function_and_pump_with_probe(
+        // The budget arms the QuickJS interrupt handler for the job pump (not
+        // the initial call frame — this QuickJS build cannot safely abort an
+        // async function's synchronous prefix).
+        let budget = timeout.or(self.execution_timeout);
+        self.runtime.call_function_and_pump_with_probe_limited(
             "__oc_async_call",
             vec![JsValue::from(name), JsValue::from(payload)],
             || {
@@ -784,6 +840,7 @@ impl LoadedPlugin {
                 }
                 Ok(())
             },
+            budget,
         )?;
         let pending = self.runtime.global("__oc_pending")?;
         // The JS side writes `__oc_pending` as a JSON-encoded string; decode it.
@@ -814,11 +871,32 @@ fn json_string(value: &Value) -> Result<String, JsError> {
 pub struct PluginBuilder {
     host: Arc<dyn PluginHost>,
     resolver: Arc<crate::loader::ModuleResolver>,
+    limits: RuntimeLimits,
+    execution_timeout: Option<Duration>,
 }
 
 impl PluginBuilder {
     pub fn new(host: Arc<dyn PluginHost>, resolver: Arc<crate::loader::ModuleResolver>) -> Self {
-        Self { host, resolver }
+        Self {
+            host,
+            resolver,
+            limits: RuntimeLimits::default(),
+            execution_timeout: None,
+        }
+    }
+
+    /// Apply persistent resource limits (memory cap + default instruction
+    /// budget) to the plugin's QuickJS runtime.
+    pub fn with_runtime_limits(mut self, limits: RuntimeLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+
+    /// Apply a default wall-clock budget to every hook/tool execution on the
+    /// plugin context.
+    pub fn with_execution_timeout(mut self, timeout: Duration) -> Self {
+        self.execution_timeout = Some(timeout);
+        self
     }
 
     /// Create the QuickJS context and install the polyfill runtime.
@@ -832,6 +910,12 @@ impl PluginBuilder {
     /// short-lived loader frame and then reused from a shallower request-loop
     /// frame.
     pub fn build_with_runtime(&self, runtime: Runtime) -> Result<LoadedPlugin, JsError> {
+        if !self.limits.memory_limit.is_none()
+            || !self.limits.instruction_budget.is_none()
+            || !self.limits.time_budget.is_none()
+        {
+            runtime.set_limits(self.limits);
+        }
         runtime.install_bridge(self.host.clone(), self.resolver.clone())?;
         let active_cancellation = Arc::new(Mutex::new(None));
         let cancellation_for_callback = Arc::clone(&active_cancellation);
@@ -858,6 +942,7 @@ impl PluginBuilder {
                 auth: Vec::new(),
             },
             active_cancellation,
+            execution_timeout: self.execution_timeout,
         })
     }
 }

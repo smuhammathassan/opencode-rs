@@ -3,7 +3,9 @@ use std::{
     ffi::CString,
     marker::PhantomData,
     os::raw::{c_int, c_void},
+    sync::atomic::{AtomicBool, AtomicU64, Ordering},
     sync::{Arc, Mutex},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 
 use libquickjs_sys as q;
@@ -141,6 +143,85 @@ unsafe extern "C" fn callback_trampoline(
     }
 }
 
+// ---------------------------------------------------------------------------
+// Execution limits (interrupt handler + memory guard)
+// ---------------------------------------------------------------------------
+
+/// Resource limits for one QuickJS runtime. The memory limit is a hard cap
+/// (`JS_SetMemoryLimit`); the instruction and time budgets are enforced
+/// cooperatively by QuickJS's interrupt handler while JS is executing.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RuntimeLimits {
+    /// Maximum number of interpreter ticks before execution is aborted.
+    pub instruction_budget: Option<u64>,
+    /// Wall-clock budget for one execution.
+    pub time_budget: Option<Duration>,
+    /// Hard memory cap in bytes.
+    pub memory_limit: Option<usize>,
+}
+
+/// The interrupt handler's shared state. The handler is a C callback, so all
+/// communication happens through atomics on a boxed value kept at a stable
+/// address for the runtime's lifetime.
+#[repr(C)]
+struct InterruptState {
+    active: AtomicBool,
+    deadline_ms: AtomicU64,
+    budget: AtomicU64,
+    ticks: AtomicU64,
+    interrupted: AtomicBool,
+}
+
+impl InterruptState {
+    fn new() -> Self {
+        Self {
+            active: AtomicBool::new(false),
+            deadline_ms: AtomicU64::new(0),
+            budget: AtomicU64::new(0),
+            ticks: AtomicU64::new(0),
+            interrupted: AtomicBool::new(false),
+        }
+    }
+}
+
+/// Check the budget every N ticks; QuickJS calls the handler frequently
+/// enough that a coarser cadence keeps the overhead negligible.
+const CHECK_INTERVAL: u64 = 1024;
+
+fn now_ms() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|duration| duration.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+/// # Safety
+/// `opaque` must point to an [`InterruptState`] that outlives the handler.
+unsafe extern "C" fn interrupt_handler(_rt: *mut q::JSRuntime, opaque: *mut c_void) -> c_int {
+    if opaque.is_null() {
+        return 0;
+    }
+    let state = &*(opaque as *const InterruptState);
+    if !state.active.load(Ordering::Acquire) {
+        return 0;
+    }
+    let ticks = state.ticks.fetch_add(1, Ordering::Relaxed) + 1;
+    if ticks % CHECK_INTERVAL != 0 {
+        return 0;
+    }
+    let budget = state.budget.load(Ordering::Relaxed);
+    if budget != 0 && ticks >= budget {
+        state.interrupted.store(true, Ordering::Release);
+        return 1;
+    }
+    let deadline = state.deadline_ms.load(Ordering::Relaxed);
+    if deadline != 0 && now_ms() >= deadline {
+        state.interrupted.store(true, Ordering::Release);
+        return 1;
+    }
+    0
+}
+
 unsafe fn callback_exception(ctx: *mut q::JSContext, message: &str) -> q::JSValue {
     if ctx.is_null() {
         return q::JSValue {
@@ -227,6 +308,7 @@ pub struct Runtime {
     rt: *mut q::JSRuntime,
     ctx: *mut q::JSContext,
     callbacks: CallbackRegistryHandle,
+    interrupt: *mut InterruptState,
 }
 
 impl Runtime {
@@ -254,7 +336,16 @@ impl Runtime {
         // callback indices without embedding Rust pointers in JSValue data.
         let callback_opaque = Box::into_raw(Box::new(Arc::clone(&callbacks))) as *mut c_void;
         unsafe { q::JS_SetContextOpaque(ctx, callback_opaque) };
-        let runtime = Self { rt, ctx, callbacks };
+        // Install the execution-limits interrupt handler. The state is boxed
+        // so its address is stable for the runtime's lifetime.
+        let interrupt = Box::into_raw(Box::new(InterruptState::new()));
+        unsafe { q::JS_SetInterruptHandler(rt, Some(interrupt_handler), interrupt as *mut c_void) };
+        let runtime = Self {
+            rt,
+            ctx,
+            callbacks,
+            interrupt,
+        };
         // This bundled QuickJS predates the `globalThis` standard; polyfill it
         // so the polyfill runtime and plugin code can rely on it.
         runtime.eval(
@@ -262,6 +353,81 @@ impl Runtime {
             "opencode-globalthis.js",
         )?;
         Ok(runtime)
+    }
+
+    /// Apply persistent resource limits: a hard memory cap and a default
+    /// instruction budget. The time budget, when present, is treated as a
+    /// per-execution budget armed by the next [`Runtime::arm_time_budget`]
+    /// call.
+    pub fn set_limits(&self, limits: RuntimeLimits) {
+        if let Some(memory) = limits.memory_limit {
+            unsafe { q::JS_SetMemoryLimit(self.rt, memory) };
+        }
+        if let Some(budget) = limits.instruction_budget {
+            self.interrupt_state()
+                .budget
+                .store(budget, Ordering::Release);
+        }
+        if let Some(time) = limits.time_budget {
+            let deadline = now_ms().saturating_add(time.as_millis() as u64);
+            self.interrupt_state()
+                .deadline_ms
+                .store(deadline, Ordering::Release);
+            self.interrupt_state().active.store(true, Ordering::Release);
+        }
+    }
+
+    /// Arm the wall-clock budget for the next execution. Call
+    /// [`Runtime::disarm_interrupt`] once the call completes.
+    pub fn arm_time_budget(&self, budget: Duration) {
+        self.reset_interrupt();
+        let deadline = now_ms().saturating_add(budget.as_millis() as u64);
+        self.interrupt_state()
+            .deadline_ms
+            .store(deadline, Ordering::Release);
+        self.interrupt_state().active.store(true, Ordering::Release);
+    }
+
+    /// Arm an instruction budget for the next execution.
+    pub fn arm_instruction_budget(&self, budget: u64) {
+        self.reset_interrupt();
+        self.interrupt_state()
+            .budget
+            .store(budget, Ordering::Release);
+        self.interrupt_state().active.store(true, Ordering::Release);
+    }
+
+    /// Disarm the interrupt handler after an execution.
+    pub fn disarm_interrupt(&self) {
+        let state = self.interrupt_state();
+        state.active.store(false, Ordering::Release);
+    }
+
+    /// Whether the interrupt handler fired (execution was aborted by limits).
+    pub fn was_interrupted(&self) -> bool {
+        self.interrupt_state().interrupted.load(Ordering::Acquire)
+    }
+
+    /// Clear the interrupted flag and any armed budgets.
+    pub fn reset_interrupt(&self) {
+        let state = self.interrupt_state();
+        state.interrupted.store(false, Ordering::Release);
+        state.ticks.store(0, Ordering::Relaxed);
+        state.budget.store(0, Ordering::Release);
+        state.deadline_ms.store(0, Ordering::Release);
+        state.active.store(false, Ordering::Release);
+    }
+
+    /// Read QuickJS's own view of the runtime's memory usage.
+    pub fn memory_usage(&self) -> q::JSMemoryUsage {
+        let mut usage: q::JSMemoryUsage = unsafe { std::mem::zeroed() };
+        unsafe { q::JS_ComputeMemoryUsage(self.rt, &mut usage) };
+        usage
+    }
+
+    fn interrupt_state(&self) -> &InterruptState {
+        // The pointer is installed at construction and only freed in Drop.
+        unsafe { &*self.interrupt }
     }
 
     /// Evaluate `code` as a global script and return the value of the final
@@ -315,6 +481,20 @@ impl Runtime {
             before_job()?;
             let mut ctx = self.ctx;
             let result = unsafe { q::JS_ExecutePendingJob(self.rt, &mut ctx) };
+            // An execution-limit abort surfaces as an uncatchable job error:
+            // `JS_ExecutePendingJob` still returns success, so the interrupt
+            // flag is the reliable signal. Clear the pending exception so the
+            // context stays usable for later calls.
+            if self.was_interrupted() {
+                let exception = unsafe { q::JS_GetException(self.ctx) };
+                let _ = Owned {
+                    ctx: self.ctx,
+                    value: exception,
+                };
+                return Err(JsError::Limit(
+                    "plugin execution exceeded its resource budget".into(),
+                ));
+            }
             if result < 0 {
                 return Ok(());
             }
@@ -471,6 +651,34 @@ impl Runtime {
         Ok(())
     }
 
+    /// Like [`Runtime::call_function_and_pump_with_probe`], but arms the
+    /// execution-limits interrupt handler for the duration of the job pump.
+    ///
+    /// The budget is deliberately *not* armed around the initial `JS_Call`:
+    /// this QuickJS build cannot safely recover from an interrupt that fires
+    /// inside the synchronous prefix of an async function (it corrupts the
+    /// pending promise state), so runaway *synchronous* prefixes are out of
+    /// scope. Loops that run inside promise jobs are aborted cleanly.
+    pub fn call_function_and_pump_with_probe_limited(
+        &self,
+        name: &str,
+        args: impl IntoIterator<Item = impl Into<JsValue>>,
+        before_job: impl FnMut() -> Result<(), JsError>,
+        budget: Option<Duration>,
+    ) -> Result<(), JsError> {
+        // Always clear a stale interrupt flag from a previous aborted call so
+        // an unarmed execution cannot spuriously report a limit abort.
+        self.reset_interrupt();
+        if let Some(budget) = budget {
+            self.arm_time_budget(budget);
+        }
+        let result = self.call_function_and_pump_with_probe(name, args, before_job);
+        if budget.is_some() {
+            self.disarm_interrupt();
+        }
+        result
+    }
+
     /// Call a global JS function with a single JSON-string argument and read
     /// the result back. The JS helper is expected to return a string produced
     /// by `JSON.stringify`; the polyfill's `__oc_call_json` does this.
@@ -557,6 +765,9 @@ impl Drop for Runtime {
         unsafe {
             let rt = q::JS_GetRuntime(self.ctx);
             let callback_opaque = q::JS_GetContextOpaque(self.ctx);
+            // Detach the interrupt handler before freeing the context so it
+            // never runs against a half-destroyed runtime.
+            q::JS_SetInterruptHandler(rt, None, std::ptr::null_mut());
             q::JS_SetContextOpaque(self.ctx, std::ptr::null_mut());
             q::JS_FreeContext(self.ctx);
             if !callback_opaque.is_null() {
@@ -565,6 +776,9 @@ impl Drop for Runtime {
                 ));
             }
             q::JS_FreeRuntime(rt);
+            if !self.interrupt.is_null() {
+                drop(Box::from_raw(self.interrupt));
+            }
         }
     }
 }
@@ -928,6 +1142,61 @@ mod tests {
         assert_eq!(
             moved.eval(r#"echo("hi")"#, "t.js").unwrap(),
             JsValue::String("hi".into())
+        );
+    }
+
+    #[test]
+    fn time_budget_aborts_runaway_loop() {
+        let runtime = Runtime::new().unwrap();
+        runtime
+            .eval("function spin() { while (true) { } }", "t.js")
+            .unwrap();
+        runtime.arm_time_budget(std::time::Duration::from_millis(150));
+        let result = runtime.call_function("spin", Vec::<JsValue>::new());
+        assert!(result.is_err(), "runaway loop should be aborted");
+        assert!(runtime.was_interrupted());
+        runtime.disarm_interrupt();
+        runtime.reset_interrupt();
+        // The runtime remains usable afterwards.
+        assert_eq!(runtime.eval("1 + 1", "t.js").unwrap(), JsValue::Int(2));
+    }
+
+    #[test]
+    fn time_budget_aborts_pumped_async_call() {
+        let runtime = Runtime::new().unwrap();
+        // The loop runs inside a promise job (after an await), not in the
+        // synchronous prefix of the async function.
+        runtime
+            .eval(
+                "async function spin() { await Promise.resolve(); while (true) { } }",
+                "t.js",
+            )
+            .unwrap();
+        runtime.arm_time_budget(std::time::Duration::from_millis(150));
+        let result = runtime.call_function_and_pump("spin", Vec::<JsValue>::new());
+        assert!(matches!(result, Err(JsError::Limit(_))));
+        assert!(
+            runtime.was_interrupted(),
+            "interrupt flag should be set after the abort"
+        );
+        runtime.disarm_interrupt();
+        runtime.reset_interrupt();
+    }
+
+    #[test]
+    fn memory_limit_is_enforced() {
+        let runtime = Runtime::new().unwrap();
+        runtime.set_limits(RuntimeLimits {
+            memory_limit: Some(2 * 1024 * 1024),
+            ..RuntimeLimits::default()
+        });
+        let result = runtime.eval(
+            "const leak = []; while (true) { leak.push(new Array(1024).fill('x')); }",
+            "t.js",
+        );
+        assert!(
+            result.is_err(),
+            "allocation over the memory limit should fail"
         );
     }
 }

@@ -27,6 +27,12 @@ type Result<T> = crate::Result<T>;
 const CANCELLED_NOTIFICATION: &str = "notifications/cancelled";
 const REQUEST_TIMED_OUT_REASON: &str = "Request timed out";
 
+/// Default maximum number of requests that may be in flight (sent to the
+/// server and awaiting a response) at once. Beyond this the caller is
+/// backpressured (rejected) rather than growing the pending map unboundedly,
+/// mirroring the reference client's bounded request concurrency.
+const DEFAULT_MAX_INFLIGHT: usize = 64;
+
 /// A handler for a server→client request (e.g. `roots/list`).
 pub type RequestHandler =
     Arc<dyn Fn(Option<serde_json::Value>) -> Result<serde_json::Value> + Send + Sync>;
@@ -36,6 +42,17 @@ pub type NotificationHandler = Arc<dyn Fn(Option<serde_json::Value>) + Send + Sy
 
 struct Pending {
     tx: oneshot::Sender<Result<serde_json::Value>>,
+}
+
+/// RAII guard that releases a request-concurrency permit on drop. Used to
+/// implement backpressure without leaking permits across the many early-return
+/// paths in the request methods.
+struct RequestPermit(Option<tokio::sync::OwnedSemaphorePermit>);
+
+impl Drop for RequestPermit {
+    fn drop(&mut self) {
+        drop(self.0.take());
+    }
 }
 
 pub struct Client {
@@ -54,6 +71,10 @@ pub struct Client {
     server_info: Mutex<Option<Implementation>>,
     instructions: Mutex<Option<String>>,
     initialized: AtomicBool,
+    /// Bounded concurrency for requests awaiting a response. Acquired before a
+    /// request is inserted into `pending` so the pending map cannot grow
+    /// without bound. This is the backpressure mechanism.
+    request_permits: Arc<tokio::sync::Semaphore>,
 }
 
 impl Client {
@@ -79,6 +100,20 @@ impl Client {
         client_info: Implementation,
         capabilities: ClientCapabilities,
     ) -> Result<Arc<Self>> {
+        Self::spawn_with_max_inflight(transport, client_info, capabilities, DEFAULT_MAX_INFLIGHT)
+            .await
+    }
+
+    /// Like [`Client::spawn`] but with an explicit bound on the number of
+    /// requests that may be awaiting a response at once. Requests beyond the
+    /// bound are rejected once the ready permit is not available within the
+    /// request's own timeout. Exposed for backpressure testing.
+    pub async fn spawn_with_max_inflight(
+        transport: Arc<dyn Transport>,
+        client_info: Implementation,
+        capabilities: ClientCapabilities,
+        max_inflight: usize,
+    ) -> Result<Arc<Self>> {
         let client = Arc::new(Client {
             transport,
             client_info,
@@ -94,6 +129,7 @@ impl Client {
             server_info: Mutex::new(None),
             instructions: Mutex::new(None),
             initialized: AtomicBool::new(false),
+            request_permits: Arc::new(tokio::sync::Semaphore::new(max_inflight)),
         });
 
         let receiver = client.transport.start().await?;
@@ -242,6 +278,26 @@ impl Client {
         cancel_on_timeout: bool,
         cancellation_reason: &str,
     ) -> Result<serde_json::Value> {
+        // Backpressure: acquire a permit before allocating an id or inserting
+        // into `pending`. This bounds the number of requests awaiting a
+        // response to `max_inflight`; callers beyond the bound are rejected
+        // once the permit is not available within the request timeout rather
+        // than growing `pending` without bound.
+        let permit = match tokio::time::timeout(
+            Duration::from_millis(timeout_ms),
+            self.request_permits.clone().acquire_owned(),
+        )
+        .await
+        {
+            Ok(Ok(permit)) => RequestPermit(Some(permit)),
+            Ok(Err(_)) => return Err(crate::Error::message("MCP client is closed")),
+            Err(_) => {
+                return Err(crate::Error::message(
+                    "MCP request concurrency limit reached; request rejected (backpressure)",
+                ));
+            }
+        };
+
         let id = RequestId::Number(self.next_id.fetch_add(1, Ordering::SeqCst));
         let (tx, rx) = oneshot::channel();
         let message = Message::request(id.clone(), method, params);
@@ -251,7 +307,7 @@ impl Client {
             return Err(error);
         }
 
-        if let Some(mut cancellation) = cancellation {
+        let result = if let Some(mut cancellation) = cancellation {
             tokio::select! {
                 result = rx => result.unwrap_or_else(|_| Err(crate::Error::message("request cancelled"))),
                 _ = tokio::time::sleep(Duration::from_millis(timeout_ms)) => {
@@ -291,7 +347,11 @@ impl Client {
                 Ok(Ok(result)) => result,
                 Ok(Err(_)) => Err(crate::Error::message("request cancelled")),
             }
-        }
+        };
+
+        // Permit released on drop.
+        let _ = permit;
+        result
     }
 
     async fn cancel_pending_request(&self, id: &RequestId, reason: &str, notify: bool) -> bool {
@@ -492,6 +552,24 @@ impl Client {
         mut cancellation: Option<crate::util::BoxFuture<'_, ()>>,
         cancellation_reason: &str,
     ) -> Result<CallToolResult> {
+        // Backpressure: bound the tools/call concurrency to `max_inflight`.
+        // The RAII guard releases the permit on every exit path.
+        let permit = match tokio::time::timeout(
+            Duration::from_millis(timeout_ms),
+            self.request_permits.clone().acquire_owned(),
+        )
+        .await
+        {
+            Ok(Ok(permit)) => RequestPermit(Some(permit)),
+            Ok(Err(_)) => return Err(crate::Error::message("MCP client is closed")),
+            Err(_) => {
+                return Err(crate::Error::message(
+                    "MCP request concurrency limit reached; request rejected (backpressure)",
+                ));
+            }
+        };
+        let _ = permit;
+
         let progress_token =
             RequestId::Number(self.next_progress_token.fetch_add(1, Ordering::SeqCst));
         let (reset_tx, mut reset_rx) = watch::channel(());

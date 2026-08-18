@@ -10,5 +10,5 @@ pub mod runtime;
 pub mod transpile;
 pub mod value;
 
-pub use runtime::{Callback, Runtime};
+pub use runtime::{Callback, Runtime, RuntimeLimits};
 pub use value::{JsError, JsValue};

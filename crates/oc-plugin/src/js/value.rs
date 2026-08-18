@@ -11,6 +11,9 @@ pub enum JsError {
     InvalidString(std::str::Utf8Error),
     /// A JS exception was thrown; the payload is the exception string.
     Exception(String),
+    /// Execution was aborted by the runtime limits (instruction/time budget or
+    /// memory guard).
+    Limit(String),
     /// An internal runtime error.
     Internal(String),
 }
@@ -22,6 +25,7 @@ impl std::fmt::Display for JsError {
             JsError::UnexpectedType => write!(f, "unexpected value type"),
             JsError::InvalidString(error) => write!(f, "invalid utf-8: {error}"),
             JsError::Exception(message) => write!(f, "{message}"),
+            JsError::Limit(message) => write!(f, "{message}"),
             JsError::Internal(message) => write!(f, "internal error: {message}"),
         }
     }

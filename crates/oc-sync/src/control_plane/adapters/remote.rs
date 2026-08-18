@@ -30,7 +30,15 @@ fn config(info: &WorkspaceInfo) -> anyhow::Result<(String, Vec<(String, String)>
         .ok_or_else(|| anyhow::anyhow!("Remote workspace requires extra.url"))?;
     let parsed =
         url::Url::parse(url).map_err(|error| anyhow::anyhow!("invalid remote URL: {error}"))?;
-    if parsed.scheme() != "https" || parsed.host_str().is_none() {
+    if parsed.host_str().is_none() {
+        anyhow::bail!("remote workspace URL must have a host");
+    }
+    // Remote targets must be HTTPS, except loopback hosts which are permitted
+    // plain-HTTP for local development and in-process mock control planes.
+    let is_loopback = parsed.host_str().is_some_and(|host| {
+        host == "localhost" || host == "127.0.0.1" || host == "[::1]" || host == "::1"
+    });
+    if parsed.scheme() != "https" && !is_loopback {
         anyhow::bail!("remote workspace URL must use HTTPS");
     }
     let headers = object
