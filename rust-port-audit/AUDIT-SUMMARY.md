@@ -21,6 +21,10 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 - **API prompt→SSE flow (F072/F076/F077/F087/F088):** verified end-to-end over HTTP — `POST /session` creates a session, `POST /session/:id/message` admits a prompt, the production runner streams it through a live provider (`opencode-go/kimi-k3`), and the session returns durable user + assistant messages with `modelID`/`providerID`/`agent`/reasoning.
 - **Error formatting (F148):** `session delete <missing>` exits 1 and prints `Unexpected error` + the cause chain — byte-consistent with the reference `index.ts` catch path (`FormatError === undefined` → `UI.error("Unexpected error")` + `errorMessage(e)`).
 
+## Latest revalidation (2026-08-18)
+
+- **Conservative re-audit (2026-08-18):** 7 PARTIAL rows promoted to IMPLEMENTED_CONNECTED based on verified facts: CI green on Linux/macOS (fmt, clippy, full workspace tests, interactive PTY suite); 26 reference-vs-Rust differential scenarios pass (run_differential.py + npm ci) proving pure-logic TUI helper parity (prompt history parse/dedup/stash, keymap leader/chord, theme presets/resolve, timestamp formatting, patch diff parsing, editor multiline, clipboard); oc-tui lib 188 tests pass plus rendering/terminal_e2e/property/security/performance/differential suites and interactive_pty 7 pass; verified bug fixes (opencode/opencode-go wired to runner, content-type application/json fix, DB path unified, models lists config providers, config merges plugins alias, /global/health + OpenAPI report 1.18.13, TUI session/status + agent Model.Ref + token float decode + keymap name wiring + auto-update install-method gate, web no longer crashes, prompt->SSE->runner->provider flow via HTTP API). Promoted: F006 (shell completion — all 5 shells generate correctly), F009 (run non-interactive — resolves agents and completes through live provider), F010 (run --format json — JSON event stream + SSE events verified), F011 (run --interactive/--mini — interactive loop works), F077 (prompt handler — full prompt->runner->provider flow over HTTP API), F087 (LLM session runner — live event stream publication), F088 (streaming part generation — text/reasoning/tool projection). Score: 81/155 (52.3%).
+
 ## Latest revalidation (2026-08-16)
 
 - **Provider wiring (F101/F079):** the native text runner now wires the `opencode` (OpenCode Zen, `https://opencode.ai/zen/v1`) and `opencode-go` (OpenCode Go, `https://opencode.ai/zen/go/v1`) catalog providers through the OpenAI-compatible route, with `OPENCODE_API_KEY`/saved-credential auth and the reference's `apiKey: "public"` fallback for the `opencode` provider. `./opencode run --model opencode-go/kimi-k3 "Reply with exactly: PARITY-OK"` completes a live end-to-end run against the OpenCode Go endpoint and returns `PARITY-OK`; Zen correctly returns `401 Model not supported` for free-tier models not available to the public key.
@@ -40,7 +44,7 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 - Production server bootstrap now converts loaded plugin auth summaries into typed provider-auth adapters; authorize/callback persistence is covered by `server::tests::production_bootstrap_wires_plugin_auth_into_provider_service` (**1 passed**). Built-in auth plugins and provider-specific refresh remain incomplete.
 - Bootstrap now resolves configured package directories and npm specs through the existing plugin target/entrypoint resolver before handing concrete entries to the manager; the four production bootstrap tests pass. Network/npm differential coverage remains partial.
 - The mDNS-disabled server regression suite passes **87/87**; the default-feature suite’s two failures are sandbox-denied DNS-SD socket tests only.
-- `cargo fmt --all -- --check` passes. The conservative score remains **74/155 (47.7%)**; fixing a safety blocker does not make the feature 100% equivalent.
+- `cargo fmt --all -- --check` passes. The conservative score is **81/155 (52.3%)** after the 2026-08-18 re-audit promotion of 7 verified PARTIAL rows.
 - CLI error handling now preserves explicit `CliError` statuses and renders unknown `anyhow` cause chains once; four focused formatter/exit-code tests pass. F147/F148 remain PARTIAL pending subprocess and reference-differential coverage.
 - Bounded v1 session-message replay now returns the newest `limit` messages in chronological order, matching the TUI replay truncation contract; the focused server regression passes. Full TTY redraw and differential replay behavior remain partial.
 - TUI prompt submission now sends an explicit expanded text part after file attachments and replaces local pasted-text metadata with the expanded value; the focused replay/submission suite passes 3 tests. Full TTY/auth/split-footer differential behavior remains partial.
@@ -55,10 +59,10 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 ## Actual implementation status
 
 - Reference features identified (FEATURE-PARITY.csv): **155**
-- Conservative connected score: **74/155 (47.7%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
-- IMPLEMENTED_CONNECTED: **74** (48%)
+- Conservative connected score: **81/155 (52.3%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
+- IMPLEMENTED_CONNECTED: **81** (52%)
 - IMPLEMENTED_DISCONNECTED: **0**
-- PARTIAL: **80** (52%)
+- PARTIAL: **73** (47%)
 - STUB: **0**
 - MISSING: **0**
 - UNVERIFIED: **0**; INTENTIONALLY_EXCLUDED: **1**
