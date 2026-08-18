@@ -62,10 +62,10 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 ## Actual implementation status
 
 - Reference features identified (FEATURE-PARITY.csv): **155**
-- Conservative connected score: **109/155 (70.3%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
-- IMPLEMENTED_CONNECTED: **109** (70%)
+- Conservative connected score: **112/155 (72.3%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
+- IMPLEMENTED_CONNECTED: **112** (72%)
 - IMPLEMENTED_DISCONNECTED: **0**
-- PARTIAL: **45** (29%)
+- PARTIAL: **42** (27%)
 - STUB: **0**
 - MISSING: **0**
 - UNVERIFIED: **0**; INTENTIONALLY_EXCLUDED: **1**

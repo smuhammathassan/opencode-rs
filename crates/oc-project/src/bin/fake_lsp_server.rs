@@ -136,6 +136,77 @@ async fn main() {
                 )
                 .await;
             }
+            ("textDocument/definition", Some(id)) => {
+                let params = message.get("params").cloned().unwrap_or(Value::Null);
+                let uri = params
+                    .pointer("/textDocument/uri")
+                    .and_then(Value::as_str)
+                    .unwrap_or_default();
+                respond(
+                    writer.clone(),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": [{
+                            "opened": opened_documents.contains(uri),
+                            "uri": uri,
+                            "range": {
+                                "start": { "line": 0, "character": 0 },
+                                "end": { "line": 0, "character": 0 }
+                            }
+                        }]
+                    }),
+                )
+                .await;
+            }
+            ("textDocument/references", Some(id)) => {
+                respond(
+                    writer.clone(),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": [{ "uri": "file:///workspace/lib.rs" }]
+                    }),
+                )
+                .await;
+            }
+            ("textDocument/implementation", Some(id)) => {
+                respond(
+                    writer.clone(),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": [{ "uri": "file:///workspace/impl.rs" }]
+                    }),
+                )
+                .await;
+            }
+            ("textDocument/documentSymbol", Some(id)) => {
+                respond(
+                    writer.clone(),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": [{ "name": "main", "kind": 12 }]
+                    }),
+                )
+                .await;
+            }
+            ("workspace/symbol", Some(id)) => {
+                let params = message.get("params").cloned().unwrap_or(Value::Null);
+                respond(
+                    writer.clone(),
+                    json!({
+                        "jsonrpc": "2.0",
+                        "id": id,
+                        "result": [{
+                            "name": params.get("query").and_then(Value::as_str).unwrap_or_default(),
+                            "kind": 12
+                        }]
+                    }),
+                )
+                .await;
+            }
             ("textDocument/prepareCallHierarchy", Some(id)) => {
                 respond(
                     writer.clone(),

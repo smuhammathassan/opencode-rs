@@ -3937,6 +3937,14 @@ async fn execute_subagent(
         };
         state.persist_session(&info);
         state.persist_message(&child_id, &message);
+        emit_subagent_lifecycle(
+            &state,
+            "started",
+            &child_id,
+            &request.parent_session_id,
+            &request.description,
+            &request.subagent_type,
+        );
         if request.background {
             spawn_background_subagent(
                 state,
@@ -3951,9 +3959,36 @@ async fn execute_subagent(
                 request.parent_session_id,
             ));
         }
-        run_foreground_subagent(state.clone(), child_id.clone(), &request.parent_session_id)
-            .await?;
-        return completed_subagent_result(state, child_id, request.parent_session_id).await;
+        return match run_foreground_subagent(
+            state.clone(),
+            child_id.clone(),
+            &request.parent_session_id,
+        )
+        .await
+        {
+            Ok(()) => {
+                emit_subagent_lifecycle(
+                    &state,
+                    "completed",
+                    &child_id,
+                    &request.parent_session_id,
+                    &request.description,
+                    &request.subagent_type,
+                );
+                completed_subagent_result(state, child_id, request.parent_session_id).await
+            }
+            Err(error) => {
+                emit_subagent_lifecycle(
+                    &state,
+                    "failed",
+                    &child_id,
+                    &request.parent_session_id,
+                    &request.description,
+                    &request.subagent_type,
+                );
+                Err(error)
+            }
+        };
     }
 
     let (info, message) = {
@@ -4021,6 +4056,14 @@ async fn execute_subagent(
     };
     state.persist_session(&info);
     state.persist_message(&child_id, &message);
+    emit_subagent_lifecycle(
+        &state,
+        "started",
+        &child_id,
+        &request.parent_session_id,
+        &request.description,
+        &request.subagent_type,
+    );
 
     if request.background {
         spawn_background_subagent(
@@ -4037,9 +4080,31 @@ async fn execute_subagent(
         ));
     }
 
-    run_foreground_subagent(state.clone(), child_id.clone(), &request.parent_session_id).await?;
-
-    completed_subagent_result(state, child_id, request.parent_session_id).await
+    match run_foreground_subagent(state.clone(), child_id.clone(), &request.parent_session_id).await
+    {
+        Ok(()) => {
+            emit_subagent_lifecycle(
+                &state,
+                "completed",
+                &child_id,
+                &request.parent_session_id,
+                &request.description,
+                &request.subagent_type,
+            );
+            completed_subagent_result(state, child_id, request.parent_session_id).await
+        }
+        Err(error) => {
+            emit_subagent_lifecycle(
+                &state,
+                "failed",
+                &child_id,
+                &request.parent_session_id,
+                &request.description,
+                &request.subagent_type,
+            );
+            Err(error)
+        }
+    }
 }
 
 /// Run a foreground child while inheriting cancellation from its parent.
@@ -4228,6 +4293,34 @@ async fn completed_subagent_result(
     })
 }
 
+/// Emit a child-session lifecycle event onto the parent session's event
+/// stream. Mirrors the reference task tool's task notifications: a parent
+/// session learns when its child starts, completes, or fails, without the
+/// parent having to poll the subagent.
+fn emit_subagent_lifecycle(
+    state: &AppState,
+    lifecycle: &str,
+    child_id: &str,
+    parent_session_id: &str,
+    description: &str,
+    subagent_type: &str,
+) {
+    state.emit_event(Event {
+        id: event_id(),
+        metadata: None,
+        r#type: format!("session.task.{lifecycle}"),
+        durable: None,
+        location: None,
+        data: json!({
+            "sessionID": parent_session_id,
+            "childSessionID": child_id,
+            "agent": subagent_type,
+            "description": description,
+            "state": lifecycle,
+        }),
+    });
+}
+
 fn core_result(result: oc_tool::model::ToolResultValue) -> oc_session_runner::llm::ToolResultValue {
     match result {
         oc_tool::model::ToolResultValue::Json { value } => {
@@ -4349,7 +4442,37 @@ async fn authorize_tool(
         ),
         // The reference lsp tool always asks (`patterns: ["*"], always: ["*"]`);
         // configured allow/deny rules still win through `permission_gate`.
-        "lsp" => ("lsp", path.unwrap_or("*"), true, json!({ "tool": "lsp" })),
+        "lsp" => ("lsp", "*", true, json!({ "tool": "lsp" })),
+        // Reference tool families each evaluate their own permission with the
+        // resource the LLM supplied (e.g. webfetch gates on the URL, websearch
+        // on the query, glob/grep on the pattern, skill on the skill name).
+        "glob" | "grep" => (
+            name,
+            input.get("pattern").and_then(Value::as_str).unwrap_or("*"),
+            false,
+            json!({ "tool": name }),
+        ),
+        "webfetch" => (
+            "webfetch",
+            input.get("url").and_then(Value::as_str).unwrap_or("*"),
+            false,
+            json!({ "tool": name }),
+        ),
+        "websearch" => (
+            "websearch",
+            input.get("query").and_then(Value::as_str).unwrap_or("*"),
+            false,
+            json!({ "tool": name }),
+        ),
+        "skill" => (
+            "skill",
+            input.get("name").and_then(Value::as_str).unwrap_or("*"),
+            false,
+            json!({ "tool": name }),
+        ),
+        "todowrite" => ("todowrite", "*", false, json!({ "tool": name })),
+        // read: the workspace-relative read path; fall back to "*" like the
+        // reference's unconditional patterns.
         _ => (name, path.unwrap_or("*"), false, json!({ "tool": name })),
     };
     permission_gate(
@@ -5596,6 +5719,106 @@ export default {
         );
     }
 
+    /// Precedence: per-tool config becomes a global rule; agent rules are
+    /// evaluated last and therefore win over global rules and defaults. A
+    /// matching rule for one family never leaks into another.
+    #[tokio::test]
+    async fn permission_rules_family_gates_and_precedence() {
+        // Global `tools` config disables webfetch via the permission projection.
+        let config = json!({
+            "tools": { "webfetch": false },
+            "permission": { "glob": "allow" }
+        });
+        let state = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            config,
+        );
+        // webfetch is denied by the global per-tool `tools` config.
+        assert!(
+            !authorize_tool(
+                &state,
+                "ses_family_gate",
+                &state.location.directory,
+                "webfetch",
+                &json!({ "url": "https://example.com" }),
+            )
+            .await
+        );
+        // glob is allowed by the global permission rule.
+        assert!(
+            authorize_tool(
+                &state,
+                "ses_family_gate",
+                &state.location.directory,
+                "glob",
+                &json!({ "pattern": "**/*.rs" }),
+            )
+            .await
+        );
+        // websearch is untouched by the webfetch rule (distinct families).
+        assert!(
+            authorize_tool(
+                &state,
+                "ses_family_gate",
+                &state.location.directory,
+                "websearch",
+                &json!({ "query": "opencode" }),
+            )
+            .await
+        );
+
+        // Agent rules override global rules (config precedence: agent > global).
+        let agent_override = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            json!({
+                "permission": { "read": "deny" },
+                "agent": { "build": { "permission": { "read": "allow" } } }
+            }),
+        );
+        assert!(
+            authorize_tool(
+                &agent_override,
+                "ses_agent_override",
+                &agent_override.location.directory,
+                "read",
+                &json!({ "path": "README.md" }),
+            )
+            .await
+        );
+
+        // A rule for skill gates on the supplied name.
+        let skill_allowed = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            json!({ "permission": { "skill": { "my-skill": "allow", "other-skill": "deny" } } }),
+        );
+        assert!(
+            authorize_tool(
+                &skill_allowed,
+                "ses_skill",
+                &skill_allowed.location.directory,
+                "skill",
+                &json!({ "name": "my-skill" }),
+            )
+            .await
+        );
+        assert!(
+            !authorize_tool(
+                &skill_allowed,
+                "ses_skill",
+                &skill_allowed.location.directory,
+                "skill",
+                &json!({ "name": "other-skill" }),
+            )
+            .await
+        );
+    }
+
     #[tokio::test]
     async fn authorize_tool_maps_lsp_to_lsp_permission() {
         let allowed = AppState::new_with_config(
@@ -6593,6 +6816,100 @@ export default {
         assert_eq!(child.messages[2]["type"], "user");
         assert_eq!(child.messages[3]["type"], "assistant");
         assert!(!child.active);
+    }
+
+    /// A foreground child emits `session.task.{started,completed}` lifecycle
+    /// events onto the parent session's event stream, mirroring the reference
+    /// task tool's task notifications without requiring polling.
+    #[tokio::test]
+    async fn foreground_subagent_emits_child_lifecycle_events() {
+        let state = AppState::new(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::with_directory("/tmp/opencode-subagent-events-test", None),
+        );
+        let mut events = state.events.subscribe();
+        let parent_id = "ses_subagent_events_parent";
+        let created = now_millis();
+        let parent = crate::schema::SessionInfo {
+            id: parent_id.into(),
+            parent_id: None,
+            project_id: "prj_subagent_events".into(),
+            agent: Some("build".into()),
+            model: Some(crate::schema::ModelRef {
+                id: "demo".into(),
+                provider_id: "stub".into(),
+                variant: None,
+            }),
+            cost: 0.0,
+            tokens: crate::schema::Tokens {
+                input: 0.0,
+                output: 0.0,
+                reasoning: 0.0,
+                cache: crate::schema::CacheTokens {
+                    read: 0.0,
+                    write: 0.0,
+                },
+            },
+            time: crate::schema::SessionTime {
+                created,
+                updated: created,
+                archived: None,
+            },
+            title: "Subagent events parent".into(),
+            location: crate::schema::LocationRef {
+                directory: "/tmp/opencode-subagent-events-test".into(),
+                workspace_id: None,
+            },
+            subpath: None,
+            revert: None,
+        };
+        state.stores.write().await.sessions.insert(
+            parent_id.into(),
+            SessionRecord {
+                info: parent,
+                messages: vec![],
+                active: true,
+            },
+        );
+
+        let result = execute_subagent(
+            state.clone(),
+            oc_tool::model::SubagentRequest {
+                parent_session_id: parent_id.into(),
+                parent_message_id: "msg_parent".into(),
+                description: "Emit lifecycle events".into(),
+                prompt: "run the event probe".into(),
+                subagent_type: "explore".into(),
+                task_id: Some("ses_subagent_events_child".into()),
+                command: None,
+                background: false,
+            },
+        )
+        .await
+        .expect("foreground subagent");
+
+        assert_eq!(result.state, "completed");
+
+        let mut started = None;
+        let mut completed = None;
+        while let Ok(event) = events.try_recv() {
+            match event.r#type.as_str() {
+                "session.task.started" => started = Some(event.data),
+                "session.task.completed" => completed = Some(event.data),
+                _ => {}
+            }
+        }
+        let started = started.expect("started lifecycle event");
+        assert_eq!(started["sessionID"], parent_id);
+        assert_eq!(started["childSessionID"], "ses_subagent_events_child");
+        assert_eq!(started["agent"], "explore");
+        assert_eq!(started["state"], "started");
+
+        let completed = completed.expect("completed lifecycle event");
+        assert_eq!(completed["sessionID"], parent_id);
+        assert_eq!(completed["childSessionID"], "ses_subagent_events_child");
+        assert_eq!(completed["state"], "completed");
     }
 
     #[tokio::test]

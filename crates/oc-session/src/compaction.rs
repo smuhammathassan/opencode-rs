@@ -593,6 +593,59 @@ mod tests {
         assert!(prune_candidates(&below_threshold, &estimate).is_empty());
     }
 
+    /// The recent-tail selection uses the token budget (not just the tail-turn
+    /// count): a small budget keeps fewer recent turns than `tail_turns`, and
+    /// the head is everything before the kept tail. This mirrors the reference
+    /// `select`'s `preserveRecentBudget` + `splitTurn` estimation. The explicit
+    /// `preserve_recent_tokens` is clamped to the protected floor, so message
+    /// sizes must exceed it to force a truncation.
+    #[test]
+    fn select_caps_recent_tail_by_token_budget() {
+        let cfg = ConfigV1 {
+            compaction: Some(crate::overflow::CompactionConfig {
+                tail_turns: Some(2),
+                preserve_recent_tokens: Some(400),
+                auto: None,
+                prune: None,
+                reserved: None,
+            }),
+            ..ConfigV1::default()
+        };
+        let model = ProviderModel::empty("m", "p");
+        let messages = vec![
+            user("u1"),
+            assistant("a1", "u1", None),
+            user("u2"),
+            assistant("a2", "u2", None),
+            user("u3"),
+            assistant("a3", "u3", None),
+            user("u4"),
+            assistant("a4", "u4", None),
+        ];
+        // 600 tokens per message (>= the clamped 2000-token floor for 4
+        // messages), so the most-recent two turns cannot both fit verbatim.
+        let estimate = |window: &[WithParts]| (window.len() * 600) as u64;
+        let selected = select(&messages, &cfg, &model, &estimate);
+        assert!(selected.tail_start_id.is_some());
+        assert!(!selected.head.is_empty());
+        assert!(selected.head.len() < messages.len());
+        // The tail id starts a message that is kept verbatim and not in head.
+        let tail_id = selected.tail_start_id.as_deref().unwrap();
+        let tail_index = messages
+            .iter()
+            .position(|msg| matches!(&msg.info, Info::User(user) if user.id == tail_id))
+            .or_else(|| {
+                messages
+                    .iter()
+                    .position(|msg| matches!(&msg.info, Info::Assistant(a) if a.id == tail_id))
+            })
+            .expect("tail id present");
+        assert!(
+            selected.head.len() <= tail_index,
+            "head must precede the tail"
+        );
+    }
+
     #[test]
     fn prune_never_selects_protected_skill_parts() {
         let mut old_assistant = assistant("a1", "u1", None);

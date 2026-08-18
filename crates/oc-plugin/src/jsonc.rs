@@ -411,7 +411,8 @@ pub fn patch_object_property(
 }
 
 /// Collect leaf replacements and additions for an object update. Returning
-/// `None` is intentional: it means an existing key would be deleted, so the
+/// `None` is intentional: it means the update cannot be expressed using only
+/// targeted leaf edits (e.g. the desired object is not an object), so the
 /// caller must use the canonical replacement fallback for that object.
 fn patch_object_node(
     text: &str,
@@ -422,32 +423,39 @@ fn patch_object_node(
         return Ok(None);
     };
 
-    if members
-        .iter()
-        .any(|(member, _)| !desired.contains_key(member))
-    {
-        return Ok(None);
-    }
-
     let mut edits = Vec::new();
-    for (member, current) in members {
-        let next = desired
-            .get(member)
-            .expect("existing JSONC member checked against desired object");
-        if let (Node::Object { .. }, Value::Object(next_object)) = (current, next) {
-            let Some(nested_edits) = patch_object_node(text, current, next_object)? else {
-                return Ok(None);
-            };
-            edits.extend(nested_edits);
-        } else if json_node(current) != *next {
-            edits.push(TextEdit {
-                start: current.span().start,
-                end: current.span().end,
-                replacement: serde_json::to_string(next).map_err(|error| JsoncError::Parse {
-                    offset: current.span().start,
-                    message: error.to_string(),
-                })?,
-            });
+    for (index, (member, current)) in members.iter().enumerate() {
+        match desired.get(member) {
+            Some(next) => {
+                if let (Node::Object { .. }, Value::Object(next_object)) = (current, next) {
+                    let Some(nested_edits) = patch_object_node(text, current, next_object)? else {
+                        return Ok(None);
+                    };
+                    edits.extend(nested_edits);
+                } else if json_node(current) != *next {
+                    edits.push(TextEdit {
+                        start: current.span().start,
+                        end: current.span().end,
+                        replacement: serde_json::to_string(next).map_err(|error| {
+                            JsoncError::Parse {
+                                offset: current.span().start,
+                                message: error.to_string(),
+                            }
+                        })?,
+                    });
+                }
+            }
+            // The member exists in the document but is absent from the desired
+            // object: delete it in place, preserving comments around it.
+            None => {
+                if let Some((start, end)) = delete_member_range(text, members, index) {
+                    edits.push(TextEdit {
+                        start,
+                        end,
+                        replacement: String::new(),
+                    });
+                }
+            }
         }
     }
 
@@ -486,6 +494,67 @@ fn patch_object_node(
     }
 
     Ok(Some(edits))
+}
+
+/// Compute the byte range that removes the member at `index` together with one
+/// adjacent separator comma. Deletion never touches comments that are not part
+/// of the removed member's own text.
+fn delete_member_range(
+    text: &str,
+    members: &[(String, Node)],
+    index: usize,
+) -> Option<(usize, usize)> {
+    let member = &members[index];
+    let (member_start, member_end) = {
+        let bytes = text.as_bytes();
+        // value.span().start points at the member's value (after `"key": `).
+        // Walk back to the separating ':', then to the key's opening quote by
+        // counting the two quotes that delimit `"key"`.
+        let value_start = member.1.span().start;
+        let mut colon = value_start;
+        while colon > 0 && bytes[colon - 1] != b':' {
+            colon -= 1;
+        }
+        let mut key_end = colon;
+        while key_end > 0 && matches!(bytes[key_end - 1], b' ' | b'\t') {
+            key_end -= 1;
+        }
+        let mut key_start = key_end;
+        let mut quotes = 0;
+        while key_start > 0 {
+            key_start -= 1;
+            if bytes[key_start] == b'"' {
+                quotes += 1;
+                if quotes == 2 {
+                    break;
+                }
+            }
+        }
+        (key_start, member.1.span().end)
+    };
+
+    // Find the separator comma after this member (forward over whitespace).
+    let bytes = text.as_bytes();
+    let mut forward = member_end;
+    while forward < bytes.len() && matches!(bytes[forward], b' ' | b'\t' | b'\r' | b'\n') {
+        forward += 1;
+    }
+    let has_following_comma = forward < bytes.len() && bytes[forward] == b',';
+    if has_following_comma {
+        // `"key": value,` — drop through the trailing comma.
+        return Some((member_start, forward + 1));
+    }
+
+    // Last before `}`: extend backward over whitespace to absorb the preceding
+    // separator comma, leaving `{` intact.
+    let mut backward = member_start;
+    while backward > 0 && matches!(bytes[backward - 1], b' ' | b'\t' | b'\r' | b'\n') {
+        backward -= 1;
+    }
+    if backward > 0 && bytes[backward - 1] == b',' {
+        backward -= 1;
+    }
+    Some((backward, member_end))
 }
 
 fn apply_text_edits(text: &str, mut edits: Vec<TextEdit>) -> String {
@@ -766,11 +835,11 @@ mod tests {
     }
 
     #[test]
-    fn nested_object_deletion_uses_canonical_replacement_fallback() {
+    fn nested_object_deletion_preserves_comments() {
         let text = r#"{
   // keep the outer comment
   "provider": {
-    // this nested comment is removed by the fallback
+    // this nested comment is removed with its key
     "openai": {
       "apiKey": "old",
       "options": {
@@ -791,12 +860,45 @@ mod tests {
 
         assert_eq!(mode, PatchMode::Replace);
         assert!(out.contains("// keep the outer comment"));
-        assert!(!out.contains("this nested comment is removed by the fallback"));
+        // The deleted key is removed while the surviving sibling's structure
+        // (and its own comment) is left intact.
         assert!(!out.contains("apiKey"));
-        assert!(out.contains("\"provider\": {\"openai\":{\"options\":{\"temperature\":0.7}}}"));
+        assert!(out.contains("// this nested comment is removed with its key"));
         assert_eq!(
             parse(&out).unwrap().value["provider"]["openai"]["options"]["temperature"],
             0.7
         );
+        // The result remains valid JSONC.
+        let parsed = parse(&out).unwrap();
+        assert!(!parsed
+            .value
+            .get("provider")
+            .and_then(|v| v.get("openai"))
+            .and_then(|v| v.get("apiKey"))
+            .is_some());
+    }
+
+    #[test]
+    fn deleting_trailing_member_absorbs_preceding_comma_and_preserves_comments() {
+        // Patching the `provider` object to drop its trailing `openai` key
+        // must remove the key plus the preceding separator comma, leaving the
+        // surviving `anthropic` member and surrounding comments intact.
+        let (mode, out) = patch_object_property(
+            "{\n  // provider header\n  \"provider\": {\n    \"anthropic\": {\n      // anthropic comment\n      \"apiKey\": \"x\",\n    },\n    // openai comment\n    \"openai\": {\n      \"apiKey\": \"y\",\n    },\n  },\n}",
+            None,
+            "provider",
+            &serde_json::json!({ "anthropic": { "apiKey": "x" } }),
+        )
+        .unwrap();
+        assert_eq!(mode, PatchMode::Replace);
+        assert!(out.contains("// provider header"));
+        assert!(out.contains("// anthropic comment"));
+        assert!(out.contains("\"apiKey\": \"x\""));
+        assert!(!out.contains("\"openai\""));
+        assert!(!out.contains("\"apiKey\": \"y\""));
+        let parsed = parse(&out).unwrap();
+        assert_eq!(parsed.value["provider"]["anthropic"]["apiKey"], "x");
+        assert!(parsed.value["provider"].get("openai").is_none());
+        assert!(parse(&out).is_ok(), "output must remain valid JSONC");
     }
 }

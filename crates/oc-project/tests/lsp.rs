@@ -132,3 +132,82 @@ async fn position_operation_synchronizes_document_lifecycle() {
 
     adapter.shutdown().await.expect("language server shutdown");
 }
+
+/// Every operation the reference `lsp.ts` declares is routed by the adapter to
+/// the JSON-RPC process adapter; the fake server echoes enough for each so the
+/// declared-vs-implemented surface is exercised end to end.
+#[tokio::test]
+async fn all_declared_operations_are_routed_to_the_process_adapter() {
+    let adapter = LspAdapter::start(
+        LspServerConfig::new(env!("CARGO_BIN_EXE_fake_lsp_server"))
+            .with_timeout(Duration::from_secs(2)),
+        std::env::current_dir().unwrap(),
+    )
+    .await
+    .expect("fake language server should start");
+
+    let definition = adapter
+        .request_operation(
+            oc_project::lsp::LspOperation::GoToDefinition,
+            "src/lib.rs",
+            1,
+            1,
+            None,
+        )
+        .await
+        .expect("goToDefinition");
+    assert!(definition[0]["opened"] == true);
+
+    let references = adapter
+        .request_operation(
+            oc_project::lsp::LspOperation::FindReferences,
+            "src/lib.rs",
+            1,
+            1,
+            None,
+        )
+        .await
+        .expect("findReferences");
+    assert!(references[0]["uri"].as_str().unwrap().ends_with("/lib.rs"));
+
+    let implementation = adapter
+        .request_operation(
+            oc_project::lsp::LspOperation::GoToImplementation,
+            "src/lib.rs",
+            1,
+            1,
+            None,
+        )
+        .await
+        .expect("goToImplementation");
+    assert!(implementation[0]["uri"]
+        .as_str()
+        .unwrap()
+        .ends_with("/impl.rs"));
+
+    let document_symbol = adapter
+        .request_operation(
+            oc_project::lsp::LspOperation::DocumentSymbol,
+            "src/lib.rs",
+            1,
+            1,
+            None,
+        )
+        .await
+        .expect("documentSymbol");
+    assert_eq!(document_symbol[0]["name"], "main");
+
+    let workspace_symbol = adapter
+        .request_operation(
+            oc_project::lsp::LspOperation::WorkspaceSymbol,
+            "src/lib.rs",
+            1,
+            1,
+            Some("main"),
+        )
+        .await
+        .expect("workspaceSymbol");
+    assert_eq!(workspace_symbol[0]["name"], "main");
+
+    adapter.shutdown().await.expect("language server shutdown");
+}
