@@ -237,8 +237,14 @@ async fn execute(sdk: Box<dyn RunClient>, opts: &ExecuteOpts<'_>) -> anyhow::Res
             session_id: session_id.clone(),
         };
         let events = client.subscribe().await?;
-        // Run the event loop and the prompt/command concurrently, mirroring the
-        // reference (`completed = loop(...)` started before the prompt send).
+        // Start the event loop before sending the prompt/command so no events
+        // are missed, mirroring the reference (`completed = loop(...)` started
+        // before the prompt send). The loop is polled concurrently with the
+        // action, but the action result is what gates the exit: the reference
+        // awaits `session.command`/`session.prompt` first and only awaits the
+        // loop (session idle) in the success path. A failed action must return
+        // immediately — it never schedules a run, so the session would never
+        // go idle and `join!` would hang forever (F013).
         let loop_fut = events::event_loop(client.as_ref(), events, &loop_opts);
         futures::pin_mut!(loop_fut);
 
@@ -270,15 +276,34 @@ async fn execute(sdk: Box<dyn RunClient>, opts: &ExecuteOpts<'_>) -> anyhow::Res
         };
         futures::pin_mut!(prompt_fut);
 
-        let (loop_result, prompt_result) = futures::join!(loop_fut, prompt_fut);
+        let mut loop_result: Option<anyhow::Result<Option<String>>> = None;
+        let prompt_result: anyhow::Result<()> = loop {
+            tokio::select! {
+                biased;
+                result = &mut prompt_fut => break result,
+                result = &mut loop_fut => {
+                    // The session went idle before the action response arrived;
+                    // stop driving the loop and wait for the action alone.
+                    loop_result = Some(result);
+                    break prompt_fut.await;
+                }
+            }
+        };
 
         if let Err(err) = prompt_result {
+            // The session will never go idle; return immediately (the pinned
+            // loop future is dropped with this scope, closing the event
+            // stream), mirroring the reference's early return.
             if !emit_error(format_json, &err, &session_id) {
                 ui::error(&format_run_error(&err));
             }
             return Ok(1);
         }
 
+        let loop_result = match loop_result {
+            Some(result) => result,
+            None => loop_fut.await,
+        };
         if let Err(err) = loop_result {
             return Err(err);
         }
@@ -391,14 +416,39 @@ async fn resolve_session(
     Ok(created)
 }
 
+/// Whether sharing should be attempted for this run, mirroring the reference
+/// `share()` guard in run.ts: `cfg.data.share !== "auto" && !flags.autoShare
+/// && !args.share` skips sharing.
+fn should_share(config: &Value, auto_share: bool, share_flag: bool) -> bool {
+    let share_mode = config.get("share").and_then(Value::as_str).unwrap_or("");
+    share_mode == "auto" || auto_share || share_flag
+}
+
 async fn share(sdk: &dyn RunClient, session_id: &str, opts: &ExecuteOpts<'_>) {
     let config = sdk.config_get().await.unwrap_or_default();
-    let share_mode = config.get("share").and_then(Value::as_str).unwrap_or("");
-    if share_mode != "auto" && !opts.args.share {
+    // `flags.autoShare` reads `OPENCODE_AUTO_SHARE` (reference runtime-flags).
+    let auto_share = matches!(
+        std::env::var("OPENCODE_AUTO_SHARE").ok().as_deref(),
+        Some("1") | Some("true")
+    );
+    if !should_share(&config, auto_share, opts.args.share) {
         return;
     }
-    if let Ok(Some(url)) = sdk.session_share(session_id.to_string()).await {
-        ui::println(&[Style::TEXT_INFO_BOLD, "~  ", Style::TEXT_NORMAL, &url]);
+    match sdk.session_share(session_id.to_string()).await {
+        Ok(Some(url)) => {
+            ui::println(&[Style::TEXT_INFO_BOLD, "~  ", Style::TEXT_NORMAL, &url]);
+        }
+        // The reference prints a "disabled" rejection and swallows other
+        // errors (`share().catch(...)`).
+        Err(err) if err.to_string().contains("disabled") => {
+            ui::println(&[
+                Style::TEXT_DANGER_BOLD,
+                "!  ",
+                Style::TEXT_NORMAL,
+                &err.to_string(),
+            ]);
+        }
+        _ => {}
     }
 }
 
@@ -655,7 +705,40 @@ fn tui_initial_prompt(message: String, files: &[FilePart]) -> (String, Vec<Value
 
 #[cfg(test)]
 mod tui_initial_prompt_tests {
-    use super::{tui_initial_prompt, FilePart};
+    use super::{should_share, tui_initial_prompt, FilePart};
+
+    #[test]
+    fn share_policy_honors_config_flag_and_auto_share() {
+        // `share: "auto"` shares without any flag.
+        assert!(should_share(
+            &serde_json::json!({ "share": "auto" }),
+            false,
+            false
+        ));
+        // Manual/disabled/absent config does not share by default.
+        assert!(!should_share(
+            &serde_json::json!({ "share": "manual" }),
+            false,
+            false
+        ));
+        assert!(!should_share(
+            &serde_json::json!({ "share": "disabled" }),
+            false,
+            false
+        ));
+        assert!(!should_share(&serde_json::json!({}), false, false));
+        // `--share` and `OPENCODE_AUTO_SHARE` (flags.autoShare) both opt in.
+        assert!(should_share(
+            &serde_json::json!({ "share": "manual" }),
+            false,
+            true
+        ));
+        assert!(should_share(
+            &serde_json::json!({ "share": "disabled" }),
+            true,
+            false
+        ));
+    }
 
     #[test]
     fn preserves_file_parts_while_showing_markers() {

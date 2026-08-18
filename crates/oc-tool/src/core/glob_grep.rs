@@ -97,6 +97,12 @@ pub mod glob {
 
         let cwd =
             crate::util::path_resolve(&context.location_directory, path.as_deref().unwrap_or("."));
+        // Honor the reference search-backend selection
+        // (`OPENCODE_DISABLE_FFF || !Fff.available() ? ripgrep : fff`). fff is
+        // never available in this port, so ripgrep is always the active
+        // backend; the flag is still consumed at this seam so a future fff
+        // integration cannot silently bypass it.
+        let _backend = ripgrep::search_backend_from_env();
         let results = ripgrep::glob(&ripgrep::GlobInput {
             cwd,
             pattern,

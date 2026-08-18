@@ -47,6 +47,13 @@ pub struct ResolvedConfig {
     pub scroll_speed: Option<f64>,
     pub scroll_acceleration_enabled: bool,
     pub diff_style: DiffStyle,
+    /// Terminal title updates, disabled by `OPENCODE_DISABLE_TERMINAL_TITLE`.
+    pub terminal_title: bool,
+    /// Show time-to-first-draft timing, enabled by `OPENCODE_SHOW_TTFD`.
+    pub show_ttfd: bool,
+    /// Copy-on-select in text dialogs, disabled by
+    /// `OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT`.
+    pub copy_on_select: bool,
 }
 
 /// Parsed binding for a keybind name.
@@ -72,6 +79,15 @@ impl ResolvedConfig {
         let mut resolved = resolve(&input, ResolveOptions::default());
         if truthy_env("OPENCODE_DISABLE_MOUSE") {
             resolved.mouse = false;
+        }
+        if truthy_env("OPENCODE_DISABLE_TERMINAL_TITLE") {
+            resolved.terminal_title = false;
+        }
+        if truthy_env("OPENCODE_SHOW_TTFD") {
+            resolved.show_ttfd = true;
+        }
+        if truthy_env("OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT") {
+            resolved.copy_on_select = false;
         }
         resolved
     }
@@ -254,6 +270,9 @@ pub fn resolve(input: &Value, options: ResolveOptions) -> ResolvedConfig {
         scroll_speed: get_number("scroll_speed"),
         scroll_acceleration_enabled: scroll_accel,
         diff_style,
+        terminal_title: true,
+        show_ttfd: false,
+        copy_on_select: true,
     }
 }
 
@@ -320,6 +339,50 @@ mod tests {
         assert_eq!(config.theme_mode, Mode::Dark);
         assert!(config.has("input_move_left"));
         assert!(config.has("command_list"));
+        // Reference flag.ts defaults: terminal title on, TTFD off, copy-on-select on.
+        assert!(config.terminal_title);
+        assert!(!config.show_ttfd);
+        assert!(config.copy_on_select);
+    }
+
+    #[test]
+    fn environment_flags_toggle_tui_features() {
+        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
+        let saved = [
+            (
+                "OPENCODE_TUI_CONFIG",
+                std::env::var_os("OPENCODE_TUI_CONFIG"),
+            ),
+            (
+                "OPENCODE_DISABLE_TERMINAL_TITLE",
+                std::env::var_os("OPENCODE_DISABLE_TERMINAL_TITLE"),
+            ),
+            ("OPENCODE_SHOW_TTFD", std::env::var_os("OPENCODE_SHOW_TTFD")),
+            (
+                "OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT",
+                std::env::var_os("OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT"),
+            ),
+        ];
+        std::env::remove_var("OPENCODE_TUI_CONFIG");
+        std::env::set_var("OPENCODE_DISABLE_TERMINAL_TITLE", "1");
+        std::env::set_var("OPENCODE_SHOW_TTFD", "true");
+        std::env::set_var("OPENCODE_EXPERIMENTAL_DISABLE_COPY_ON_SELECT", "1");
+
+        let config = ResolvedConfig::from_environment();
+        assert!(!config.terminal_title);
+        assert!(config.show_ttfd);
+        assert!(!config.copy_on_select);
+
+        for (name, value) in saved {
+            match value {
+                Some(value) => std::env::set_var(name, value),
+                None => std::env::remove_var(name),
+            }
+        }
     }
 
     #[test]

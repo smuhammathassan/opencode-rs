@@ -10,6 +10,26 @@ pub struct InstructionConfig {
     pub disable_claude_code_prompt: bool,
 }
 
+/// Resolve an `InstructionConfig` from the environment, mirroring the
+/// reference `RuntimeFlags.disableClaudeCodePrompt`:
+/// `broad(OPENCODE_DISABLE_CLAUDE_CODE) || direct(OPENCODE_DISABLE_CLAUDE_CODE_PROMPT)`,
+/// plus `OPENCODE_DISABLE_PROJECT_CONFIG`.
+pub fn config_from_env() -> InstructionConfig {
+    fn truthy(name: &str) -> bool {
+        matches!(
+            std::env::var(name).ok().as_deref(),
+            Some("1") | Some("true")
+        )
+    }
+    let disable_claude_code = truthy("OPENCODE_DISABLE_CLAUDE_CODE");
+    let disable_claude_code_prompt = truthy("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT");
+    InstructionConfig {
+        instructions: Vec::new(),
+        disable_project_config: truthy("OPENCODE_DISABLE_PROJECT_CONFIG"),
+        disable_claude_code_prompt: disable_claude_code || disable_claude_code_prompt,
+    }
+}
+
 /// Global instruction files, in priority order.
 pub fn global_files(
     global_config_dir: &str,
@@ -336,5 +356,51 @@ mod tests {
         assert!(result
             .iter()
             .any(|item| item.contains("Instructions from: https://example.com/x.md")));
+    }
+
+    #[test]
+    fn claude_code_disable_flags_gate_claude_md() {
+        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
+        let saved = [
+            (
+                "OPENCODE_DISABLE_CLAUDE_CODE",
+                std::env::var_os("OPENCODE_DISABLE_CLAUDE_CODE"),
+            ),
+            (
+                "OPENCODE_DISABLE_CLAUDE_CODE_PROMPT",
+                std::env::var_os("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT"),
+            ),
+        ];
+
+        // Default: CLAUDE.md is part of instruction discovery.
+        std::env::remove_var("OPENCODE_DISABLE_CLAUDE_CODE");
+        std::env::remove_var("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT");
+        let config = config_from_env();
+        assert!(!config.disable_claude_code_prompt);
+        assert!(instruction_files(config.disable_claude_code_prompt).contains(&"CLAUDE.md".into()));
+
+        // Direct flag disables it.
+        std::env::set_var("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT", "true");
+        let config = config_from_env();
+        assert!(config.disable_claude_code_prompt);
+        assert!(!instruction_files(config.disable_claude_code_prompt).contains(&"CLAUDE.md".into()));
+
+        // Broad flag (OPENCODE_DISABLE_CLAUDE_CODE) also disables it.
+        std::env::remove_var("OPENCODE_DISABLE_CLAUDE_CODE_PROMPT");
+        std::env::set_var("OPENCODE_DISABLE_CLAUDE_CODE", "1");
+        let config = config_from_env();
+        assert!(config.disable_claude_code_prompt);
+        assert!(!instruction_files(config.disable_claude_code_prompt).contains(&"CLAUDE.md".into()));
+
+        for (name, value) in saved {
+            match value {
+                Some(value) => std::env::set_var(name, value),
+                None => std::env::remove_var(name),
+            }
+        }
     }
 }

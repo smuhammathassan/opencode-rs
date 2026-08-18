@@ -1811,7 +1811,9 @@ pub async fn session_share(
         .cloned()
         .ok_or(ApiError::V1BadRequest)?;
     let config = state.stores.read().await.config.clone();
-    if config.get("share").and_then(serde_json::Value::as_str) == Some("disabled") {
+    // `OPENCODE_DISABLE_SHARE` mirrors the reference `share-next.ts` guard,
+    // while the configured `share: "disabled"` value covers the config path.
+    if share_disabled(&config) {
         return Err(ApiError::Unknown {
             message: "Sharing is disabled in configuration".into(),
             reference: None,
@@ -1958,6 +1960,19 @@ fn share_api_error(operation: &str, error: impl std::fmt::Display) -> ApiError {
         message: format!("failed to {operation} shared session: {error}"),
         reference: None,
     }
+}
+
+/// Whether session sharing is disabled, mirroring the reference
+/// `share-next.ts`: `OPENCODE_DISABLE_SHARE === "true" || === "1"`, or the
+/// configured `share: "disabled"` value.
+fn share_disabled(config: &serde_json::Value) -> bool {
+    let env_disabled = matches!(
+        std::env::var("OPENCODE_DISABLE_SHARE").ok().as_deref(),
+        Some("1") | Some("true")
+    );
+    let config_disabled =
+        config.get("share").and_then(serde_json::Value::as_str) == Some("disabled");
+    env_disabled || config_disabled
 }
 
 fn share_sync_data(info: &SessionInfo, messages: &[serde_json::Value]) -> Vec<serde_json::Value> {
@@ -4290,8 +4305,37 @@ mod tests {
     use super::{
         command_prompt_parts, configured_model_for_config_with_auth_and_base, limit_messages,
         mcp_prompt_message_text, model_from_value, prompt_text, run_command_shell,
-        safe_workspace_path,
+        safe_workspace_path, share_disabled,
     };
+
+    #[test]
+    fn share_disabled_honors_config_and_env() {
+        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
+        let original = std::env::var_os("OPENCODE_DISABLE_SHARE");
+        std::env::remove_var("OPENCODE_DISABLE_SHARE");
+
+        // Config alone can disable sharing.
+        assert!(share_disabled(&serde_json::json!({ "share": "disabled" })));
+        assert!(!share_disabled(&serde_json::json!({ "share": "auto" })));
+        assert!(!share_disabled(&serde_json::json!({})));
+
+        // `OPENCODE_DISABLE_SHARE` mirrors the reference `share-next.ts` guard.
+        std::env::set_var("OPENCODE_DISABLE_SHARE", "true");
+        assert!(share_disabled(&serde_json::json!({})));
+        std::env::set_var("OPENCODE_DISABLE_SHARE", "1");
+        assert!(share_disabled(&serde_json::json!({ "share": "auto" })));
+        std::env::set_var("OPENCODE_DISABLE_SHARE", "0");
+        assert!(!share_disabled(&serde_json::json!({})));
+
+        match original {
+            Some(value) => std::env::set_var("OPENCODE_DISABLE_SHARE", value),
+            None => std::env::remove_var("OPENCODE_DISABLE_SHARE"),
+        }
+    }
 
     #[test]
     fn prompt_text_accepts_v1_parts_and_shorthand() {

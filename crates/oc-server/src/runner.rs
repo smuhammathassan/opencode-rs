@@ -1347,55 +1347,60 @@ impl SessionHistory for ServerHistory {
         let session_id = session_id.clone();
         Box::pin(async move {
             let pending_ids = state.pending_session_input_ids(&session_id).await;
-            if let Some(entries) =
+            let mut entries = if let Some(entries) =
                 durable_history_entries(&state, &session_id, baseline_seq, &pending_ids).await
             {
-                return entries;
-            }
-            let messages = {
-                let stores = state.stores.read().await;
-                let Some(record) = stores.sessions.get(&session_id) else {
-                    return Vec::new();
-                };
-                let revert_id = record
-                    .info
-                    .revert
-                    .as_ref()
-                    .and_then(|value| value.get("messageID"))
-                    .and_then(Value::as_str)
-                    .map(str::to_string);
-                let revert_index = revert_id.as_ref().and_then(|id| {
-                    record.messages.iter().position(|message| {
-                        message.get("id").and_then(Value::as_str) == Some(id.as_str())
-                    })
-                });
-                let compact_index = record
-                    .messages
-                    .iter()
-                    .rposition(|message| {
-                        message.get("type").and_then(Value::as_str) == Some("compaction")
-                    })
-                    .filter(|index| revert_index.map(|revert| *index < revert).unwrap_or(true));
-                let start = compact_index.unwrap_or(0);
-                let end = revert_index.unwrap_or(record.messages.len());
-                record.messages[start..end].to_vec()
-            };
-            messages
-                .into_iter()
-                .filter(|message| {
-                    message
-                        .get("id")
+                entries
+            } else {
+                let messages = {
+                    let stores = state.stores.read().await;
+                    let Some(record) = stores.sessions.get(&session_id) else {
+                        return Vec::new();
+                    };
+                    let revert_id = record
+                        .info
+                        .revert
+                        .as_ref()
+                        .and_then(|value| value.get("messageID"))
                         .and_then(Value::as_str)
-                        .is_none_or(|id| !pending_ids.contains(id))
-                })
-                .filter_map(|message| server_message(&message))
-                .enumerate()
-                .map(|(index, message)| HistoryEntry {
-                    seq: index as u64 + 1,
-                    message,
-                })
-                .filter(|entry| entry.seq > baseline_seq)
-                .collect()
+                        .map(str::to_string);
+                    let revert_index = revert_id.as_ref().and_then(|id| {
+                        record.messages.iter().position(|message| {
+                            message.get("id").and_then(Value::as_str) == Some(id.as_str())
+                        })
+                    });
+                    let compact_index = record
+                        .messages
+                        .iter()
+                        .rposition(|message| {
+                            message.get("type").and_then(Value::as_str) == Some("compaction")
+                        })
+                        .filter(|index| revert_index.map(|revert| *index < revert).unwrap_or(true));
+                    let start = compact_index.unwrap_or(0);
+                    let end = revert_index.unwrap_or(record.messages.len());
+                    record.messages[start..end].to_vec()
+                };
+                messages
+                    .into_iter()
+                    .filter(|message| {
+                        message
+                            .get("id")
+                            .and_then(Value::as_str)
+                            .is_none_or(|id| !pending_ids.contains(id))
+                    })
+                    .filter_map(|message| server_message(&message))
+                    .enumerate()
+                    .map(|(index, message)| HistoryEntry {
+                        seq: index as u64 + 1,
+                        message,
+                    })
+                    .filter(|entry| entry.seq > baseline_seq)
+                    .collect()
+            };
+            // Plan-mode reminders (reference `session/reminders.ts`) are
+            // appended to the latest user message before prompt lowering.
+            apply_plan_reminders(&state, &session_id, &mut entries).await;
+            entries
         })
     }
 }
@@ -1455,6 +1460,135 @@ async fn durable_history_entries(
             })
             .collect(),
     )
+}
+
+/// Append plan-mode / build-mode reminders to the latest user message,
+/// mirroring `reference/packages/opencode/src/session/reminders.ts:apply`.
+/// The plan file path and lifecycle follow `Session.plan()` (session.ts): a
+/// VCS worktree keeps plans under `.opencode/plans`, otherwise they live in
+/// the global data directory. The plan file's parent directory is created when
+/// the plan agent is active and no plan exists yet, so the `write` tool can
+/// create it.
+async fn apply_plan_reminders(state: &AppState, session_id: &str, entries: &mut [HistoryEntry]) {
+    let record = {
+        let stores = state.stores.read().await;
+        stores.sessions.get(session_id).cloned()
+    };
+    let Some(record) = record else {
+        return;
+    };
+    let agent = record
+        .info
+        .agent
+        .clone()
+        .unwrap_or_else(|| "build".to_string());
+
+    // Locate the last assistant agent and the latest user message.
+    let mut last_assistant_agent: Option<String> = None;
+    for entry in entries.iter().rev() {
+        if let SessionMessage::Assistant(assistant) = &entry.message {
+            last_assistant_agent = Some(assistant.agent.clone());
+            break;
+        }
+    }
+    let was_plan = entries.iter().any(|entry| {
+        matches!(&entry.message, SessionMessage::Assistant(assistant) if assistant.agent == "plan")
+    });
+    let Some(user_index) = entries
+        .iter()
+        .rposition(|entry| matches!(entry.message, SessionMessage::User(_)))
+    else {
+        return;
+    };
+
+    let directory = &record.info.location.directory;
+    let worktree = git_worktree(directory);
+    let has_vcs = worktree.is_some();
+    let plan_base = worktree.as_deref().unwrap_or(directory);
+    let created = record.info.time.created;
+    let slug = oc_session::plan::slug_from_session_id(session_id);
+    let data_dir = oc_mcp::auth::default_data_dir()
+        .to_string_lossy()
+        .into_owned();
+
+    // `ensureDir` runs only while the plan agent is active on a fresh plan
+    // (reference reminders.ts experimental path).
+    let ensure_dir = agent == "plan" && last_assistant_agent.as_deref() != Some("plan");
+    let plan = oc_session::plan::ensure_plan_file(
+        plan_base,
+        &data_dir,
+        has_vcs,
+        created.max(0) as u64,
+        &slug,
+        ensure_dir,
+    );
+    let ctx = oc_session::reminders::ReminderContext::from_plan_file(session_id, &plan);
+    let experimental = plan_mode_experimental(&state.stores.read().await.config);
+    let Some(text) = oc_session::reminders::reminder_text(
+        &agent,
+        last_assistant_agent.as_deref(),
+        was_plan,
+        &ctx,
+        experimental,
+    ) else {
+        return;
+    };
+
+    if let SessionMessage::User(user) = &mut entries[user_index].message {
+        if !user.text.trim().is_empty() {
+            user.text.push('\n');
+        }
+        user.text.push_str(&text);
+    }
+}
+
+/// Resolve the git worktree root for a directory, if it is inside a VCS repo.
+fn git_worktree(directory: &str) -> Option<String> {
+    let mut current = std::path::PathBuf::from(directory);
+    loop {
+        if current.join(".git").exists() {
+            let output = std::process::Command::new("git")
+                .args(["rev-parse", "--show-toplevel"])
+                .current_dir(&current)
+                .output()
+                .ok()?;
+            if output.status.success() {
+                let root = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                if !root.is_empty() {
+                    return Some(root);
+                }
+            }
+            return Some(current.to_string_lossy().into_owned());
+        }
+        match current.parent() {
+            Some(parent) if parent != current => current = parent.to_path_buf(),
+            _ => return None,
+        }
+    }
+}
+
+/// `RuntimeFlags.experimentalPlanMode`: config `experimental.plan_mode` (or
+/// `experimental_plan_mode`), falling back to `OPENCODE_EXPERIMENTAL_PLAN_MODE`.
+fn plan_mode_experimental(config: &Value) -> bool {
+    let experimental = config.get("experimental").and_then(Value::as_object);
+    experimental
+        .and_then(|experimental| {
+            experimental
+                .get("plan_mode")
+                .or_else(|| experimental.get("planMode"))
+        })
+        .and_then(Value::as_bool)
+        .or_else(|| {
+            config
+                .get("experimental_plan_mode")
+                .and_then(Value::as_bool)
+        })
+        .or_else(|| {
+            std::env::var("OPENCODE_EXPERIMENTAL_PLAN_MODE")
+                .ok()
+                .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE"))
+        })
+        .unwrap_or(false)
 }
 
 #[derive(Clone)]
@@ -4152,6 +4286,7 @@ async fn authorize_tool(
             | "skill"
             | "apply_patch"
             | "task"
+            | "lsp"
     ) {
         return false;
     }
@@ -4167,6 +4302,7 @@ async fn authorize_tool(
     let path = input
         .get("path")
         .or_else(|| input.get("workdir"))
+        .or_else(|| input.get("filePath"))
         .and_then(Value::as_str);
     if let Some(path) = path {
         if !safe_workspace_path(location, path) {
@@ -4211,6 +4347,9 @@ async fn authorize_tool(
                 "description": input.get("description").cloned().unwrap_or(Value::Null),
             }),
         ),
+        // The reference lsp tool always asks (`patterns: ["*"], always: ["*"]`);
+        // configured allow/deny rules still win through `permission_gate`.
+        "lsp" => ("lsp", path.unwrap_or("*"), true, json!({ "tool": "lsp" })),
         _ => (name, path.unwrap_or("*"), false, json!({ "tool": name })),
     };
     permission_gate(
@@ -5455,6 +5594,150 @@ export default {
             )
             .await
         );
+    }
+
+    #[tokio::test]
+    async fn authorize_tool_maps_lsp_to_lsp_permission() {
+        let allowed = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            json!({ "permission": { "lsp": "allow" } }),
+        );
+        assert!(
+            authorize_tool(
+                &allowed,
+                "ses_authorize_lsp",
+                &allowed.location.directory,
+                "lsp",
+                &json!({ "filePath": "Cargo.toml", "operation": "documentSymbol" }),
+            )
+            .await
+        );
+
+        let denied = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            json!({ "permission": { "lsp": "deny" } }),
+        );
+        assert!(
+            !authorize_tool(
+                &denied,
+                "ses_authorize_lsp",
+                &denied.location.directory,
+                "lsp",
+                &json!({ "filePath": "Cargo.toml", "operation": "documentSymbol" }),
+            )
+            .await
+        );
+
+        // Unknown tool families are declined without a permission request.
+        let plain = AppState::new(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+        );
+        assert!(
+            !authorize_tool(
+                &plain,
+                "ses_authorize_lsp",
+                &plain.location.directory,
+                "bogus_tool",
+                &json!({}),
+            )
+            .await
+        );
+    }
+
+    #[tokio::test]
+    async fn plan_agent_history_gets_plan_mode_reminder() {
+        let state = AppState::new_with_config(
+            AuthConfig::default(),
+            CorsOptions::default(),
+            Location::default_location(),
+            json!({ "experimental": { "plan_mode": true } }),
+        );
+        let directory =
+            std::env::temp_dir().join(format!("opencode-plan-reminder-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let session_id = "ses_plan_reminder".to_string();
+        state.stores.write().await.sessions.insert(
+            session_id.clone(),
+            SessionRecord {
+                info: crate::schema::SessionInfo {
+                    id: session_id.clone(),
+                    parent_id: None,
+                    project_id: "prj_plan".into(),
+                    agent: Some("plan".into()),
+                    model: None,
+                    cost: 0.0,
+                    tokens: crate::schema::Tokens {
+                        input: 0.0,
+                        output: 0.0,
+                        reasoning: 0.0,
+                        cache: crate::schema::CacheTokens {
+                            read: 0.0,
+                            write: 0.0,
+                        },
+                    },
+                    time: crate::schema::SessionTime {
+                        created: 7,
+                        updated: 7,
+                        archived: None,
+                    },
+                    title: "Plan".into(),
+                    location: crate::schema::LocationRef {
+                        directory: directory.to_string_lossy().into_owned(),
+                        workspace_id: None,
+                    },
+                    subpath: None,
+                    revert: None,
+                },
+                messages: Vec::new(),
+                active: false,
+            },
+        );
+        let mut entries = vec![HistoryEntry {
+            seq: 1,
+            message: SessionMessage::User(oc_session_runner::session::message::User {
+                id: "msg_user".into(),
+                kind: MessageKind::User,
+                text: "plan a feature".into(),
+                files: None,
+                agents: None,
+                metadata: None,
+                time: oc_session_runner::session::message::MessageTime {
+                    created: 1.to_string(),
+                    completed: None,
+                },
+            }),
+        }];
+        apply_plan_reminders(&state, &session_id, &mut entries).await;
+
+        let SessionMessage::User(user) = &entries[0].message else {
+            panic!("expected user message");
+        };
+        assert!(
+            user.text.contains("Plan mode is active"),
+            "user text: {}",
+            user.text
+        );
+        assert!(
+            user.text.contains("No plan file exists yet"),
+            "plan-file lifecycle reminder missing: {}",
+            user.text
+        );
+        // Non-VCS sessions keep plans under the global data directory; the
+        // `ensureDir` lifecycle step created it for the fresh plan agent.
+        let data_dir = oc_mcp::auth::default_data_dir();
+        assert!(
+            data_dir.join("plans").is_dir(),
+            "expected {} to be created",
+            data_dir.join("plans").display()
+        );
+        let _ = std::fs::remove_dir_all(data_dir.join("plans"));
+        let _ = std::fs::remove_dir_all(&directory);
     }
 
     #[tokio::test]

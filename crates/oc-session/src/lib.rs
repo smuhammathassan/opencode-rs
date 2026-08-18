@@ -35,6 +35,7 @@ pub mod message_updater;
 pub mod message_v2;
 pub mod overflow;
 pub mod permission;
+pub mod plan;
 pub mod processor;
 pub mod prompt;
 pub mod provider;

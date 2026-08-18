@@ -10,6 +10,19 @@ use super::paths::GlobalPaths;
 
 const DEFAULT_SOURCE: &str = "https://models.opencode.ai";
 
+/// `USER_AGENT` from `reference/packages/core/src/models-dev.ts`:
+/// `opencode/${InstallationChannel}/${InstallationVersion}/${Flag.OPENCODE_CLIENT}`.
+/// `OPENCODE_CLIENT` defaults to `"cli"` (reference flag.ts).
+pub fn models_user_agent() -> String {
+    let client = std::env::var("OPENCODE_CLIENT").unwrap_or_else(|_| "cli".to_string());
+    format!(
+        "opencode/{}/{}/{}",
+        crate::version::INSTALLATION_CHANNEL,
+        crate::VERSION,
+        client
+    )
+}
+
 /// A provider entry from the models.dev database.
 #[derive(Debug, Clone, Default)]
 pub struct Provider {
@@ -133,7 +146,7 @@ impl ModelsDev {
         let client = reqwest::Client::new();
         let text = client
             .get(format!("{source}/api.json"))
-            .header("User-Agent", format!("opencode/{}", crate::VERSION))
+            .header("User-Agent", models_user_agent())
             .send()
             .await?
             .error_for_status()?
@@ -151,6 +164,15 @@ impl ModelsDev {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Serializes env-var-mutating tests (cargo runs tests in parallel).
+    static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+    fn env_lock() -> std::sync::MutexGuard<'static, ()> {
+        ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap()
+    }
 
     #[test]
     fn parses_models_dev_database() {
@@ -170,11 +192,7 @@ mod tests {
 
     #[tokio::test]
     async fn refresh_is_blocked_by_disable_fetch_flag() {
-        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
-        let _guard = ENV_LOCK
-            .get_or_init(|| std::sync::Mutex::new(()))
-            .lock()
-            .unwrap();
+        let _guard = env_lock();
         let original = std::env::var_os("OPENCODE_DISABLE_MODELS_FETCH");
         std::env::set_var("OPENCODE_DISABLE_MODELS_FETCH", "1");
         let result = ModelsDev::refresh(&GlobalPaths::default(), true).await;
@@ -185,6 +203,38 @@ mod tests {
         match original {
             Some(value) => std::env::set_var("OPENCODE_DISABLE_MODELS_FETCH", value),
             None => std::env::remove_var("OPENCODE_DISABLE_MODELS_FETCH"),
+        }
+    }
+
+    #[test]
+    fn user_agent_defaults_to_cli_client() {
+        let _guard = env_lock();
+        let original = std::env::var_os("OPENCODE_CLIENT");
+        std::env::remove_var("OPENCODE_CLIENT");
+        let agent = models_user_agent();
+        assert_eq!(
+            agent,
+            format!(
+                "opencode/{}/{}/cli",
+                crate::version::INSTALLATION_CHANNEL,
+                crate::VERSION
+            )
+        );
+        match original {
+            Some(value) => std::env::set_var("OPENCODE_CLIENT", value),
+            None => std::env::remove_var("OPENCODE_CLIENT"),
+        }
+    }
+
+    #[test]
+    fn user_agent_honors_opencode_client() {
+        let _guard = env_lock();
+        let original = std::env::var_os("OPENCODE_CLIENT");
+        std::env::set_var("OPENCODE_CLIENT", "desktop");
+        assert!(models_user_agent().ends_with("/desktop"));
+        match original {
+            Some(value) => std::env::set_var("OPENCODE_CLIENT", value),
+            None => std::env::remove_var("OPENCODE_CLIENT"),
         }
     }
 }

@@ -252,20 +252,28 @@ impl AttachClient {
     }
 }
 
+/// Extract the error message from a non-success response body. Handles the
+/// v2 error shape (`{ "name": ..., "data": { "message": ... } }`) served by
+/// oc-server and the v1 shape (`{ "error": { "message": ... } }`), falling
+/// back to the HTTP status line.
+fn extract_error_message(body: &str, status: reqwest::StatusCode) -> String {
+    serde_json::from_str::<Value>(body)
+        .ok()
+        .and_then(|v| {
+            v.get("data")
+                .and_then(|data| data.get("message"))
+                .or_else(|| v.get("error").and_then(|error| error.get("message")))
+                .and_then(Value::as_str)
+                .map(String::from)
+        })
+        .unwrap_or_else(|| format!("HTTP {}", status))
+}
+
 async fn parse_response(response: reqwest::Response) -> anyhow::Result<Value> {
     let status = response.status();
     let body = response.text().await.unwrap_or_default();
     if !status.is_success() {
-        let message = serde_json::from_str::<Value>(&body)
-            .ok()
-            .and_then(|v| {
-                v.get("error")
-                    .and_then(|e| e.get("message"))
-                    .and_then(Value::as_str)
-                    .map(String::from)
-            })
-            .unwrap_or_else(|| format!("HTTP {}", status));
-        return Err(anyhow::anyhow!("{message}"));
+        return Err(anyhow::anyhow!(extract_error_message(&body, status)));
     }
     if body.trim().is_empty() {
         return Ok(Value::Null);
@@ -572,6 +580,37 @@ mod tests {
         assert_eq!(
             unwrap_data(value).get("id").and_then(Value::as_str),
             Some("x")
+        );
+    }
+
+    #[test]
+    fn error_response_extracts_v2_data_message() {
+        // v2 error shape served by oc-server: `{ name, data: { message } }`.
+        let body = serde_json::json!({
+            "name": "NotFoundError",
+            "data": { "message": "Command not found: help" }
+        })
+        .to_string();
+        assert_eq!(
+            extract_error_message(&body, reqwest::StatusCode::NOT_FOUND),
+            "Command not found: help"
+        );
+    }
+
+    #[test]
+    fn error_response_extracts_v1_error_message() {
+        let body = serde_json::json!({ "error": { "message": "Session not found" } }).to_string();
+        assert_eq!(
+            extract_error_message(&body, reqwest::StatusCode::BAD_REQUEST),
+            "Session not found"
+        );
+    }
+
+    #[test]
+    fn error_response_falls_back_to_http_status() {
+        assert_eq!(
+            extract_error_message("", reqwest::StatusCode::NOT_FOUND),
+            "HTTP 404 Not Found"
         );
     }
 }

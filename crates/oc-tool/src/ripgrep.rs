@@ -13,6 +13,35 @@ const ERROR_BYTES: usize = 8 * 1024;
 const MAX_RECORD_BYTES: usize = 64 * 1024;
 const MAX_SUBMATCHES: usize = 100;
 
+/// `Fff.available()` from `reference/packages/core/src/filesystem/fff.ts`.
+/// The port has no `fff` binary integration, so the fast file finder is never
+/// available and search always falls back to ripgrep, exactly like the
+/// reference's default when `fff` is missing.
+pub fn fff_available() -> bool {
+    false
+}
+
+/// Search backend selection mirroring
+/// `reference/packages/core/src/filesystem/search.ts`:
+/// `Flag.OPENCODE_DISABLE_FFF || !Fff.available() ? ripgrepLayer : fffLayer`.
+pub fn search_backend(disable_fff: bool, fff_available: bool) -> &'static str {
+    if disable_fff || !fff_available {
+        "ripgrep"
+    } else {
+        "fff"
+    }
+}
+
+/// Resolve the search backend from the environment, honoring
+/// `OPENCODE_DISABLE_FFF` (`truthy` semantics from `reference/.../flag/flag.ts`).
+pub fn search_backend_from_env() -> &'static str {
+    let disable_fff = matches!(
+        std::env::var("OPENCODE_DISABLE_FFF").ok().as_deref(),
+        Some("1") | Some("true")
+    );
+    search_backend(disable_fff, fff_available())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Entry {
     pub path: String,
@@ -308,6 +337,36 @@ mod tests {
         for item in &results {
             assert!(item.line >= 1);
             assert!(item.text.contains("alpha"));
+        }
+    }
+
+    #[test]
+    fn disable_fff_always_selects_ripgrep() {
+        // Mirror the reference: `Flag.OPENCODE_DISABLE_FFF || !Fff.available() ? ripgrep : fff`.
+        assert_eq!(search_backend(true, true), "ripgrep");
+        assert_eq!(search_backend(true, false), "ripgrep");
+        // Without the flag, an available fff would be preferred...
+        assert_eq!(search_backend(false, true), "fff");
+        // ...but this port never ships fff, so ripgrep is the fallback.
+        assert_eq!(search_backend(false, false), "ripgrep");
+        assert!(!fff_available());
+    }
+
+    #[test]
+    fn search_backend_from_env_reads_disable_fff_flag() {
+        static ENV_LOCK: std::sync::OnceLock<std::sync::Mutex<()>> = std::sync::OnceLock::new();
+        let _guard = ENV_LOCK
+            .get_or_init(|| std::sync::Mutex::new(()))
+            .lock()
+            .unwrap();
+        let original = std::env::var_os("OPENCODE_DISABLE_FFF");
+        std::env::set_var("OPENCODE_DISABLE_FFF", "true");
+        assert_eq!(search_backend_from_env(), "ripgrep");
+        std::env::remove_var("OPENCODE_DISABLE_FFF");
+        assert_eq!(search_backend_from_env(), "ripgrep");
+        match original {
+            Some(value) => std::env::set_var("OPENCODE_DISABLE_FFF", value),
+            None => std::env::remove_var("OPENCODE_DISABLE_FFF"),
         }
     }
 }

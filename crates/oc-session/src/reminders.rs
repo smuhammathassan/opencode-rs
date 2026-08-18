@@ -15,6 +15,71 @@ pub struct ReminderContext {
     pub plan_exists: bool,
 }
 
+impl ReminderContext {
+    /// Build the reminder context from the resolved plan file state
+    /// (`oc_session::plan::ensure_plan_file`).
+    pub fn from_plan_file(
+        session_id: impl Into<String>,
+        plan: &crate::plan::PlanFileState,
+    ) -> Self {
+        ReminderContext {
+            session_id: session_id.into(),
+            plan_path: plan.path.clone(),
+            plan_exists: plan.exists,
+        }
+    }
+}
+
+/// Compute the synthetic reminder text for the latest user message, mirroring
+/// the reference `reminders.ts:apply` prompt-level effect. Returns `None` when
+/// no reminder applies.
+pub fn reminder_text(
+    agent_name: &str,
+    last_assistant_agent: Option<&str>,
+    was_plan: bool,
+    ctx: &ReminderContext,
+    experimental_plan_mode: bool,
+) -> Option<String> {
+    if !experimental_plan_mode {
+        if agent_name == "plan" {
+            return Some(PROMPT_PLAN.to_string());
+        }
+        if was_plan && agent_name == "build" {
+            return Some(BUILD_SWITCH.to_string());
+        }
+        return None;
+    }
+
+    if agent_name != "plan" && last_assistant_agent == Some("plan") {
+        let text = if ctx.plan_exists {
+            format!(
+                "{BUILD_SWITCH}\n\nA plan file exists at {}. You should execute on the plan defined within it",
+                ctx.plan_path
+            )
+        } else {
+            BUILD_SWITCH.to_string()
+        };
+        return Some(text);
+    }
+
+    if agent_name != "plan" || last_assistant_agent == Some("plan") {
+        return None;
+    }
+
+    let plan_info = if ctx.plan_exists {
+        format!(
+            "A plan file already exists at {}. You can read it and make incremental edits using the edit tool.",
+            ctx.plan_path
+        )
+    } else {
+        format!(
+            "No plan file exists yet. You should create your plan at {} using the write tool.",
+            ctx.plan_path
+        )
+    };
+    Some(PLAN_MODE.replace("${planInfo}", &plan_info))
+}
+
 /// From reference `reminders.ts:apply`. Returns the synthetic text parts to
 /// append to the latest user message, plus which parts were created.
 pub fn apply(
@@ -34,54 +99,20 @@ pub fn apply(
             crate::v1::Info::Assistant(assistant) => Some(assistant.agent.clone()),
             _ => None,
         });
+    let was_plan = messages
+        .iter()
+        .any(|msg| matches!(&msg.info, crate::v1::Info::Assistant(a) if a.agent == "plan"));
 
-    if !experimental_plan_mode {
-        let mut parts = Vec::new();
-        if agent_name == "plan" {
-            parts.push(text_part(user_message, ctx, PROMPT_PLAN.to_string()));
-        }
-        let was_plan = messages
-            .iter()
-            .any(|msg| matches!(&msg.info, crate::v1::Info::Assistant(a) if a.agent == "plan"));
-        if was_plan && agent_name == "build" {
-            parts.push(text_part(user_message, ctx, BUILD_SWITCH.to_string()));
-        }
-        return parts;
-    }
-
-    let assistant_agent = assistant_agent.as_deref();
-    if agent_name != "plan" && assistant_agent == Some("plan") {
-        let text = if ctx.plan_exists {
-            format!(
-                "{BUILD_SWITCH}\n\nA plan file exists at {}. You should execute on the plan defined within it",
-                ctx.plan_path
-            )
-        } else {
-            BUILD_SWITCH.to_string()
-        };
-        return vec![text_part(user_message, ctx, text)];
-    }
-
-    if agent_name != "plan" || assistant_agent == Some("plan") {
-        return Vec::new();
-    }
-
-    let plan_info = if ctx.plan_exists {
-        format!(
-            "A plan file already exists at {}. You can read it and make incremental edits using the edit tool.",
-            ctx.plan_path
-        )
-    } else {
-        format!(
-            "No plan file exists yet. You should create your plan at {} using the write tool.",
-            ctx.plan_path
-        )
-    };
-    vec![text_part(
-        user_message,
+    let Some(text) = reminder_text(
+        agent_name,
+        assistant_agent.as_deref(),
+        was_plan,
         ctx,
-        PLAN_MODE.replace("${planInfo}", &plan_info),
-    )]
+        experimental_plan_mode,
+    ) else {
+        return Vec::new();
+    };
+    vec![text_part(user_message, ctx, text)]
 }
 
 #[derive(Debug, Clone)]
@@ -206,5 +237,35 @@ mod tests {
         assert!(parts[0]
             .text
             .contains("Your operational mode has changed from plan to build"));
+    }
+
+    #[test]
+    fn reminder_text_experimental_plan_mode_references_plan_file() {
+        let ctx = ReminderContext {
+            session_id: "s".into(),
+            plan_path: "/work/repo/.opencode/plans/1-abc.md".into(),
+            plan_exists: false,
+        };
+        // Entering plan mode: instructs the plan agent to create the plan file.
+        let text = reminder_text("plan", None, false, &ctx, true).unwrap();
+        assert!(text.contains("No plan file exists yet."));
+        assert!(text.contains("/work/repo/.opencode/plans/1-abc.md"));
+
+        // The plan file already exists: incremental edits.
+        let ctx = ReminderContext {
+            plan_exists: true,
+            ..ctx
+        };
+        let text = reminder_text("plan", None, false, &ctx, true).unwrap();
+        assert!(text.contains("A plan file already exists at"));
+
+        // Switching back to build references the existing plan file.
+        let text = reminder_text("build", Some("plan"), false, &ctx, true).unwrap();
+        assert!(text.contains("A plan file exists at"));
+        assert!(text.contains("execute on the plan defined within it"));
+
+        // No reminder outside plan/build transitions.
+        assert!(reminder_text("build", None, false, &ctx, true).is_none());
+        assert!(reminder_text("plan", Some("plan"), false, &ctx, true).is_none());
     }
 }
