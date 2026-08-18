@@ -1428,7 +1428,7 @@ mod tests {
     fn build_sync() -> SyncState {
         let mut sync = SyncState::default();
         let agent = serde_json::from_value(json!({
-            "name": "build", "mode": "primary", "permission": [], "options": {}
+            "name": "build", "mode": "primary", "permission": {}, "options": {}
         }))
         .unwrap();
         sync.agents = vec![agent];

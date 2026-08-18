@@ -562,6 +562,33 @@ pub enum StartupUpdatePolicy {
     Auto,
 }
 
+/// Installation method, mirroring `Installation.method()` in
+/// `reference/packages/opencode/src/installation/index.ts`. The reference only
+/// self-replaces the running binary when the method is known (`npm`, `brew`,
+/// or the install script); an unknown method — including a cargo `target/`
+/// development build — must never be auto-upgraded in place.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InstallationMethod {
+    Npm,
+    Brew,
+    Script,
+    Unknown,
+}
+
+/// Classify how the running binary was installed from its path.
+pub fn installation_method(exe: &std::path::Path) -> InstallationMethod {
+    let text = exe.to_string_lossy();
+    if text.contains("node_modules") {
+        InstallationMethod::Npm
+    } else if text.contains("Cellar") || text.contains("homebrew") {
+        InstallationMethod::Brew
+    } else if text.contains(".opencode/bin") {
+        InstallationMethod::Script
+    } else {
+        InstallationMethod::Unknown
+    }
+}
+
 /// Resolve startup update behavior from the environment and `autoupdate`
 /// config value. The explicit disable flag wins; the always-notify flag then
 /// opts in even when the config is `false`.
@@ -685,6 +712,14 @@ pub async fn notify_startup_update() {
             let Ok(destination) = std::env::current_exe() else {
                 return;
             };
+            // The reference refuses to upgrade an unknown installation method
+            // (`if (method === "unknown") return` in cli/upgrade.ts). A cargo
+            // `target/` development build is unknown: replacing it would swap
+            // the local Rust binary for a downloaded release and poison every
+            // subsequent local test run.
+            if installation_method(&destination) == InstallationMethod::Unknown {
+                return;
+            }
             let Ok(platform) = current_platform() else {
                 return;
             };
@@ -833,5 +868,39 @@ mod tests {
         install_binary_atomic(&destination, b"new").unwrap();
         assert_eq!(fs::read(&destination).unwrap(), b"new");
         let _ = fs::remove_dir_all(root);
+    }
+    #[test]
+    fn cargo_target_builds_are_unknown_installation_method() {
+        // The reference refuses to self-upgrade unknown installation methods;
+        // a cargo dev build must classify as unknown so startup auto-install
+        // never replaces target/debug/opencode with a downloaded release.
+        assert_eq!(
+            installation_method(std::path::Path::new("/repo/target/debug/opencode")),
+            super::InstallationMethod::Unknown
+        );
+        assert_eq!(
+            installation_method(std::path::Path::new("/repo/target/release/opencode")),
+            super::InstallationMethod::Unknown
+        );
+    }
+
+    #[test]
+    fn known_installation_methods_are_detected() {
+        assert_eq!(
+            installation_method(std::path::Path::new(
+                "/nvm/versions/node/v22/lib/node_modules/@opencode-ai/cli/bin/opencode2.exe"
+            )),
+            super::InstallationMethod::Npm
+        );
+        assert_eq!(
+            installation_method(std::path::Path::new(
+                "/opt/homebrew/Cellar/opencode/1.0/bin/opencode"
+            )),
+            super::InstallationMethod::Brew
+        );
+        assert_eq!(
+            installation_method(std::path::Path::new("/home/u/.opencode/bin/opencode")),
+            super::InstallationMethod::Script
+        );
     }
 }

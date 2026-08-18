@@ -1044,6 +1044,17 @@ pub fn command_for_name(name: &str) -> Option<&'static str> {
         .map(|d| d.command)
 }
 
+/// Reverse mapping: the keybind name that dispatches `command`.
+/// `rebuild_keymap` groups bindings by command and looks the keybind up by its
+/// underscore name, so a command must be resolved to its name first.
+pub fn name_for_command(command: &str) -> Option<&'static str> {
+    DEFINITIONS
+        .iter()
+        .filter(|d| !d.command.is_empty())
+        .find(|d| d.command == command)
+        .map(|d| d.name)
+}
+
 pub fn desc_for_command(command: &str) -> Option<&'static str> {
     DEFINITIONS
         .iter()

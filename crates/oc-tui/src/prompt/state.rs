@@ -328,7 +328,7 @@ mod tests {
         assert_eq!(prompt.autocomplete.trigger, Some(Trigger::Mention));
         prompt.autocomplete.options = vec![AutocompleteOption::agent(
             &serde_json::from_value(json!({
-                "name": "build", "mode": "primary", "permission": [], "options": {}
+                "name": "build", "mode": "primary", "permission": {}, "options": {}
             }))
             .unwrap(),
         )];

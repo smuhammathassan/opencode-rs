@@ -433,7 +433,7 @@ pub async fn agent_list(State(state): State<crate::state::AppState>) -> HandlerR
         "mode": "primary",
         "native": true,
         "hidden": false,
-        "permission": [],
+        "permission": {},
         "options": {}
     })];
     if let Some(configured) = config.get("agent").and_then(serde_json::Value::as_object) {
@@ -456,6 +456,21 @@ pub async fn agent_list(State(state): State<crate::state::AppState>) -> HandlerR
                 object
                     .entry("options")
                     .or_insert_with(|| serde_json::json!({}));
+                // `Agent.Info.model` is a `Model.Ref` object, not the raw
+                // "provider/model" string used in config frontmatter.
+                if let Some(model) = object.get("model") {
+                    if let Some(model) = model.as_str() {
+                        if let Some((provider_id, model_id)) = model.split_once('/') {
+                            object.insert(
+                                "model".into(),
+                                serde_json::json!({
+                                    "id": model_id,
+                                    "providerID": provider_id,
+                                }),
+                            );
+                        }
+                    }
+                }
             }
             agents.push(value);
         }
@@ -562,10 +577,14 @@ pub async fn session_status(State(state): State<crate::state::AppState>) -> Hand
     let stores = state.stores.read().await;
     let mut map = serde_json::Map::new();
     for (id, record) in &stores.sessions {
+        // `SessionStatusEvent.Info` is a union tagged by `type`
+        // (idle | retry | busy). The reference `list()` only tracks non-idle
+        // entries; emitting explicit idle states keeps the same decode shape
+        // for clients that treat absent keys as idle.
         map.insert(
             id.clone(),
             serde_json::json!({
-                "status": if record.active { "active" } else { "idle" },
+                "type": if record.active { "busy" } else { "idle" },
             }),
         );
     }

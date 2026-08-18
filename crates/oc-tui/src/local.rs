@@ -180,9 +180,9 @@ mod tests {
         ]))
         .unwrap();
         sync.agents = serde_json::from_value(json!([
-            { "name": "build", "mode": "primary", "permission": [], "options": {} },
-            { "name": "plan", "mode": "primary", "permission": [], "options": {} },
-            { "name": "coder", "mode": "subagent", "permission": [], "options": {} }
+            { "name": "build", "mode": "primary", "permission": {}, "options": {} },
+            { "name": "plan", "mode": "primary", "permission": {}, "options": {} },
+            { "name": "coder", "mode": "subagent", "permission": {}, "options": {} }
         ]))
         .unwrap();
         sync

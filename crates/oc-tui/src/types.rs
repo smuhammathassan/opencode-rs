@@ -18,7 +18,9 @@ pub struct SnapshotFileDiff {
     pub file: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub patch: Option<String>,
+    #[serde(deserialize_with = "number_as_u64")]
     pub additions: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub deletions: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
@@ -66,8 +68,11 @@ pub struct Session {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionSummary {
+    #[serde(deserialize_with = "number_as_u64")]
     pub additions: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub deletions: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub files: u64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub diffs: Option<Vec<SnapshotFileDiff>>,
@@ -92,7 +97,9 @@ pub struct ModelRef {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SessionTime {
+    #[serde(deserialize_with = "number_as_i64")]
     pub created: i64,
+    #[serde(deserialize_with = "number_as_i64")]
     pub updated: i64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub compacting: Option<i64>,
@@ -115,10 +122,17 @@ pub struct SessionRevert {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct MessageTokens {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "number_as_u64_option"
+    )]
     pub total: Option<u64>,
+    #[serde(deserialize_with = "number_as_u64")]
     pub input: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub output: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub reasoning: u64,
     pub cache: CacheTokens,
 }
@@ -126,7 +140,9 @@ pub struct MessageTokens {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CacheTokens {
+    #[serde(deserialize_with = "number_as_u64")]
     pub read: u64,
+    #[serde(deserialize_with = "number_as_u64")]
     pub write: u64,
 }
 
@@ -801,10 +817,95 @@ pub struct ModelCapabilities {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ModelLimit {
-    pub context: u64,
+    // Reference `Schema.Number`: JSON numbers arrive as ints or floats
+    // (models.dev emits `1000000.0`), so decode through f64.
+    #[serde(deserialize_with = "number_as_f64")]
+    pub context: f64,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub input: Option<u64>,
-    pub output: u64,
+    pub input: Option<f64>,
+    #[serde(deserialize_with = "number_as_f64")]
+    pub output: f64,
+}
+
+fn number_as_f64<'de, D>(deserializer: D) -> Result<f64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Number(number) => number
+            .as_f64()
+            .ok_or_else(|| D::Error::custom("number out of range")),
+        serde_json::Value::Null => Ok(0.0),
+        other => Err(D::Error::custom(format!(
+            "expected a number, got {other:?}"
+        ))),
+    }
+}
+
+/// Accept a JSON integer or float (e.g. `0` or `0.0`) and yield a `u64`,
+/// mirroring the reference `Schema.Number` which accepts both. Returns 0 for
+/// missing/null. Used where our server serializes values as floats.
+fn number_as_u64<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Number(n) => n
+            .as_u64()
+            .or_else(|| n.as_f64().map(|f| f as u64))
+            .ok_or_else(|| D::Error::custom("number out of range")),
+        serde_json::Value::Null => Ok(0),
+        other => Err(D::Error::custom(format!(
+            "expected a number, got {other:?}"
+        ))),
+    }
+}
+
+/// Variant of [`number_as_u64`] that yields `Option<u64>`.
+fn number_as_u64_option<'de, D>(deserializer: D) -> Result<Option<u64>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Null => Ok(None),
+        serde_json::Value::Number(n) => {
+            let v = n
+                .as_u64()
+                .or_else(|| n.as_f64().map(|f| f as u64))
+                .ok_or_else(|| D::Error::custom("number out of range"))?;
+            Ok(Some(v))
+        }
+        other => Err(D::Error::custom(format!(
+            "expected a number, got {other:?}"
+        ))),
+    }
+}
+
+/// Accept a JSON integer or float (e.g. `0` or `0.0`) and yield an `i64`,
+/// mirroring the reference `Schema.Number` which accepts both. Returns 0 for
+/// missing/null. Used where our server serializes values as floats.
+fn number_as_i64<'de, D>(deserializer: D) -> Result<i64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    use serde::de::Error as _;
+    let value = serde_json::Value::deserialize(deserializer)?;
+    match value {
+        serde_json::Value::Number(n) => n
+            .as_i64()
+            .or_else(|| n.as_f64().map(|f| f as i64))
+            .ok_or_else(|| D::Error::custom("number out of range")),
+        serde_json::Value::Null => Ok(0),
+        other => Err(D::Error::custom(format!(
+            "expected a number, got {other:?}"
+        ))),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -825,7 +926,7 @@ pub struct Agent {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
     #[serde(default)]
-    pub permission: Vec<PermissionRule>,
+    pub permission: serde_json::Map<String, serde_json::Value>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<ModelRef>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -1047,5 +1148,101 @@ impl EventPayload {
     }
     pub fn props_or<T: serde::de::DeserializeOwned + Default>(&self) -> T {
         serde_json::from_value(self.properties.clone()).unwrap_or_default()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    /// Regression: the Rust server serializes token counts as JSON floats
+    /// (e.g. `"input": 0.0`). The TUI must accept those without failing.
+    #[test]
+    fn session_deserializes_float_token_counts() {
+        let value = json!({
+            "id": "sess_001",
+            "slug": "test-session",
+            "projectID": "proj_001",
+            "directory": "/tmp/test",
+            "cost": 0.0,
+            "tokens": {
+                "input": 0.0,
+                "output": 0.0,
+                "reasoning": 0.0,
+                "cache": {
+                    "read": 0.0,
+                    "write": 0.0
+                }
+            },
+            "title": "Test session",
+            "agent": "default",
+            "model": {
+                "id": "test-model",
+                "providerID": "test-provider",
+                "variant": null
+            },
+            "version": "0.1.0",
+            "time": {
+                "created": 0.0,
+                "updated": 0.0,
+                "archived": null
+            }
+        });
+
+        let session: Session =
+            serde_json::from_value(value).expect("should deserialize with float token counts");
+
+        assert!(session.tokens.is_some(), "tokens should be Some");
+        let tokens = session.tokens.unwrap();
+        assert_eq!(tokens.input, 0);
+        assert_eq!(tokens.output, 0);
+        assert_eq!(tokens.reasoning, 0);
+        assert_eq!(tokens.cache.read, 0);
+        assert_eq!(tokens.cache.write, 0);
+        assert_eq!(session.cost, Some(0.0));
+        assert_eq!(session.time.created, 0);
+        assert_eq!(session.time.updated, 0);
+    }
+
+    /// Verify that integer token counts still work (backward compat).
+    #[test]
+    fn session_deserializes_integer_token_counts() {
+        let value = json!({
+            "id": "sess_002",
+            "slug": "test-session-2",
+            "projectID": "proj_002",
+            "directory": "/tmp/test2",
+            "cost": 0.05,
+            "tokens": {
+                "input": 100,
+                "output": 200,
+                "reasoning": 50,
+                "cache": {
+                    "read": 30,
+                    "write": 10
+                }
+            },
+            "title": "Test session 2",
+            "version": "0.1.0",
+            "time": {
+                "created": 1700000000,
+                "updated": 1700000100,
+                "archived": null
+            }
+        });
+
+        let session: Session =
+            serde_json::from_value(value).expect("should deserialize with integer token counts");
+
+        let tokens = session.tokens.unwrap();
+        assert_eq!(tokens.input, 100);
+        assert_eq!(tokens.output, 200);
+        assert_eq!(tokens.reasoning, 50);
+        assert_eq!(tokens.cache.read, 30);
+        assert_eq!(tokens.cache.write, 10);
+        assert_eq!(session.cost, Some(0.05));
+        assert_eq!(session.time.created, 1700000000);
+        assert_eq!(session.time.updated, 1700000100);
     }
 }

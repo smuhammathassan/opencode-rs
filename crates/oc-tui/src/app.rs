@@ -414,10 +414,17 @@ impl App {
             "input.submit",
         ];
         let mut input_bindings = Vec::new();
-        for name in input_commands {
-            if let Some(binding) = config.get(name) {
-                input_bindings.push(binding.clone());
-            }
+        for command in input_commands {
+            // `config` is keyed by keybind *name* (e.g. `input_submit`), not by
+            // command (e.g. `input.submit`). Resolve the name first so the
+            // whole typing/editing/submission surface is wired.
+            let Some(name) = crate::keybind::name_for_command(command) else {
+                continue;
+            };
+            let Some(binding) = config.get(name) else {
+                continue;
+            };
+            input_bindings.push(binding.clone());
         }
         // Prompt-clear (`ctrl+c` when non-empty) overrides app-exit.
         if let Some(binding) = config.get("input_clear") {
@@ -1046,6 +1053,49 @@ mod dialog_tests {
     use crate::client::MockSdkClient;
     use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers};
     use serde_json::json;
+
+    #[tokio::test(flavor = "current_thread")]
+    async fn enter_on_home_submits_and_clears_prompt() {
+        let mut app = app();
+        app.sync.providers = providers();
+        app.local.set_agent("build");
+        // Bootstrap equivalents needed for a resolvable model.
+        app.sync.agents = serde_json::from_value(json!([
+            {
+                "name": "build",
+                "description": "General",
+                "mode": "primary",
+                "native": true,
+                "hidden": false,
+                "permission": {},
+                "options": {}
+            }
+        ]))
+        .unwrap();
+        app.local.set_model(
+            crate::local::ModelSelection {
+                provider_id: "p1".to_string(),
+                model_id: "alpha".to_string(),
+                variant: None,
+            },
+            false,
+        );
+        app.prompt_ready = true;
+        app.home_prompt.buffer.set_text("say ok");
+        app.rebuild_keymap();
+
+        // Press Enter through the real key dispatch path.
+        app.handle_input(Event::Key(KeyEvent::new(
+            KeyCode::Enter,
+            KeyModifiers::NONE,
+        )));
+
+        // submit_prompt must have cleared the home prompt buffer.
+        assert!(
+            app.home_prompt.buffer.is_empty(),
+            "prompt should be cleared after Enter submits"
+        );
+    }
 
     fn app() -> App {
         App::new(
