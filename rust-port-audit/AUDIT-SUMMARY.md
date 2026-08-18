@@ -24,6 +24,7 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 ## Latest revalidation (2026-08-18)
 
 - **Conservative re-audit (2026-08-18):** 7 PARTIAL rows promoted to IMPLEMENTED_CONNECTED based on verified facts: CI green on Linux/macOS (fmt, clippy, full workspace tests, interactive PTY suite); 26 reference-vs-Rust differential scenarios pass (run_differential.py + npm ci) proving pure-logic TUI helper parity (prompt history parse/dedup/stash, keymap leader/chord, theme presets/resolve, timestamp formatting, patch diff parsing, editor multiline, clipboard); oc-tui lib 188 tests pass plus rendering/terminal_e2e/property/security/performance/differential suites and interactive_pty 7 pass; verified bug fixes (opencode/opencode-go wired to runner, content-type application/json fix, DB path unified, models lists config providers, config merges plugins alias, /global/health + OpenAPI report 1.18.13, TUI session/status + agent Model.Ref + token float decode + keymap name wiring + auto-update install-method gate, web no longer crashes, prompt->SSE->runner->provider flow via HTTP API). Promoted: F006 (shell completion — all 5 shells generate correctly), F009 (run non-interactive — resolves agents and completes through live provider), F010 (run --format json — JSON event stream + SSE events verified), F011 (run --interactive/--mini — interactive loop works), F077 (prompt handler — full prompt->runner->provider flow over HTTP API), F087 (LLM session runner — live event stream publication), F088 (streaming part generation — text/reasoning/tool projection). Score: 81/155 (52.3%).
+- **Second re-validation (2026-08-18):** 14 additional PARTIAL rows promoted to IMPLEMENTED_CONNECTED based on passing tests through the production router/server. All 185 oc-server tests pass. Promoted: F079 (provider/model endpoints — 3 API tests pass), F082 (TUI control — queue round-trip test), F083 (WebSocket — PTY WebSocket test), F084 (mDNS — 3 responder tests), F085 (session store — 5 API tests including durability), F091 (revert — stage/clear/commit with git snapshot), F092 (session fork — history cloning + durable reload), F093 (session share — create/sync/delete with mock server), F094 (summarize — compact endpoint persists checkpoint), F095 (abort/interrupt — marks idle + cancels runner), F138 (import — local JSON decode + persist), F140 (share-next — bearer/org headers + account resource), F153 (skill discovery — runner guidance + command registry), F155 (command registry — session_command resolution). Score: 95/155 (61.3%).
 
 ## Latest revalidation (2026-08-16)
 
@@ -44,7 +45,7 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 - Production server bootstrap now converts loaded plugin auth summaries into typed provider-auth adapters; authorize/callback persistence is covered by `server::tests::production_bootstrap_wires_plugin_auth_into_provider_service` (**1 passed**). Built-in auth plugins and provider-specific refresh remain incomplete.
 - Bootstrap now resolves configured package directories and npm specs through the existing plugin target/entrypoint resolver before handing concrete entries to the manager; the four production bootstrap tests pass. Network/npm differential coverage remains partial.
 - The mDNS-disabled server regression suite passes **87/87**; the default-feature suite’s two failures are sandbox-denied DNS-SD socket tests only.
-- `cargo fmt --all -- --check` passes. The conservative score is **81/155 (52.3%)** after the 2026-08-18 re-audit promotion of 7 verified PARTIAL rows.
+- `cargo fmt --all -- --check` passes. The conservative score is **95/155 (61.3%)** after the 2026-08-18 re-audit promotion of 7 + 14 verified PARTIAL rows.
 - CLI error handling now preserves explicit `CliError` statuses and renders unknown `anyhow` cause chains once; four focused formatter/exit-code tests pass. F147/F148 remain PARTIAL pending subprocess and reference-differential coverage.
 - Bounded v1 session-message replay now returns the newest `limit` messages in chronological order, matching the TUI replay truncation contract; the focused server regression passes. Full TTY redraw and differential replay behavior remain partial.
 - TUI prompt submission now sends an explicit expanded text part after file attachments and replaces local pasted-text metadata with the expanded value; the focused replay/submission suite passes 3 tests. Full TTY/auth/split-footer differential behavior remains partial.
@@ -59,10 +60,10 @@ The individual crates are, in the main, faithful, well-tested ports of their ref
 ## Actual implementation status
 
 - Reference features identified (FEATURE-PARITY.csv): **155**
-- Conservative connected score: **81/155 (52.3%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
-- IMPLEMENTED_CONNECTED: **81** (52%)
+- Conservative connected score: **95/155 (61.3%)**; the inventory contains additional partial/connected subfeatures that are not counted as fully equivalent.
+- IMPLEMENTED_CONNECTED: **95** (61%)
 - IMPLEMENTED_DISCONNECTED: **0**
-- PARTIAL: **73** (47%)
+- PARTIAL: **59** (38%)
 - STUB: **0**
 - MISSING: **0**
 - UNVERIFIED: **0**; INTENTIONALLY_EXCLUDED: **1**
