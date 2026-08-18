@@ -325,7 +325,13 @@ mod tests {
 
     #[test]
     fn log_file_path_under_data_log() {
-        assert_eq!(log_file_path(), global::path::log().join("opencode.log"));
+        // Another test in this binary mutates OPENCODE_TEST_HOME concurrently;
+        // take the lock and snapshot the expected path once so the two sides
+        // of the comparison cannot straddle an environment mutation (flaky on
+        // Windows where scheduling differs).
+        let _lock = env_lock();
+        let expected = global::path::log().join("opencode.log");
+        assert_eq!(log_file_path(), expected);
     }
 
     #[test]
