@@ -977,6 +977,7 @@ async fn compact_session_with_summary(
     summary_override: Option<String>,
 ) -> bool {
     let message_id = session_message_id();
+    let model_limits = session_model_limits(state, session_id).await;
     let (info, checkpoint, pruned_messages, pruned_parts) = {
         let mut stores = state.stores.write().await;
         let config = stores.config.clone();
@@ -1005,7 +1006,8 @@ async fn compact_session_with_summary(
                     .map(|id| (id.to_string(), record.messages[index].clone()))
             })
             .collect::<Vec<_>>();
-        let recent_count = compaction_recent_count(&record.messages, &config);
+        let recent_count =
+            compaction_recent_count(&record.messages, &config, model_limits.as_ref());
         let summary_end = record.messages.len().saturating_sub(recent_count);
         let summary = summary_override
             .as_deref()
@@ -1275,12 +1277,63 @@ fn compact_message_lines(messages: &[Value]) -> String {
     trim_chars(&lines.join("\n"), 48_000)
 }
 
+/// Resolve the legacy recent-tail budget. When the resolved model exposes a
+/// usable context, this threads the model's limits through the shared pure
+/// `oc-session::compaction::preserve_recent_budget` rule instead of the flat
+/// 8k default. An explicit `compaction.preserve_recent_tokens` still wins, and
+/// the result is clamped exactly like the reference.
+fn legacy_compaction_budget(config: &Value, limits: Option<&RunnerModelLimits>) -> u64 {
+    use oc_session::overflow::{CompactionConfig, ConfigV1};
+    use oc_session::provider::{ProviderLimit, ProviderModel};
+
+    let compaction = config.get("compaction");
+    let value = |key: &str, alt: &str| {
+        compaction
+            .and_then(|v| v.get(key).or_else(|| v.get(alt)))
+            .and_then(Value::as_u64)
+    };
+    let tail_turns = value("tail_turns", "tailTurns");
+    let preserve = value("preserve_recent_tokens", "preserveRecentTokens");
+    let reserved = value("reserved", "reserved");
+
+    let cfg = ConfigV1 {
+        compaction: Some(CompactionConfig {
+            auto: None,
+            prune: None,
+            tail_turns,
+            preserve_recent_tokens: preserve,
+            reserved,
+        }),
+    };
+    if let Some(limits) = limits {
+        let context = limits.context.or(limits.input).unwrap_or(0) as f64;
+        if context > 0.0 {
+            let model = ProviderModel {
+                limit: ProviderLimit {
+                    context,
+                    input: limits.input.map(|v| v as f64),
+                    output: limits.output.unwrap_or(0) as f64,
+                },
+                ..ProviderModel::empty("model", "provider")
+            };
+            return oc_session::compaction::preserve_recent_budget(&cfg, &model);
+        }
+    }
+    // No resolvable model context: honor the explicit config budget, else the
+    // flat 8k legacy default, clamped like the reference floor/ceiling.
+    preserve.unwrap_or(8_000).clamp(2_000, 8_000)
+}
+
 /// Select the recent tail using the same two controls as the reference
 /// compaction policy: preserve at least the configured number of recent user
 /// turns, while allowing additional messages that fit the recent-token budget.
 /// The server stores JSON messages rather than the typed v1 message graph, so
 /// the byte-length estimate is intentionally conservative and deterministic.
-fn compaction_recent_count(messages: &[Value], config: &Value) -> usize {
+fn compaction_recent_count(
+    messages: &[Value],
+    config: &Value,
+    limits: Option<&RunnerModelLimits>,
+) -> usize {
     if messages.is_empty() {
         return 0;
     }
@@ -1290,15 +1343,7 @@ fn compaction_recent_count(messages: &[Value], config: &Value) -> usize {
         .and_then(Value::as_u64)
         .unwrap_or(2)
         .max(1) as usize;
-    let preserve_tokens = compaction
-        .and_then(|value| {
-            value
-                .get("preserve_recent_tokens")
-                .or_else(|| value.get("preserveRecentTokens"))
-        })
-        .and_then(Value::as_u64)
-        .unwrap_or(8_000)
-        .max(2_000) as usize;
+    let preserve_tokens = legacy_compaction_budget(config, limits) as usize;
 
     let mut count = 0usize;
     let mut turns = 0usize;
@@ -1540,6 +1585,61 @@ async fn apply_plan_reminders(state: &AppState, session_id: &str, entries: &mut 
         }
         user.text.push_str(&text);
     }
+}
+
+/// Resolve the plan file path for a session, relative to the session
+/// directory when possible, for display in the plan-exit question.
+/// Mirrors the reference plan.ts which references the active plan file
+/// (e.g. `.opencode/plans/...`) rather than a hardcoded name.
+async fn session_plan_display_path(state: &AppState, session_id: &str) -> String {
+    let record = {
+        let stores = state.stores.read().await;
+        stores.sessions.get(session_id).cloned()
+    };
+    let Some(record) = record else {
+        return "Plan.md".to_string();
+    };
+    let directory = record.info.location.directory.clone();
+    let worktree = git_worktree(&directory);
+    let plan_base = worktree.as_deref().unwrap_or(&directory).to_string();
+    let has_vcs = worktree.is_some();
+    let created = record
+        .info
+        .time
+        .created
+        .to_string()
+        .parse::<i64>()
+        .unwrap_or_default();
+    let slug = session_slug(&record.info.title);
+    let data_dir = state_data_dir(state).await;
+    let plan =
+        oc_session::plan::plan_path(&plan_base, &data_dir, has_vcs, created.max(0) as u64, &slug);
+    let cwd = std::path::Path::new(&directory);
+    std::path::Path::new(&plan)
+        .strip_prefix(cwd)
+        .map(|rel| rel.to_string_lossy().into_owned())
+        .unwrap_or_else(|_| plan)
+}
+
+/// Best-effort slug derivation matching the plan filename convention.
+fn session_slug(title: &str) -> String {
+    let slug: String = title
+        .to_ascii_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let slug = slug.trim_matches('-').to_string();
+    if slug.is_empty() {
+        "plan".to_string()
+    } else {
+        slug
+    }
+}
+
+/// The opencode data directory used for non-VCS plan storage.
+async fn state_data_dir(state: &AppState) -> String {
+    let _ = state;
+    oc_util::global::path::data().to_string_lossy().into_owned()
 }
 
 /// Resolve the git worktree root for a directory, if it is inside a VCS repo.
@@ -1817,6 +1917,19 @@ fn configured_model_metadata(
 
 fn token_limit(value: f64) -> Option<u64> {
     value.is_finite().then_some(value.max(0.0).round() as u64)
+}
+
+/// Resolve the token limits for a session's configured model, preferring any
+/// config-defined provider model and falling back to the models.dev catalog.
+async fn session_model_limits(state: &AppState, session_id: &str) -> Option<RunnerModelLimits> {
+    let (config, provider, model) = {
+        let stores = state.stores.read().await;
+        let config = stores.config.clone();
+        let model = stores.sessions.get(session_id)?.info.model.clone()?;
+        (config, model.provider_id, model.id)
+    };
+    let (_, configured) = configured_model_metadata(&config, &provider, &model);
+    configured.or_else(|| catalog_model_metadata(&provider, &model).1)
 }
 
 const FALLBACK_COMPACTION_ENTRIES: usize = 40;
@@ -3532,6 +3645,7 @@ async fn settle_plan_exit(
     state: AppState,
     input: oc_session_runner::session::services::ExecuteInput,
 ) -> Result<oc_session_runner::session::services::Settlement, ToolSettlementError> {
+    let plan_display = session_plan_display_path(&state, &input.session_id).await;
     let question_input = oc_session_runner::session::services::ExecuteInput {
         session_id: input.session_id.clone(),
         agent: input.agent.clone(),
@@ -3541,7 +3655,7 @@ async fn settle_plan_exit(
             name: "question".to_string(),
             input: serde_json::json!({
                 "questions": [{
-                    "question": "Plan at PLAN.md is complete. Would you like to switch to the build agent and start implementing?",
+                    "question": format!("Plan at {plan_display} is complete. Would you like to switch to the build agent and start implementing?"),
                     "header": "Build Agent",
                     "custom": false,
                     "options": [
@@ -4163,6 +4277,78 @@ fn background_subagent_result(
     }
 }
 
+/// Render a task output block. Mirrors `renderOutput` in
+/// reference/packages/opencode/src/tool/task.ts.
+fn render_task_output(session_id: &str, state: &str, summary: Option<&str>, text: &str) -> String {
+    let tag = if state == "error" {
+        "task_error"
+    } else {
+        "task_result"
+    };
+    let mut lines = vec![format!(r#"<task id="{session_id}" state="{state}">"#)];
+    if let Some(summary) = summary {
+        lines.push(format!("<summary>{summary}</summary>"));
+    }
+    lines.push(format!("<{tag}>"));
+    lines.push(text.to_string());
+    lines.push(format!("</{tag}>"));
+    lines.push("</task>".to_string());
+    lines.join("\n")
+}
+
+/// Inject a synthetic user message into the parent session so its durable
+/// transcript shows the background subagent's completion. Mirrors the
+/// reference's `TaskTool.injectBackgroundResult`.
+async fn inject_background_result(
+    state: &AppState,
+    parent_session_id: &str,
+    child_id: &str,
+    result_state: &str,
+    output: &str,
+    description: &str,
+) {
+    let created = now_millis();
+    let summary = if result_state == "error" {
+        format!("Background task failed: {description}")
+    } else {
+        format!("Background task completed: {description}")
+    };
+    let text = render_task_output(child_id, result_state, Some(&summary), output);
+    let message = serde_json::json!({
+        "id": session_message_id(),
+        "time": { "created": created },
+        "type": "user",
+        "text": "",
+        "files": [],
+        "agents": [],
+        "content": [{
+            "type": "text",
+            "synthetic": true,
+            "text": text,
+        }],
+    });
+    {
+        let mut stores = state.stores.write().await;
+        let Some(record) = stores.sessions.get_mut(parent_session_id) else {
+            return;
+        };
+        record.messages.push(message.clone());
+        record.info.time.updated = created;
+    }
+    state.persist_message(parent_session_id, &message);
+    state.emit_event(Event {
+        id: event_id(),
+        metadata: None,
+        r#type: "message.created".into(),
+        durable: None,
+        location: None,
+        data: json!({
+            "sessionID": parent_session_id,
+            "message": message,
+        }),
+    });
+}
+
 async fn spawn_background_subagent(
     state: AppState,
     child_id: String,
@@ -4173,10 +4359,12 @@ async fn spawn_background_subagent(
     let run_state = state.clone();
     let run_child_id = child_id.clone();
     let run_parent_id = parent_session_id.clone();
+    let run_title = title.clone();
     let run: oc_core::background_job::Run = Arc::new(move || {
         let state = run_state.clone();
         let child_id = run_child_id.clone();
         let parent_session_id = run_parent_id.clone();
+        let title = run_title.clone();
         Box::pin(async move {
             // A cancellation can race with the registry's task spawn. Avoid
             // admitting a runner after the job has already been cancelled.
@@ -4219,9 +4407,30 @@ async fn spawn_background_subagent(
             if status == "cancelled" {
                 return Err("background job cancelled".into());
             }
-            completed_subagent_result(state, child_id, parent_session_id)
-                .await
-                .map(|result| result.output)
+            let result = completed_subagent_result(
+                state.clone(),
+                child_id.clone(),
+                parent_session_id.clone(),
+            )
+            .await?;
+            // Mirror the reference's `TaskTool.injectBackgroundResult`: after a
+            // background subagent completes, inject a synthetic user message into
+            // the parent session so the parent transcript shows the child result
+            // as a durable part.
+            inject_background_result(
+                &state,
+                &parent_session_id,
+                &child_id,
+                if status == "error" {
+                    "error"
+                } else {
+                    "completed"
+                },
+                &result.output,
+                &title,
+            )
+            .await;
+            Ok(result.output)
         })
     });
 
@@ -5085,7 +5294,8 @@ mod tests {
         assert_eq!(
             compaction_recent_count(
                 &messages,
-                &json!({ "compaction": { "tail_turns": 2, "preserve_recent_tokens": 2000 } })
+                &json!({ "compaction": { "tail_turns": 2, "preserve_recent_tokens": 2000 } }),
+                None
             ),
             6
         );
@@ -5101,10 +5311,46 @@ mod tests {
         assert_eq!(
             compaction_recent_count(
                 &large_messages,
-                &json!({ "compaction": { "tail_turns": 2, "preserve_recent_tokens": 2000 } })
+                &json!({ "compaction": { "tail_turns": 2, "preserve_recent_tokens": 2000 } }),
+                None
             ),
             4
         );
+    }
+
+    #[test]
+    fn legacy_compaction_budget_is_model_aware() {
+        // Small-context model: usable ≈ 32k context − 8k output reserve = 24k;
+        // ×0.25 = 6k, which is larger than the 2k floor but below the 8k flat
+        // legacy default.
+        let small = RunnerModelLimits {
+            context: Some(32_000),
+            input: None,
+            output: Some(8_000),
+        };
+        // Large-context model: usable ×0.25 clamps to the 8k ceiling.
+        let large = RunnerModelLimits {
+            context: Some(1_000_000),
+            input: None,
+            output: Some(8_000),
+        };
+        let config = json!({});
+        let small_budget = legacy_compaction_budget(&config, Some(&small));
+        let large_budget = legacy_compaction_budget(&config, Some(&large));
+        assert!(
+            large_budget > small_budget,
+            "large {large_budget} <= small {small_budget}"
+        );
+        assert!(
+            small_budget < 8_000,
+            "small model budget should be below the flat default"
+        );
+        assert_eq!(large_budget, 8_000);
+        // Unknown model still falls back to the flat 8k default.
+        assert_eq!(legacy_compaction_budget(&config, None), 8_000);
+        // An explicit config budget wins and is clamped like the reference.
+        let explicit = json!({ "compaction": { "preserve_recent_tokens": 4000 } });
+        assert_eq!(legacy_compaction_budget(&explicit, Some(&large)), 4000);
     }
 
     #[test]
@@ -7064,5 +7310,55 @@ export default {
         assert!(!child.active);
         assert_eq!(child.info.parent_id.as_deref(), Some(parent_id));
         assert_eq!(child.messages[1]["text"], "stub: background inspection");
+        drop(stores);
+
+        // The background job must settle with a completed status; the synthetic
+        // completion injection runs in the job's tail, so wait for it.
+        for _ in 0..100 {
+            let settled = state
+                .background_jobs
+                .get("ses_background_child")
+                .await
+                .is_some_and(|info| info.status == "completed");
+            if settled {
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        }
+        assert_eq!(
+            state
+                .background_jobs
+                .get("ses_background_child")
+                .await
+                .map(|info| info.status),
+            Some("completed".to_string())
+        );
+
+        // The parent session transcript gains a synthetic completion message
+        // with the rendered task output part.
+        let stores = state.stores.read().await;
+        let parent = stores
+            .sessions
+            .get(parent_id)
+            .expect("parent session still present");
+        let injected = parent
+            .messages
+            .iter()
+            .find(|message| {
+                message["content"]
+                    .as_array()
+                    .is_some_and(|parts| parts.iter().any(|part| part["synthetic"] == true))
+            })
+            .expect("parent gains a synthetic completion message");
+        let part = injected["content"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|part| part["synthetic"] == true)
+            .unwrap();
+        let text = part["text"].as_str().unwrap();
+        assert!(text.contains(r#"<task id="ses_background_child" state="completed">"#));
+        assert!(text.contains("Background task completed: Run in background"));
+        assert!(text.contains("<task_result>"));
     }
 }
