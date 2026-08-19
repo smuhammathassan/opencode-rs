@@ -737,8 +737,8 @@ pub enum GithubCommand {
 
 #[derive(Args, Clone, Debug, Default)]
 pub struct PluginArgs {
-    /// npm module name
-    pub module: String,
+    /// npm module name (optional: read from stdin when not a TTY)
+    pub module: Option<String>,
     /// install in global config
     #[arg(short = 'g', long, default_value_t = false)]
     pub global: bool,

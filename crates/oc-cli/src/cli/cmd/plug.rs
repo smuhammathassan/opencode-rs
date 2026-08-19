@@ -1,20 +1,50 @@
 //! `opencode plugin <module>` (alias `plug`)
 //! From reference/packages/opencode/src/cli/cmd/plug.ts.
 
+use std::io::IsTerminal;
+
 use crate::cli::args::{Cli, PluginArgs};
 use crate::cli::context::{Context, Vcs};
 use crate::cli::ui;
 
-pub async fn run(_cli: &Cli, args: &PluginArgs) -> anyhow::Result<i32> {
-    let module = args.module.trim();
-    if module.is_empty() {
-        ui::error("module is required");
-        return Ok(1);
+/// Resolve the module name: from argv, or from stdin when not a TTY.
+/// Mirrors the reference's non-interactive path where `args.module ?? ""` is
+/// used and an empty value triggers an error — extended with a stdin-line
+/// fallback so that piping works.
+fn resolve_module(args: &PluginArgs) -> anyhow::Result<String> {
+    if let Some(module) = &args.module {
+        let trimmed = module.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
     }
+    // stdin fallback: read one line (the module spec) when not a TTY.
+    if !std::io::stdin().is_terminal() {
+        use std::io::BufRead;
+        let stdin = std::io::stdin();
+        let mut line = String::new();
+        let read = stdin.lock().read_line(&mut line)?;
+        if read == 0 {
+            return Err(anyhow::anyhow!(
+                "module is required; pass it as an argument or pipe it via stdin"
+            ));
+        }
+        let trimmed = line.trim().to_string();
+        if !trimmed.is_empty() {
+            return Ok(trimmed);
+        }
+    }
+    Err(anyhow::anyhow!(
+        "module is required; pass it as an argument or pipe it via stdin"
+    ))
+}
+
+pub async fn run(_cli: &Cli, args: &PluginArgs) -> anyhow::Result<i32> {
+    let module = resolve_module(args)?;
 
     ui::println(&[&format!("◇  Install plugin {module}")]);
     let ctx = Context::load(std::env::current_dir()?)?;
-    let spec = module.to_string();
+    let spec = module.clone();
     let installed = tokio::task::spawn_blocking({
         let spec = spec.clone();
         move || oc_plugin::install::install_plugin(&spec)

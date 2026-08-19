@@ -58,6 +58,14 @@ async fn run_add(ctx: &Context, args: &McpAddArgs) -> anyhow::Result<i32> {
         return Ok(0);
     }
 
+    // Non-TTY fallback: when stdin is not a terminal, accept config values
+    // from stdin lines (name, type, endpoint) instead of blocking on
+    // interactive prompts.  Mirror of the reference's flag-based non-interactive
+    // path, extended with a stdin-line fallback for piping.
+    if !io::stdin().is_terminal() {
+        return run_noninteractive_add(ctx).await;
+    }
+
     run_interactive_add(ctx).await
 }
 
@@ -256,6 +264,84 @@ fn server_value(args: &McpAddArgs) -> anyhow::Result<Value> {
         server.insert("environment".into(), serde_json::to_value(environment)?);
     }
     Ok(Value::Object(server))
+}
+
+/// Non-interactive MCP add: read name, type, and endpoint from stdin lines.
+///
+/// Expected format (one value per line):
+/// ```text
+/// server-name
+/// local            (or "remote")
+/// command args...  (for local)  /  https://...  (for remote)
+/// ```
+///
+/// Lines are trimmed; blank lines are skipped.  When fewer than 3 lines are
+/// available the missing values cause an error rather than a hang.
+async fn run_noninteractive_add(ctx: &Context) -> anyhow::Result<i32> {
+    use std::io::BufRead;
+    let stdin = io::stdin();
+    let reader = stdin.lock();
+    let lines: Vec<String> = reader
+        .lines()
+        .filter_map(Result::ok)
+        .map(|l| l.trim().to_string())
+        .filter(|l| !l.is_empty())
+        .take(3)
+        .collect();
+
+    if lines.len() < 3 {
+        return Err(anyhow::anyhow!(
+            "non-interactive MCP add expects 3 lines on stdin: name, type (local/remote), endpoint; got {}",
+            lines.len()
+        ));
+    }
+
+    let name = lines[0].clone();
+    let kind = lines[1].to_lowercase();
+    let endpoint = lines[2].clone();
+
+    let path = global_config_path(ctx);
+    let mut config = read_config(&path)?;
+    let root = config
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("{} must contain a JSON object", path.display()))?;
+    let mcp = root
+        .entry("mcp")
+        .or_insert_with(|| Value::Object(Map::new()))
+        .as_object_mut()
+        .ok_or_else(|| anyhow::anyhow!("the mcp config must be an object"))?;
+
+    let server = match kind.as_str() {
+        "local" => {
+            let command: Vec<String> = endpoint.split_whitespace().map(str::to_string).collect();
+            if command.is_empty() {
+                return Err(anyhow::anyhow!("a local MCP command is required"));
+            }
+            let mut server = Map::new();
+            server.insert("type".into(), Value::String("local".into()));
+            server.insert("command".into(), serde_json::to_value(command)?);
+            Value::Object(server)
+        }
+        "remote" => {
+            if url::Url::parse(&endpoint).is_err() {
+                return Err(anyhow::anyhow!("Invalid URL: {endpoint}"));
+            }
+            let mut server = Map::new();
+            server.insert("type".into(), Value::String("remote".into()));
+            server.insert("url".into(), Value::String(endpoint));
+            Value::Object(server)
+        }
+        other => {
+            return Err(anyhow::anyhow!(
+                "server type must be `local` or `remote`, got `{other}`"
+            ))
+        }
+    };
+
+    mcp.insert(name.clone(), server);
+    write_mcp_config(&path, &config, &name)?;
+    println!("configured MCP server `{name}` in {}", path.display());
+    Ok(0)
 }
 
 async fn run_interactive_add(ctx: &Context) -> anyhow::Result<i32> {

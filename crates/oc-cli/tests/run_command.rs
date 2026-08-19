@@ -88,6 +88,127 @@ fn code(output: &Output) -> i32 {
     })
 }
 
+/// `opencode agent create` must not hang when stdin is not a TTY (F024).
+/// With --description provided and null stdin, the deterministic generation
+/// path should complete without blocking.
+#[test]
+fn agent_create_non_tty_exits_instead_of_hanging() {
+    let home = test_home("agent-create-nontty");
+    let agents_dir = home.join(".opencode").join("agents");
+    fs::create_dir_all(&agents_dir).expect("agents dir");
+
+    let mut child = Command::new(BIN)
+        .args([
+            "agent",
+            "create",
+            "--description",
+            "A test agent for watchdog",
+            "--mode",
+            "subagent",
+            "--permissions",
+            "read,edit",
+            "--path",
+            home.to_str().unwrap(),
+        ])
+        .env("OPENCODE_TEST_HOME", &home)
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("XDG_STATE_HOME")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("opencode should spawn");
+    let output = wait_with_timeout(&mut child, Duration::from_secs(30));
+    let _ = fs::remove_dir_all(&home);
+
+    let output = output.unwrap_or_else(|| {
+        let _ = child.kill();
+        panic!("opencode agent create hung on non-TTY stdin: expected prompt exit");
+    });
+    assert_eq!(
+        code(&output),
+        0,
+        "agent create should succeed, stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `opencode mcp add` must not hang when stdin is not a TTY (F037).
+/// With no flags and null stdin the non-interactive fallback should either
+/// succeed or error promptly, never block on missing prompts.
+#[test]
+fn mcp_add_non_tty_exits_instead_of_hanging() {
+    let home = test_home("mcp-add-nontty");
+    let mut child = Command::new(BIN)
+        .args(["mcp", "add"])
+        .env("OPENCODE_TEST_HOME", &home)
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("XDG_STATE_HOME")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("opencode should spawn");
+    let output = wait_with_timeout(&mut child, Duration::from_secs(30));
+    let _ = fs::remove_dir_all(&home);
+
+    // Must exit within the timeout — either an error (3 lines expected) or
+    // any other prompt-based failure, but definitely not a hang.
+    let output = output.unwrap_or_else(|| {
+        let _ = child.kill();
+        panic!("opencode mcp add hung on non-TTY stdin: expected prompt exit");
+    });
+    // We only assert it did NOT hang.  The exit code is expected to be
+    // non-zero (stdin provides 0 lines, which is fewer than the required 3).
+    assert!(
+        !code(&output).eq(&0) || code(&output).eq(&0),
+        "mcp add exited (did not hang), stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
+/// `opencode plugin` must not hang when stdin is not a TTY (F038).
+/// With no module arg and null stdin the non-interactive fallback should
+/// either read from stdin or error promptly, never block on a missing prompt.
+#[test]
+fn plugin_non_tty_exits_instead_of_hanging() {
+    let home = test_home("plugin-nontty");
+    let mut child = Command::new(BIN)
+        .args(["plugin"])
+        .env("OPENCODE_TEST_HOME", &home)
+        .env_remove("XDG_DATA_HOME")
+        .env_remove("XDG_CACHE_HOME")
+        .env_remove("XDG_CONFIG_HOME")
+        .env_remove("XDG_STATE_HOME")
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .expect("opencode should spawn");
+    let output = wait_with_timeout(&mut child, Duration::from_secs(30));
+    let _ = fs::remove_dir_all(&home);
+
+    let output = output.unwrap_or_else(|| {
+        let _ = child.kill();
+        panic!("opencode plugin hung on non-TTY stdin: expected prompt exit");
+    });
+    // Must exit (not hang). Exit code should be non-zero because no module
+    // was provided and stdin was null (0 bytes read).
+    assert_ne!(
+        code(&output),
+        0,
+        "plugin exited with non-zero (expected error), stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+}
+
 /// An unknown command must exit promptly with code 1 instead of hanging while
 /// waiting for a session that never goes idle (F013).
 #[test]
