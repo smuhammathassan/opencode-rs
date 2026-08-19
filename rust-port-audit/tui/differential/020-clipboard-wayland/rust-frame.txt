@@ -2,8 +2,8 @@
 Scenario: 020-clipboard-wayland - Clipboard Wayland Selection
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 020-clipboard-wayland
 Exit Code: 0
-Duration: 550 ms
-Timestamp: 2026-08-17T10:10:05Z
+Duration: 1385 ms
+Timestamp: 2026-08-19T08:16:17Z
 SHA-256 Output Hash: ad22d89fe5bf112ec4840b79daa2baddaf04ee812fe6f8c9df59c6abded88736
 Output:
 ["wl-copy"]

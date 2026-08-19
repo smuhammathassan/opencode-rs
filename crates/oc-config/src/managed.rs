@@ -35,6 +35,7 @@ pub fn parse_managed_plist(json: &str) -> Result<String, serde_json::Error> {
 
 /// A single node of an XML property-list, mirroring plutil's JSON conversion
 /// of `<dict>/<array>/<string>/<integer>/<real>/<true|false>/<data>/<date>`.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq)]
 enum PlistNode {
     Dict(Vec<(String, PlistNode)>),
@@ -76,6 +77,7 @@ impl PlistNode {
 /// supports. No external XML dependency: it walks `<dict>/<array>` containers
 /// and the scalar `<string>/<integer>/<real>/<data>/<date>/<true>/<false>`
 /// leaves, ignoring whitespace and the wrapping `<plist ...>` element.
+#[allow(dead_code)]
 struct PlistParser<'a> {
     input: &'a str,
     pos: usize,
@@ -212,6 +214,7 @@ impl<'a> PlistParser<'a> {
 
 /// Parse an XML plist into the JSON shape `plutil -convert json` emits. Used
 /// on platforms without `plutil` (F055). The root element must be a `<dict>`.
+#[allow(dead_code)]
 fn parse_xml_plist(raw: &str) -> Result<serde_json::Map<String, serde_json::Value>, String> {
     let xml = strip_xml_head(raw);
     let mut parser = PlistParser::new(&xml);
@@ -228,6 +231,7 @@ fn parse_xml_plist(raw: &str) -> Result<serde_json::Map<String, serde_json::Valu
 /// Strip the XML declaration, doctype, comments, and the wrapping `<plist>`
 /// element so the recursive parser starts at the root `<dict>`. Real plist
 /// files always carry these; hand-written fixtures may not.
+#[allow(dead_code)]
 fn strip_xml_head(raw: &str) -> String {
     let mut s = raw.trim().to_string();
     loop {
@@ -254,6 +258,7 @@ fn strip_xml_head(raw: &str) -> String {
 }
 
 /// Whether `raw` looks like JSON rather than XML plist.
+#[allow(dead_code)]
 fn looks_like_json(raw: &str) -> bool {
     let trimmed = raw.trim_start();
     trimmed.starts_with('{') || trimmed.starts_with('[')

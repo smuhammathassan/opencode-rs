@@ -4,3 +4,6 @@
 # local worktrees
 .worktrees/
 *.local
+criteria/
+node_modules/
+.env

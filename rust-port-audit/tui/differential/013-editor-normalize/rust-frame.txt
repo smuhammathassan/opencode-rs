@@ -2,8 +2,8 @@
 Scenario: 013-editor-normalize - External Editor Prompt Normalization
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 013-editor-normalize
 Exit Code: 0
-Duration: 558 ms
-Timestamp: 2026-08-17T10:10:00Z
+Duration: 1084 ms
+Timestamp: 2026-08-19T08:16:05Z
 SHA-256 Output Hash: 8091b8b6fa2469763fc461886fa0d1687b48ff62f7cf33730fbac5936f18ac5d
 Output:
 ["hello","hello","a\nb\n","a\nb",""]

@@ -19,8 +19,8 @@ const f = patchFile({filePath:"/tmp/a.ts",relativePath:"a.ts",type:"update",patc
 console.log(canon(f ? [{relativePath:f.relativePath, additions:f.additions, deletions:f.deletions}] : null));
 
 Exit Code: 0
-Duration: 163 ms
-Timestamp: 2026-08-17T10:10:00Z
+Duration: 574 ms
+Timestamp: 2026-08-19T08:16:06Z
 SHA-256 Output Hash: aae36690d9c6e6b5025ff528cb9683471c5b277006739d26c154cdb4744c2661
 Output:
 [{"additions":1,"deletions":1,"relativePath":"a.ts"}]

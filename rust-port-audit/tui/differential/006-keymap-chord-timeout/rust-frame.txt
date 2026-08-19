@@ -2,8 +2,8 @@
 Scenario: 006-keymap-chord-timeout - Keybind Leader Default
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 006-keymap-chord-timeout
 Exit Code: 0
-Duration: 562 ms
-Timestamp: 2026-08-17T10:09:55Z
+Duration: 1179 ms
+Timestamp: 2026-08-19T08:15:53Z
 SHA-256 Output Hash: f7eeabb003f1dddd579b3e9edee7315bdcb923766db88e67db87b0d9323ba30d
 Output:
 {"leader_default":"ctrl+x"}

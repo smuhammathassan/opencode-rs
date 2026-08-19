@@ -2,8 +2,8 @@
 Scenario: 015-locale-duration - Locale Duration Formatting
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 015-locale-duration
 Exit Code: 0
-Duration: 562 ms
-Timestamp: 2026-08-17T10:10:01Z
+Duration: 1349 ms
+Timestamp: 2026-08-19T08:16:08Z
 SHA-256 Output Hash: b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c
 Output:
 ["0ms","5.0s","1m 5s","1h 2m","1d 0h"]

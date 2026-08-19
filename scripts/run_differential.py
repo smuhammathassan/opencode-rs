@@ -507,8 +507,8 @@ def run_differential() -> int:
                 "reference_source": sc["ref_source"],
                 "reference_exit_code": ref_proc.returncode,
                 "rust_exit_code": rust_proc.returncode,
-                "reference_output": ref_out,
-                "rust_output": rust_out,
+                "reference_output": None if ref_out is NOT_FOUND else ref_out,
+                "rust_output": None if rust_out is NOT_FOUND else rust_out,
                 "input_sha256": input_hash,
                 "reference_output_sha256": ref_hash,
                 "rust_output_sha256": rust_hash,
@@ -516,7 +516,7 @@ def run_differential() -> int:
                 "reference_duration_ms": ref_duration_ms,
                 "rust_duration_ms": rust_duration_ms,
                 "executed_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-            }, f, indent=2)
+            }, f, indent=2, default=str)
 
     print(f"\nSummary: {passed} passed, {failed} failed.")
     return 0 if failed == 0 else 1

@@ -19,8 +19,8 @@ const cases = [0,5000,65000,3723000,86400000];
 console.log(canon(cases.map(duration)));
 
 Exit Code: 0
-Duration: 160 ms
-Timestamp: 2026-08-17T10:10:01Z
+Duration: 373 ms
+Timestamp: 2026-08-19T08:16:08Z
 SHA-256 Output Hash: b9b5a68e80623484b60758a0f623d3891cf2e3432b6d44d6cf13fd7864f1617c
 Output:
 ["0ms","5.0s","1m 5s","1h 2m","1d 0h"]

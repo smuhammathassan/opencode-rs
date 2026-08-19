@@ -2,8 +2,8 @@
 Scenario: 022-clipboard-x11 - Clipboard X11 Fallback
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 022-clipboard-x11
 Exit Code: 0
-Duration: 548 ms
-Timestamp: 2026-08-17T10:10:06Z
+Duration: 1231 ms
+Timestamp: 2026-08-19T08:16:20Z
 SHA-256 Output Hash: 42d48515f417f24df501569c5c2fabf5cbf9f90104606fb3e6b7b6974a7a79f4
 Output:
 {"xclip":["xclip","-selection","clipboard"],"xsel":["xsel","--clipboard","--input"]}

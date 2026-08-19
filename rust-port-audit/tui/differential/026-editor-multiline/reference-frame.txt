@@ -19,8 +19,8 @@ const cases = ["first\nsecond\nthird\n","single\n","trailing\n\n\n"];
 console.log(canon(cases.map(normalizePromptContent)));
 
 Exit Code: 0
-Duration: 150 ms
-Timestamp: 2026-08-17T10:10:09Z
+Duration: 437 ms
+Timestamp: 2026-08-19T08:16:27Z
 SHA-256 Output Hash: 7037727fea9f0dcdd5227a14a192201e2fe0367fda7911d44849a056aad2a876
 Output:
 ["first\nsecond\nthird\n","single","trailing\n\n\n"]

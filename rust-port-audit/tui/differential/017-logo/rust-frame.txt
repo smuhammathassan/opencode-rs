@@ -2,8 +2,8 @@
 Scenario: 017-logo - Home Logo Left Column
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 017-logo
 Exit Code: 0
-Duration: 588 ms
-Timestamp: 2026-08-17T10:10:03Z
+Duration: 1421 ms
+Timestamp: 2026-08-19T08:16:11Z
 SHA-256 Output Hash: b7f935318607a6b14245628deb98eecee6e63f393baf94709397c3c6fb374080
 Output:
 ["                   ","█▀▀█ █▀▀█ █▀▀█ █▀▀▄","█__█ █__█ █^^^ █__█","▀▀▀▀ █▀▀▀ ▀▀▀▀ ▀~~▀"]

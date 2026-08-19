@@ -2,8 +2,8 @@
 Scenario: 026-editor-multiline - Editor Multiline Normalization
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 026-editor-multiline
 Exit Code: 0
-Duration: 575 ms
-Timestamp: 2026-08-17T10:10:09Z
+Duration: 1237 ms
+Timestamp: 2026-08-19T08:16:27Z
 SHA-256 Output Hash: 7037727fea9f0dcdd5227a14a192201e2fe0367fda7911d44849a056aad2a876
 Output:
 ["first\nsecond\nthird\n","single","trailing\n\n\n"]

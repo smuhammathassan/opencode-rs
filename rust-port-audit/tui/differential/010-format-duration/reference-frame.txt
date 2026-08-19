@@ -19,8 +19,8 @@ const cases = [0,1,45,59,60,61,3599,3600,86399,86400,604799,604800,1209600];
 console.log(canon(cases.map(formatDuration)));
 
 Exit Code: 0
-Duration: 140 ms
-Timestamp: 2026-08-17T10:09:58Z
+Duration: 390 ms
+Timestamp: 2026-08-19T08:16:00Z
 SHA-256 Output Hash: 20ec90410cec73526569957b06e8a12158683f968bed4138835dd109348c8765
 Output:
 ["","1s","45s","59s","1m","1m 1s","59m 59s","1h","23h 59m","~1 day","~6 days","~1 week","~2 weeks"]

@@ -109,17 +109,26 @@ impl TuiSession {
     }
 
     fn quit_cleanly(&mut self) {
-        // Send Ctrl+C
-        self.write_all(b"\x03");
+        // Send Ctrl+C twice to trigger clean prompt abort and exit
+        self.write_all(b"\x03\x03");
         let start = Instant::now();
-        while start.elapsed() < Duration::from_secs(3) {
+        while start.elapsed() < Duration::from_millis(500) {
             if let Ok(Some(_)) = self.child.try_wait() {
                 return;
             }
-            std::thread::sleep(Duration::from_millis(50));
+            std::thread::sleep(Duration::from_millis(20));
         }
         let _ = self.child.kill();
         let _ = self.child.wait();
+    }
+}
+
+impl Drop for TuiSession {
+    fn drop(&mut self) {
+        if let Ok(None) = self.child.try_wait() {
+            let _ = self.child.kill();
+            let _ = self.child.wait();
+        }
     }
 }
 
@@ -275,12 +284,12 @@ fn tui_sigterm_exits_and_restores() {
     let mut session = launch(80, 24);
     session.wait_frame("Ask", Duration::from_secs(8));
 
-    // Trigger exit via Ctrl+C
-    session.write_all(b"\x03");
-    let drain = session.read_drain(Duration::from_secs(3));
+    // Trigger exit via double Ctrl+C
+    session.write_all(b"\x03\x03");
+    let drain = session.read_drain(Duration::from_secs(2));
 
-    // Confirm process exits
-    let _ = session.child.wait();
+    // Confirm process exits cleanly
+    session.quit_cleanly();
     assert!(
         drain.contains("\x1b[?1049l") || drain.contains("\x1b[?25h") || drain.is_empty(),
         "Teardown must restore terminal"

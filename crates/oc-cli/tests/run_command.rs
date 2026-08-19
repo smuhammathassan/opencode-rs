@@ -38,6 +38,7 @@ fn spawn_in(home: &PathBuf, args: &[&str]) -> Child {
         .env_remove("XDG_CACHE_HOME")
         .env_remove("XDG_CONFIG_HOME")
         .env_remove("XDG_STATE_HOME")
+        .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

@@ -2,8 +2,8 @@
 Scenario: 024-patch-metadata-multi - Apply-Patch Multi-File Parsing
 Executed Command: cargo run -q -p oc-tui --example diff_scenarios -- 024-patch-metadata-multi
 Exit Code: 0
-Duration: 561 ms
-Timestamp: 2026-08-17T10:10:08Z
+Duration: 1303 ms
+Timestamp: 2026-08-19T08:16:24Z
 SHA-256 Output Hash: 80d88080bc64c4a14f723ccdea2e4c4ad18cd371ca8e156bf93001aa2c8bf412
 Output:
 [{"additions":1,"deletions":1,"relativePath":"a.rs"},{"additions":1,"deletions":0,"relativePath":"c.md"}]
