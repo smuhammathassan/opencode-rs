@@ -41,8 +41,9 @@ pub async fn run(_cli: &Cli, args: &UpgradeArgs) -> anyhow::Result<i32> {
         },
     };
 
-    let current = match upgrade::parse_version(crate::VERSION) {
-        Some(current) => current,
+    match upgrade::upgrade_decision(crate::VERSION, &target) {
+        // Either the installed version or the (already normalized) target could
+        // not be parsed as a plain `x.y.z` version.
         None => {
             ui::println(&[
                 Style::TEXT_DANGER_BOLD,
@@ -52,28 +53,26 @@ pub async fn run(_cli: &Cli, args: &UpgradeArgs) -> anyhow::Result<i32> {
             ]);
             return Ok(1);
         }
-    };
-    let requested = upgrade::parse_version(&target).expect("target was validated above");
-
-    if current == requested {
-        ui::println(&[
-            Style::TEXT_WARNING_BOLD,
-            "▲  ",
-            Style::TEXT_NORMAL,
-            &format!("opencode upgrade skipped: {target} is already installed"),
-        ]);
-        ui::println(&["└  Done"]);
-        return Ok(0);
-    }
-
-    if requested < current {
-        ui::println(&[
-            Style::TEXT_WARNING_BOLD,
-            "▲  ",
-            Style::TEXT_NORMAL,
-            &format!("refusing to downgrade from {} to {target}", crate::VERSION),
-        ]);
-        return Ok(2);
+        Some(upgrade::UpgradeDecision::AlreadyInstalled) => {
+            ui::println(&[
+                Style::TEXT_WARNING_BOLD,
+                "▲  ",
+                Style::TEXT_NORMAL,
+                &format!("opencode upgrade skipped: {target} is already installed"),
+            ]);
+            ui::println(&["└  Done"]);
+            return Ok(0);
+        }
+        Some(upgrade::UpgradeDecision::RefusesDowngrade) => {
+            ui::println(&[
+                Style::TEXT_WARNING_BOLD,
+                "▲  ",
+                Style::TEXT_NORMAL,
+                &format!("refusing to downgrade from {} to {target}", crate::VERSION),
+            ]);
+            return Ok(2);
+        }
+        Some(upgrade::UpgradeDecision::Proceed) => {}
     }
 
     ui::println(&[

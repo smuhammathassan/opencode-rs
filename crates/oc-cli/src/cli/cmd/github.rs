@@ -172,4 +172,60 @@ mod tests {
     fn event_prompt_rejects_invalid_json() {
         assert!(parse_event_prompt("not-json").is_err());
     }
+
+    #[test]
+    fn issue_comment_event_prompts_from_comment_body() {
+        // issue_comment payload: the comment body is the prompt and the issue
+        // title/number provide fallback context.
+        let prompt = parse_event_prompt(
+            r#"{
+                "action": "created",
+                "issue": {"number": 42, "title": "Fix the parser", "body": "old body"},
+                "comment": {"body": "/oc fix the regexp"}
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(prompt, "/oc fix the regexp");
+    }
+
+    #[test]
+    fn issue_comment_event_with_empty_comment_falls_back_to_issue_title() {
+        let prompt = parse_event_prompt(
+            r#"{
+                "issue": {"number": 7, "title": "Add tests"},
+                "comment": {"body": "  "}
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(prompt, "Review or handle this GitHub event: Add tests");
+    }
+
+    #[test]
+    fn pull_request_event_prompts_from_pr_body() {
+        // pull_request payload: body is preferred, then title.
+        let prompt = parse_event_prompt(
+            r#"{
+                "action": "opened",
+                "number": 9,
+                "pull_request": {
+                    "number": 9,
+                    "title": "Refactor router",
+                    "body": "Introduces the new routing tables."
+                }
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(prompt, "Introduces the new routing tables.");
+    }
+
+    #[test]
+    fn pull_request_event_without_body_prompts_from_title() {
+        let prompt = parse_event_prompt(
+            r#"{
+                "pull_request": {"number": 3, "title": "Add CI"}
+            }"#,
+        )
+        .unwrap();
+        assert_eq!(prompt, "Review or handle this GitHub event: Add CI");
+    }
 }

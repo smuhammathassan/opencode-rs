@@ -120,12 +120,76 @@ struct NativeAuthHook {
     pending: Mutex<Option<PendingFlow>>,
 }
 
+/// An API-key-only auth hook for the internal providers without an OAuth
+/// flow (kilo, llmgateway, nvidia, cerebras).
+///
+/// The reference's `plugin/provider/*.ts` hooks for these providers only add
+/// catalog request headers (HTTP-Referer/X-Title/X-Source/billing-origin,
+/// X-Cerebras-3rd-Party-Integration) and authenticate by API key. Those
+/// header transforms are already applied by the provider registry's custom
+/// loaders; this hook supplies the headless API-key login surface with no
+/// browser dependency.
+struct ApiKeyHook {
+    provider: &'static str,
+}
+
+impl ApiKeyHook {
+    fn new(provider: &'static str) -> Self {
+        ApiKeyHook { provider }
+    }
+}
+
+impl AuthHook for ApiKeyHook {
+    fn methods(&self) -> Vec<Method> {
+        vec![Method {
+            r#type: MethodType::Api,
+            label: "Enter API Key".to_string(),
+            prompts: None,
+        }]
+    }
+
+    fn validate(&self, _method_index: usize, _key: &str, value: &str) -> Option<String> {
+        if value.trim().is_empty() {
+            Some("API key is required".to_string())
+        } else {
+            None
+        }
+    }
+
+    fn authorize(
+        &self,
+        method_index: usize,
+        _inputs: &BTreeMap<String, String>,
+    ) -> Result<AuthOAuthResult, anyhow::Error> {
+        Err(anyhow!(
+            "{} API-key authorization does not use authorize() (method {method_index})",
+            self.provider
+        ))
+    }
+
+    fn callback(&self, code: Option<&str>) -> Result<AuthCallbackResult, anyhow::Error> {
+        let key = code
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .ok_or_else(|| anyhow!("API key is required"))?;
+        Ok(AuthCallbackResult::Success {
+            provider: Some(self.provider.to_string()),
+            oauth: None,
+            api: Some(ApiCredential {
+                key: key.to_string(),
+                metadata: None,
+            }),
+        })
+    }
+}
+
 /// Return the native internal auth hooks currently supported without a JS
 /// runtime. OpenAI includes its browser and headless Codex flows; xAI includes
 /// browser/headless OAuth and manual API-key login; GitHub Copilot includes
-/// the public/enterprise GitHub device flow.
+/// the public/enterprise GitHub device flow. kilo, llmgateway, nvidia, and
+/// cerebras expose headless API-key login only (no browser OAuth).
 pub fn default_auth_hooks() -> BTreeMap<String, Box<dyn AuthHook>> {
-    [
+    let mut hooks: BTreeMap<String, Box<dyn AuthHook>> = [
         NativeProvider::OpenAi,
         NativeProvider::Xai,
         NativeProvider::GithubCopilot,
@@ -140,7 +204,14 @@ pub fn default_auth_hooks() -> BTreeMap<String, Box<dyn AuthHook>> {
             }) as Box<dyn AuthHook>,
         )
     })
-    .collect()
+    .collect();
+    for provider in ["kilo", "llmgateway", "nvidia", "cerebras"] {
+        hooks.insert(
+            provider.to_string(),
+            Box::new(ApiKeyHook::new(provider)) as Box<dyn AuthHook>,
+        );
+    }
+    hooks
 }
 
 impl AuthHook for NativeAuthHook {
@@ -960,7 +1031,15 @@ mod tests {
         let hooks = default_auth_hooks();
         assert_eq!(
             hooks.keys().map(String::as_str).collect::<Vec<_>>(),
-            vec!["github-copilot", "openai", "xai"]
+            vec![
+                "cerebras",
+                "github-copilot",
+                "kilo",
+                "llmgateway",
+                "nvidia",
+                "openai",
+                "xai"
+            ]
         );
         for provider in ["openai", "xai"] {
             let methods = hooks[provider].methods();
@@ -975,6 +1054,42 @@ mod tests {
         assert_eq!(copilot[0].r#type, MethodType::OAuth);
         assert_eq!(copilot[0].label, "Login with GitHub Copilot");
         assert_eq!(copilot[0].prompts.as_ref().map(Vec::len), Some(2));
+    }
+
+    #[test]
+    fn api_key_only_hooks_expose_single_api_method() {
+        let hooks = default_auth_hooks();
+        for provider in ["kilo", "llmgateway", "nvidia", "cerebras"] {
+            let methods = hooks[provider].methods();
+            assert_eq!(methods.len(), 1, "{provider} should expose one method");
+            assert_eq!(
+                methods[0].r#type,
+                MethodType::Api,
+                "{provider} is API-key only"
+            );
+            assert!(methods[0].prompts.is_none());
+        }
+    }
+
+    #[test]
+    fn api_key_only_hooks_store_manual_key_and_reject_empty() {
+        let hooks = default_auth_hooks();
+        for provider in ["kilo", "llmgateway", "nvidia", "cerebras"] {
+            let result = hooks[provider].callback(Some(" sk-nvidia ")).unwrap();
+            let AuthCallbackResult::Success {
+                oauth,
+                api,
+                provider: stored,
+            } = result
+            else {
+                panic!("{provider}: expected successful API credential")
+            };
+            assert!(oauth.is_none());
+            assert_eq!(stored.as_deref(), Some(provider));
+            assert_eq!(api.unwrap().key, "sk-nvidia");
+            assert!(hooks[provider].callback(Some(" ")).is_err());
+            assert!(hooks[provider].callback(None).is_err());
+        }
     }
 
     #[test]

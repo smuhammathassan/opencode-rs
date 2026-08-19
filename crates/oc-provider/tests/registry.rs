@@ -605,3 +605,158 @@ fn build_registry_custom_source_patch_preserves_models() {
         assert!(model.cost.input > 0.0, "free models removed without auth");
     }
 }
+
+/// A fixture npm-metadata resolver: package name -> advertised API base URL.
+struct FixtureNpmMetadata(&'static [(&'static str, &'static str)]);
+
+impl oc_provider::provider::registry::NpmMetadata for FixtureNpmMetadata {
+    fn provider_base_url(&self, npm: &str) -> Option<String> {
+        self.0
+            .iter()
+            .find(|(name, _)| *name == npm)
+            .map(|(_, url)| url.to_string())
+    }
+}
+
+#[test]
+fn build_registry_with_npm_metadata_resolves_api_url() {
+    // A config-declared provider that names an npm SDK but supplies no
+    // explicit `api` URL and has no models.dev entry resolves its base URL
+    // from the injected package-metadata seam.
+    let catalog = snapshot();
+    let mut config_providers = IndexMap::new();
+    config_providers.insert(
+        "npm-only-provider".to_string(),
+        ConfigProvider {
+            name: Some("Npm Only".to_string()),
+            npm: Some("@ai-sdk/custom-sdk".to_string()),
+            models: Some(IndexMap::from_iter([(
+                "custom-1".to_string(),
+                provider::registry::ConfigModel {
+                    name: Some("Custom One".to_string()),
+                    ..Default::default()
+                },
+            )])),
+            ..Default::default()
+        },
+    );
+    let config = ConfigInput {
+        provider: &config_providers,
+        ..Default::default()
+    };
+    let input = RegistryInput {
+        catalog: &catalog,
+        config,
+        envs: &BTreeMap::new(),
+        auths: &BTreeMap::new(),
+        enable_experimental_models: false,
+    };
+    let resolver = FixtureNpmMetadata(&[("@ai-sdk/custom-sdk", "https://custom.example/v1")]);
+
+    // Without a resolver the model has no base URL.
+    let providers = build_registry(&input).unwrap();
+    let model = &providers["npm-only-provider"].models["custom-1"];
+    assert_eq!(model.api.npm, "@ai-sdk/custom-sdk");
+    assert_eq!(model.api.url, "");
+
+    // With a resolver the base URL falls back to the package metadata.
+    let providers = oc_provider::provider::registry::build_registry_with_npm_metadata(
+        &input,
+        &[],
+        Some(&resolver),
+    )
+    .unwrap();
+    let model = &providers["npm-only-provider"].models["custom-1"];
+    assert_eq!(model.api.npm, "@ai-sdk/custom-sdk");
+    assert_eq!(model.api.url, "https://custom.example/v1");
+
+    // An explicit config `api` URL still wins over package metadata.
+    let mut explicit_config = IndexMap::new();
+    explicit_config.insert(
+        "explicit-provider".to_string(),
+        ConfigProvider {
+            name: Some("Explicit".to_string()),
+            npm: Some("@ai-sdk/custom-sdk".to_string()),
+            api: Some("https://api.example/v2".to_string()),
+            models: Some(IndexMap::from_iter([(
+                "custom-2".to_string(),
+                provider::registry::ConfigModel::default(),
+            )])),
+            ..Default::default()
+        },
+    );
+    let config = ConfigInput {
+        provider: &explicit_config,
+        ..Default::default()
+    };
+    let input = RegistryInput {
+        catalog: &catalog,
+        config,
+        envs: &BTreeMap::new(),
+        auths: &BTreeMap::new(),
+        enable_experimental_models: false,
+    };
+    let providers = oc_provider::provider::registry::build_registry_with_npm_metadata(
+        &input,
+        &[],
+        Some(&resolver),
+    )
+    .unwrap();
+    assert_eq!(
+        providers["explicit-provider"].models["custom-2"].api.url,
+        "https://api.example/v2"
+    );
+}
+
+#[test]
+fn default_model_selection_parity() {
+    use oc_provider::provider::default_model;
+
+    let catalog = snapshot();
+    // Build a small registry where two providers are env-connected.
+    let mut envs = BTreeMap::new();
+    envs.insert("OPENAI_API_KEY".to_string(), Some("sk-a".to_string()));
+    envs.insert("ANTHROPIC_API_KEY".to_string(), Some("sk-b".to_string()));
+    let input = RegistryInput {
+        catalog: &catalog,
+        config: ConfigInput::default(),
+        envs: &envs,
+        auths: &BTreeMap::new(),
+        enable_experimental_models: false,
+    };
+    let providers = build_registry(&input).unwrap();
+
+    // 1. Explicit cfg.model wins.
+    let (p, m) = default_model(&providers, Some("openai/gpt-5.2-pro"), &[], &[]).unwrap();
+    assert_eq!((p.as_str(), m.as_str()), ("openai", "gpt-5.2-pro"));
+
+    // 2. Recent model.json hits when present in the registry.
+    let (p, m) = default_model(
+        &providers,
+        None,
+        &[],
+        &[("anthropic".to_string(), "claude-sonnet-4-6".to_string())],
+    )
+    .unwrap();
+    assert_eq!((p.as_str(), m.as_str()), ("anthropic", "claude-sonnet-4-6"));
+
+    // 3. First provider in registry order otherwise.
+    let first_connected = providers
+        .iter()
+        .find(|(_, p)| !p.models.is_empty())
+        .map(|(id, _)| id.clone())
+        .expect("at least one connected provider");
+    let (p, m) = default_model(&providers, None, &[], &[]).unwrap();
+    assert_eq!(
+        p, first_connected,
+        "should pick first registry-order provider"
+    );
+    assert!(!m.is_empty());
+
+    // No configured providers and no matches -> NoProvidersError.
+    let empty: IndexMap<String, oc_provider::provider::Info> = IndexMap::new();
+    assert!(matches!(
+        default_model(&empty, None, &[], &[]),
+        Err(oc_provider::provider::DefaultModelError::NoProviders(_))
+    ));
+}

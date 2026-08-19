@@ -152,3 +152,30 @@ fn known_command_completes_and_exits_zero() {
         "expected the /init command output, stdout: {stdout}"
     );
 }
+
+/// `opencode upgrade <target>` must refuse a downgrade (F039) without any
+/// network or server dependency. The CLI's UI routes messages to stderr.
+#[test]
+fn upgrade_refuses_downgrade() {
+    let home = test_home("upgrade-downgrade");
+    let mut child = spawn_in(&home, &["upgrade", "1.0.0"]);
+    let output = wait_with_timeout(&mut child, Duration::from_secs(30));
+    let _ = fs::remove_dir_all(&home);
+
+    let output = output.unwrap_or_else(|| {
+        let _ = child.kill();
+        panic!("opencode upgrade hung: expected a downgrade refusal to be immediate");
+    });
+    assert_eq!(
+        code(&output),
+        2,
+        "stdout: {}\nstderr: {}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("refusing to downgrade"),
+        "expected a downgrade refusal, stderr: {stderr}"
+    );
+}

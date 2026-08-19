@@ -676,6 +676,52 @@ pub trait ModelsIndex {
     fn model_values(&self) -> Vec<Model>;
 }
 
+/// Mirrors `Provider.defaultModel()` selection from `provider.ts`.
+///
+/// Selections, in priority order:
+/// 1. An explicit `cfg.model` string (`provider/model`).
+/// 2. The most recent `model.json` entry whose provider+model still exist in
+///    the active registry (most-recent-first iteration).
+/// 3. The first provider in registry order that is either the only candidate
+///    when no config providers are declared, or that is config-declared. Its
+///    first model after `sort()` is returned.
+///
+/// `recent` is ordered most-recent first to mirror the reference `model.json`
+/// array ordering.
+pub fn default_model(
+    providers: &IndexMap<String, Info>,
+    cfg_model: Option<&str>,
+    configured_provider_ids: &[String],
+    recent: &[(String, String)],
+) -> Result<(String, String), DefaultModelError> {
+    if let Some(model) = cfg_model {
+        let (provider_id, model_id) = parse_model(model);
+        if !provider_id.is_empty() && !model_id.is_empty() {
+            return Ok((provider_id, model_id));
+        }
+    }
+
+    for (provider_id, model_id) in recent {
+        if let Some(provider) = providers.get(provider_id) {
+            if provider.models.contains_key(model_id) {
+                return Ok((provider_id.clone(), model_id.clone()));
+            }
+        }
+    }
+
+    let provider = providers
+        .values()
+        .find(|p| configured_provider_ids.is_empty() || configured_provider_ids.contains(&p.id))
+        .ok_or(NoProvidersError)?;
+    let model = sort(provider.models.values().cloned().collect::<Vec<_>>())
+        .into_iter()
+        .next()
+        .ok_or_else(|| NoModelsError {
+            provider_id: provider.id.clone(),
+        })?;
+    Ok((provider.id.clone(), model.id))
+}
+
 impl ModelsIndex for Info {
     fn model_values(&self) -> Vec<Model> {
         self.models.values().cloned().collect()
@@ -797,5 +843,6 @@ pub(crate) fn merge_provider(
 }
 
 pub use registry::{
-    build_registry, build_registry_with_model_hooks, ProviderModelHookRegistration, RegistryInput,
+    build_registry, build_registry_with_model_hooks, build_registry_with_npm_metadata, NpmMetadata,
+    ProviderModelHookRegistration, RegistryInput,
 };

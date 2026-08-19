@@ -570,22 +570,163 @@ pub enum StartupUpdatePolicy {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InstallationMethod {
     Npm,
+    Yarn,
+    Pnpm,
+    Bun,
     Brew,
+    Scoop,
+    Choco,
+    /// The install script (`opencode.ai/install`), the reference's `curl`
+    /// method.
     Script,
     Unknown,
 }
 
 /// Classify how the running binary was installed from its path.
+///
+/// This is the fast path used by startup auto-update: it must not spawn a
+/// package-manager subprocess. The full command-probing detection is
+/// [`detect_method`].
 pub fn installation_method(exe: &std::path::Path) -> InstallationMethod {
     let text = exe.to_string_lossy();
     if text.contains("node_modules") {
         InstallationMethod::Npm
     } else if text.contains("Cellar") || text.contains("homebrew") {
         InstallationMethod::Brew
-    } else if text.contains(".opencode/bin") {
+    } else if text.contains(".opencode/bin") || text.contains(".local/bin") {
         InstallationMethod::Script
     } else {
         InstallationMethod::Unknown
+    }
+}
+
+/// Capture `stdout` for a subprocess, returning an empty string on any error.
+///
+/// Mirrors the reference `text()` helper in `installation/index.ts`, which
+/// swallows failures so a missing package manager simply yields no output.
+fn run_text(program: &str, args: &[&str]) -> String {
+    std::process::Command::new(program)
+        .args(args)
+        .output()
+        .map(|output| String::from_utf8_lossy(&output.stdout).into_owned())
+        .unwrap_or_default()
+}
+
+/// The checks probed by [`detect_method`], mirroring the reference
+/// `checks` array in `installation/index.ts`.
+fn method_checks() -> &'static [(&'static str, &'static [&'static str], &'static str)] {
+    &[
+        // (method, command args, installed package name to look for)
+        ("npm", &["list", "-g", "--depth=0"], "opencode-ai"),
+        ("yarn", &["global", "list"], "opencode-ai"),
+        ("pnpm", &["list", "-g", "--depth=0"], "opencode-ai"),
+        ("bun", &["pm", "ls", "-g"], "opencode-ai"),
+        ("brew", &["list", "--formula", "opencode"], "opencode"),
+        ("scoop", &["list", "opencode"], "opencode"),
+        ("choco", &["list", "--limit-output", "opencode"], "opencode"),
+    ]
+}
+
+/// Detect the installation method by probing each package manager, mirroring
+/// `Installation.method()` in `reference/packages/opencode/src/installation/index.ts`.
+///
+/// The install-script (`Script`) method is recognized from the binary path
+/// first; otherwise the package managers whose names appear in `exe` are tried
+/// first (matching the reference sort), and the first whose `list` output
+/// contains its installed package name wins. `runner` executes the probe so
+/// tests can substitute a PATH stub or a recorded closure.
+pub fn detect_method_with_runner(
+    exe: &std::path::Path,
+    mut runner: impl FnMut(&str, &[&str]) -> String,
+) -> InstallationMethod {
+    let text = exe.to_string_lossy();
+    if text.contains(".opencode/bin") || text.contains(".local/bin") {
+        return InstallationMethod::Script;
+    }
+    let exec = text.to_lowercase();
+
+    // Sort so the method whose name appears in the executable path is probed
+    // first (reference sort is stable, per-method).
+    let mut order: Vec<usize> = (0..method_checks().len()).collect();
+    order.sort_by_key(|&index| {
+        let (name, ..) = method_checks()[index];
+        if exec.contains(name) {
+            0
+        } else {
+            1
+        }
+    });
+
+    for index in order {
+        let (name, args, installed_name) = method_checks()[index];
+        let output = runner(name, args);
+        if output.to_lowercase().contains(installed_name) {
+            return match name {
+                "npm" => InstallationMethod::Npm,
+                "yarn" => InstallationMethod::Yarn,
+                "pnpm" => InstallationMethod::Pnpm,
+                "bun" => InstallationMethod::Bun,
+                "brew" => InstallationMethod::Brew,
+                "scoop" => InstallationMethod::Scoop,
+                "choco" => InstallationMethod::Choco,
+                _ => InstallationMethod::Unknown,
+            };
+        }
+    }
+    InstallationMethod::Unknown
+}
+
+/// Detect the installation method using the process `PATH`.
+pub fn detect_method(exe: &std::path::Path) -> InstallationMethod {
+    detect_method_with_runner(exe, run_text)
+}
+
+/// The package-manager command that would upgrade `target`, mirroring the
+/// `upgrade()` switch in `reference/packages/opencode/src/installation/index.ts`.
+///
+/// Returns `Err` for methods that cannot self-upgrade through the native port
+/// (the install script and `yarn`, which the reference detects but does not
+/// expose an upgrade command for).
+pub fn package_manager_command(
+    method: InstallationMethod,
+    target: &str,
+) -> Result<Vec<String>, String> {
+    let target = normalize_target(target).ok_or_else(|| "invalid release version".to_string())?;
+    match method {
+        InstallationMethod::Npm => Ok(vec![
+            "npm".into(),
+            "install".into(),
+            "-g".into(),
+            format!("opencode-ai@{target}"),
+        ]),
+        InstallationMethod::Pnpm => Ok(vec![
+            "pnpm".into(),
+            "install".into(),
+            "-g".into(),
+            format!("opencode-ai@{target}"),
+        ]),
+        InstallationMethod::Bun => Ok(vec![
+            "bun".into(),
+            "install".into(),
+            "-g".into(),
+            format!("opencode-ai@{target}"),
+        ]),
+        InstallationMethod::Brew => Ok(vec!["brew".into(), "upgrade".into(), "opencode".into()]),
+        InstallationMethod::Choco => Ok(vec![
+            "choco".into(),
+            "upgrade".into(),
+            "opencode".into(),
+            format!("--version={target}"),
+            "-y".into(),
+        ]),
+        InstallationMethod::Scoop => Ok(vec![
+            "scoop".into(),
+            "install".into(),
+            format!("opencode@{target}"),
+        ]),
+        _ => Err(format!(
+            "installation method {method:?} has no package-manager upgrade"
+        )),
     }
 }
 
@@ -636,6 +777,36 @@ pub enum StartupUpdateAction {
     None,
     Notify(String),
     Install(String),
+}
+
+/// An `opencode upgrade` outcome derived entirely from the current and
+/// requested versions. Mirrors the guard logic in the explicit
+/// `cli/cmd/upgrade.ts` path and `upgrade_cmd.rs` (F039 "refuses downgrades").
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UpgradeDecision {
+    /// The requested target equals the installed version: skip.
+    AlreadyInstalled,
+    /// The requested target is older than the installed version: refuse.
+    RefusesDowngrade,
+    /// The request is valid and newer than the installed version.
+    Proceed,
+}
+
+/// Decide whether an explicit `upgrade <target>` should proceed.
+///
+/// Returns `None` when the installed `current` version cannot be parsed, so
+/// the caller can refuse before attempting anything (matching the invalid
+/// installed-version refusals in `upgrade_cmd.rs`).
+pub fn upgrade_decision(current: &str, requested: &str) -> Option<UpgradeDecision> {
+    let current = parse_version(current)?;
+    let requested = parse_version(requested)?;
+    if requested == current {
+        Some(UpgradeDecision::AlreadyInstalled)
+    } else if requested < current {
+        Some(UpgradeDecision::RefusesDowngrade)
+    } else {
+        Some(UpgradeDecision::Proceed)
+    }
 }
 
 /// Decide what startup should do for a fetched release.
@@ -753,6 +924,30 @@ mod tests {
         assert_eq!(get_release_type("1.18.13", "2.0.0"), ReleaseType::Major);
         assert_eq!(get_release_type("1.18.13", "1.19.0"), ReleaseType::Minor);
         assert_eq!(get_release_type("1.18.13", "1.18.14"), ReleaseType::Patch);
+    }
+
+    #[test]
+    fn upgrade_decision_refuses_downgrades_without_network() {
+        use super::UpgradeDecision as D;
+        // Same version -> skip.
+        assert_eq!(
+            upgrade_decision("1.18.13", "v1.18.13"),
+            Some(D::AlreadyInstalled)
+        );
+        // Newer target -> proceed.
+        assert_eq!(upgrade_decision("1.18.13", "1.18.14"), Some(D::Proceed));
+        assert_eq!(upgrade_decision("1.18.13", "2.0.0"), Some(D::Proceed));
+        // Older target -> explicit downgrade refusal (F039).
+        assert_eq!(
+            upgrade_decision("1.18.13", "1.18.12"),
+            Some(D::RefusesDowngrade)
+        );
+        assert_eq!(
+            upgrade_decision("1.18.13", "1.0.0"),
+            Some(D::RefusesDowngrade)
+        );
+        // An unparseable installed version -> None so the caller can refuse.
+        assert_eq!(upgrade_decision("dev", "1.18.14"), None);
     }
 
     #[test]
@@ -902,5 +1097,165 @@ mod tests {
             installation_method(std::path::Path::new("/home/u/.opencode/bin/opencode")),
             super::InstallationMethod::Script
         );
+        assert_eq!(
+            installation_method(std::path::Path::new("/home/u/.local/bin/opencode")),
+            super::InstallationMethod::Script
+        );
+    }
+
+    #[test]
+    fn detect_method_probes_package_managers_via_injected_runner() {
+        use super::InstallationMethod as M;
+
+        // No package manager lists opencode -> unknown.
+        let detected =
+            detect_method_with_runner(std::path::Path::new("/usr/bin/opencode"), |_, _| {
+                "nothing".to_string()
+            });
+        assert_eq!(detected, M::Unknown);
+
+        // npm lists opencode-ai -> npm.
+        let detected =
+            detect_method_with_runner(std::path::Path::new("/usr/bin/opencode"), |prog, args| {
+                assert_eq!(prog, "npm");
+                assert_eq!(args, ["list", "-g", "--depth=0"]);
+                "openai opencode-ai ara  ".to_string()
+            });
+        assert_eq!(detected, M::Npm);
+
+        // brew lists opencode -> brew (checks npm first, which outputs nothing).
+        let detected =
+            detect_method_with_runner(std::path::Path::new("/usr/bin/opencode"), |prog, _| {
+                if prog == "brew" {
+                    "opencode".to_string()
+                } else {
+                    String::new()
+                }
+            });
+        assert_eq!(detected, M::Brew);
+
+        // choco lists opencode -> choco.
+        let detected =
+            detect_method_with_runner(std::path::Path::new("/usr/bin/opencode"), |prog, _| {
+                if prog == "choco" {
+                    "opencode".to_string()
+                } else {
+                    String::new()
+                }
+            });
+        assert_eq!(detected, M::Choco);
+
+        // scoop lists opencode -> scoop.
+        let detected =
+            detect_method_with_runner(std::path::Path::new("/usr/bin/opencode"), |prog, _| {
+                if prog == "scoop" {
+                    "opencode".to_string()
+                } else {
+                    String::new()
+                }
+            });
+        assert_eq!(detected, M::Scoop);
+
+        // The install-script path wins immediately without probing.
+        let mut probed = false;
+        let detected = detect_method_with_runner(
+            std::path::Path::new("/home/u/.opencode/bin/opencode"),
+            |_, _| {
+                probed = true;
+                String::new()
+            },
+        );
+        assert_eq!(detected, M::Script);
+        assert!(!probed, "install-script path must not spawn a probe");
+    }
+
+    #[test]
+    fn detect_method_prefers_package_manager_named_in_exec_path() {
+        use super::InstallationMethod as M;
+        // Both npm and brew outputs match, but the exec path names `brew`,
+        // so brew is probed first and wins on a tie.
+        let detected = detect_method_with_runner(
+            std::path::Path::new("/usr/local/brew/bin/opencode"),
+            |prog, _| {
+                if prog == "brew" {
+                    "opencode".to_string()
+                } else if prog == "npm" {
+                    "opencode-ai".to_string()
+                } else {
+                    String::new()
+                }
+            },
+        );
+        assert_eq!(detected, M::Brew);
+    }
+
+    #[test]
+    fn detect_method_finds_package_managers_on_path() {
+        use super::InstallationMethod as M;
+        // A PATH stub for `npm` that lists opencode-ai; the real subprocess
+        // runner resolves it from the injected PATH.
+        let root = std::env::temp_dir().join(format!(
+            "oc-upgrade-method-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&root).unwrap();
+        let stub = root.join("npm");
+        fs::write(&stub, "#!/bin/sh\nprintf 'schedules opencode-ai\\n'\n").unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&stub, fs::Permissions::from_mode(0o755)).unwrap();
+        }
+
+        let previous = std::env::var_os("PATH");
+        let path = format!(
+            "{}:{}",
+            root.display(),
+            previous.as_deref().unwrap_or_default().to_string_lossy()
+        );
+        std::env::set_var("PATH", &path);
+        let detected = detect_method(std::path::Path::new("/usr/bin/opencode"));
+        std::env::remove_var("PATH");
+        if let Some(previous) = previous {
+            std::env::set_var("PATH", previous);
+        }
+        let _ = fs::remove_dir_all(root);
+        assert_eq!(detected, M::Npm);
+    }
+
+    #[test]
+    fn package_manager_command_dispatches_per_method() {
+        use super::InstallationMethod as M;
+        assert_eq!(
+            package_manager_command(M::Npm, "1.2.3").unwrap(),
+            vec!["npm", "install", "-g", "opencode-ai@1.2.3"]
+        );
+        assert_eq!(
+            package_manager_command(M::Pnpm, "v1.2.3").unwrap(),
+            vec!["pnpm", "install", "-g", "opencode-ai@1.2.3"]
+        );
+        assert_eq!(
+            package_manager_command(M::Bun, "1.2.3").unwrap(),
+            vec!["bun", "install", "-g", "opencode-ai@1.2.3"]
+        );
+        assert_eq!(
+            package_manager_command(M::Choco, "1.2.3").unwrap(),
+            vec!["choco", "upgrade", "opencode", "--version=1.2.3", "-y"]
+        );
+        assert_eq!(
+            package_manager_command(M::Scoop, "1.2.3").unwrap(),
+            vec!["scoop", "install", "opencode@1.2.3"]
+        );
+        assert_eq!(
+            package_manager_command(M::Brew, "1.2.3").unwrap(),
+            vec!["brew", "upgrade", "opencode"]
+        );
+        assert!(package_manager_command(M::Yarn, "1.2.3").is_err());
+        assert!(package_manager_command(M::Script, "1.2.3").is_err());
+        assert!(package_manager_command(M::Unknown, "1.2.3").is_err());
     }
 }

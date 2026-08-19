@@ -209,6 +209,25 @@ impl<'a> Default for ConfigInput<'a> {
     }
 }
 
+/// Injectable npm-package metadata fetch seam.
+///
+/// The reference resolves a custom provider's endpoint implicitly by loading
+/// the named npm SDK package, whose bundled defaults carry the provider's
+/// base URL. The native registry cannot load JS SDKs, so this seam surfaces
+/// that package metadata: given an npm package name, it returns the SDK's
+/// default API base URL to use as the fallback for models whose config and
+/// models.dev catalog entries do not supply an explicit `api` URL.
+///
+/// Implementations are injectable so tests can serve fixture metadata instead
+/// of touching the network. It is intentionally optional: when `None`, no npm
+/// metadata fallback is applied and behaviour stays identical to the
+/// reference config-only path.
+pub trait NpmMetadata {
+    /// Resolve the default API base URL advertised by `npm`'s package
+    /// metadata, if any.
+    fn provider_base_url(&self, npm: &str) -> Option<String>;
+}
+
 /// Inputs to [`build_registry`].
 #[derive(Debug, Clone)]
 pub struct RegistryInput<'a> {
@@ -764,6 +783,7 @@ fn merge_config_model(
     model: &ConfigModel,
     provider: Option<&ConfigProvider>,
     models_dev: Option<&models_dev::Provider>,
+    npm_metadata: Option<&dyn NpmMetadata>,
 ) {
     let lookup = model.id.as_deref().unwrap_or(model_id);
     let existing_model = parsed.models.get(lookup).cloned();
@@ -869,6 +889,13 @@ fn merge_config_model(
                 .or_else(|| provider.and_then(|p| p.api.clone()))
                 .or_else(|| existing_model.as_ref().map(|m| m.api.url.clone()))
                 .or_else(|| models_dev.and_then(|p| p.api.clone()))
+                .or_else(|| {
+                    // npm-package metadata fallback: a config-declared provider
+                    // that names an npm SDK but supplies no explicit `api` URL
+                    // (and is absent from the models.dev catalog) resolves its
+                    // base URL from the package metadata seam.
+                    npm_metadata.and_then(|resolver| resolver.provider_base_url(&api_npm))
+                })
                 .unwrap_or_default(),
         },
         status: model
@@ -1081,6 +1108,28 @@ pub fn build_registry_with_model_hooks(
     input: &RegistryInput,
     model_hooks: &[ProviderModelHookRegistration],
 ) -> Result<IndexMap<String, Info>, anyhow::Error> {
+    build_registry_inner(input, model_hooks, None)
+}
+
+/// [`build_registry_with_model_hooks`] with an injectable npm-package
+/// metadata resolver for config-declared providers.
+///
+/// The resolver supplies a default `api` base URL for models that name an npm
+/// SDK package but supply no explicit URL and are absent from the models.dev
+/// catalog. See [`NpmMetadata`].
+pub fn build_registry_with_npm_metadata(
+    input: &RegistryInput,
+    model_hooks: &[ProviderModelHookRegistration],
+    npm_metadata: Option<&dyn NpmMetadata>,
+) -> Result<IndexMap<String, Info>, anyhow::Error> {
+    build_registry_inner(input, model_hooks, npm_metadata)
+}
+
+fn build_registry_inner(
+    input: &RegistryInput,
+    model_hooks: &[ProviderModelHookRegistration],
+    npm_metadata: Option<&dyn NpmMetadata>,
+) -> Result<IndexMap<String, Info>, anyhow::Error> {
     let mut database: IndexMap<String, Info> = input
         .catalog
         .iter()
@@ -1168,7 +1217,14 @@ pub fn build_registry_with_model_hooks(
 
         if let Some(models) = &provider.models {
             for (model_id, model) in models {
-                merge_config_model(&mut parsed, model_id, model, Some(provider), models_dev);
+                merge_config_model(
+                    &mut parsed,
+                    model_id,
+                    model,
+                    Some(provider),
+                    models_dev,
+                    npm_metadata,
+                );
             }
         }
         database.insert(provider_id.clone(), parsed);
